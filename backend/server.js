@@ -155,10 +155,6 @@ function normalizePlanoName(plano) {
       "Plano de controle",
       "Plano controle",
       "plano controle",
-      "Plano de carreira",
-      "Plano de carreia",
-      "plano de carreira",
-      "plano de carreia",
     ].includes(value)
   ) {
     return "Plano Controle";
