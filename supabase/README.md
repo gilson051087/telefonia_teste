@@ -21,8 +21,10 @@ Login inicial:
 
 Cadastre:
 
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `REACT_APP_SUPABASE_URL`
+- `REACT_APP_SUPABASE_ANON_KEY`
+
+Como este projeto usa `react-scripts`, essas sao as variaveis que realmente precisam estar na Vercel para chegar ao frontend.
 
 ## 3. Observacao importante
 
