@@ -14,7 +14,7 @@ import {
   logout as apiLogout,
   migrateLegacyData,
   updateVenda,
-} from "./api";
+} from "./apiClient";
 import AppHeader from "./components/AppHeader";
 import AuthScreen from "./components/AuthScreen";
 import PasswordForm from "./components/forms/PasswordForm";

@@ -49,8 +49,8 @@ npm run build
 ## 5. Ajustar permissao da pasta do banco
 
 ```bash
-sudo mkdir -p /var/www/telefonia_teste/current/backend/data
-sudo chown -R www-data:www-data /var/www/telefonia_teste/current/backend/data
+sudo mkdir -p /var/www/telefonia_teste/current/api/data
+sudo chown -R www-data:www-data /var/www/telefonia_teste/current/api/data
 ```
 
 ## 6. Configurar backend no systemd
@@ -100,7 +100,7 @@ sudo ufw enable
 
 ```bash
 cd /var/www/telefonia_teste/current
-node --experimental-sqlite backend/reset-admin.js
+node --experimental-sqlite api/reset-admin.js
 ```
 
 Login padrao:
