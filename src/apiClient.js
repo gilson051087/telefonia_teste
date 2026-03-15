@@ -1,7 +1,14 @@
-import { supabase } from "./lib/supabase";
+import { isSupabaseConfigured, supabase, supabaseConfigError } from "./lib/supabase";
 import { normalizeLegacyVenda } from "./utils/sales";
 
 const SESSION_KEY = "telefonia_supabase_session_v1";
+
+function ensureSupabase() {
+  if (!isSupabaseConfigured || !supabase) {
+    throw new Error(supabaseConfigError);
+  }
+  return supabase;
+}
 
 function genId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
@@ -44,7 +51,8 @@ async function hashPassword(value) {
 }
 
 async function fetchUserByUsername(username) {
-  const { data, error } = await supabase.from("users").select("*").eq("username", username.toLowerCase()).maybeSingle();
+  const client = ensureSupabase();
+  const { data, error } = await client.from("users").select("*").eq("username", username.toLowerCase()).maybeSingle();
   if (error) throw new Error(error.message || "Erro ao buscar usuario.");
   return data;
 }
@@ -55,7 +63,8 @@ async function requireCurrentUser() {
     throw new Error("Sessao nao encontrada.");
   }
 
-  const { data, error } = await supabase.from("users").select("*").eq("id", session.user.id).maybeSingle();
+  const client = ensureSupabase();
+  const { data, error } = await client.from("users").select("*").eq("id", session.user.id).maybeSingle();
   if (error) throw new Error(error.message || "Erro ao carregar sessao.");
   if (!data) {
     setStoredSession(null);
@@ -109,7 +118,8 @@ export async function getSession() {
 export async function listUsers() {
   const user = await requireCurrentUser();
   if (user.role === "admin") {
-    const { data, error } = await supabase.from("users").select("id, nome, username, role, created_at").order("role", { ascending: false }).order("nome", { ascending: true });
+    const client = ensureSupabase();
+    const { data, error } = await client.from("users").select("id, nome, username, role, created_at").order("role", { ascending: false }).order("nome", { ascending: true });
     if (error) throw new Error(error.message || "Erro ao carregar usuarios.");
     return (data || []).map(mapUser);
   }
@@ -119,6 +129,7 @@ export async function listUsers() {
 
 export async function createSeller(payload) {
   await ensureAdmin();
+  const client = ensureSupabase();
 
   const nome = String(payload?.nome || "").trim();
   const username = String(payload?.username || "").trim().toLowerCase();
@@ -146,26 +157,28 @@ export async function createSeller(payload) {
     created_at: nowIso(),
   };
 
-  const { data, error } = await supabase.from("users").insert(record).select("id, nome, username, role, created_at").single();
+  const { data, error } = await client.from("users").insert(record).select("id, nome, username, role, created_at").single();
   if (error) throw new Error(error.message || "Erro ao cadastrar vendedor.");
   return mapUser(data);
 }
 
 export async function deleteSeller(id) {
   await ensureAdmin();
+  const client = ensureSupabase();
 
-  const { data: user, error: fetchError } = await supabase.from("users").select("id, role").eq("id", id).maybeSingle();
+  const { data: user, error: fetchError } = await client.from("users").select("id, role").eq("id", id).maybeSingle();
   if (fetchError) throw new Error(fetchError.message || "Erro ao carregar vendedor.");
   if (!user) throw new Error("Vendedor nao encontrado.");
   if (user.role === "admin") throw new Error("Nao e permitido excluir o administrador.");
 
-  const { error } = await supabase.from("users").delete().eq("id", id);
+  const { error } = await client.from("users").delete().eq("id", id);
   if (error) throw new Error(error.message || "Erro ao excluir vendedor.");
 }
 
 export async function listVendas() {
   const user = await requireCurrentUser();
-  let query = supabase.from("vendas").select("payload, created_at").order("created_at", { ascending: false });
+  const client = ensureSupabase();
+  let query = client.from("vendas").select("payload, created_at").order("created_at", { ascending: false });
 
   if (user.role !== "admin") {
     query = query.or(`vendedor_id.eq.${user.id},vendedor.eq.${user.nome}`);
@@ -178,6 +191,7 @@ export async function listVendas() {
 
 export async function createVenda(payload) {
   const user = await requireCurrentUser();
+  const client = ensureSupabase();
   const venda = normalizeLegacyVenda({
     ...payload,
     id: genId(),
@@ -194,14 +208,15 @@ export async function createVenda(payload) {
     updated_at: nowIso(),
   };
 
-  const { error } = await supabase.from("vendas").insert(record);
+  const { error } = await client.from("vendas").insert(record);
   if (error) throw new Error(error.message || "Erro ao salvar venda.");
   return venda;
 }
 
 export async function updateVenda(id, payload) {
   const user = await requireCurrentUser();
-  const { data: currentRow, error: fetchError } = await supabase.from("vendas").select("payload").eq("id", id).maybeSingle();
+  const client = ensureSupabase();
+  const { data: currentRow, error: fetchError } = await client.from("vendas").select("payload").eq("id", id).maybeSingle();
   if (fetchError) throw new Error(fetchError.message || "Erro ao carregar venda.");
   if (!currentRow?.payload) throw new Error("Venda nao encontrada.");
 
@@ -218,7 +233,7 @@ export async function updateVenda(id, payload) {
     vendedor: user.role === "seller" ? user.nome : payload.vendedor,
   });
 
-  const { error } = await supabase
+  const { error } = await client
     .from("vendas")
     .update({
       vendedor_id: updated.vendedorId || null,
@@ -234,7 +249,8 @@ export async function updateVenda(id, payload) {
 
 export async function deleteVenda(id) {
   const user = await requireCurrentUser();
-  const { data: currentRow, error: fetchError } = await supabase.from("vendas").select("payload").eq("id", id).maybeSingle();
+  const client = ensureSupabase();
+  const { data: currentRow, error: fetchError } = await client.from("vendas").select("payload").eq("id", id).maybeSingle();
   if (fetchError) throw new Error(fetchError.message || "Erro ao carregar venda.");
   if (!currentRow?.payload) throw new Error("Venda nao encontrada.");
 
@@ -243,18 +259,19 @@ export async function deleteVenda(id) {
     throw new Error("Sem permissao para excluir esta venda.");
   }
 
-  const { error } = await supabase.from("vendas").delete().eq("id", id);
+  const { error } = await client.from("vendas").delete().eq("id", id);
   if (error) throw new Error(error.message || "Erro ao excluir venda.");
 }
 
 export async function migrateLegacyData(payload) {
   await ensureAdmin();
+  const client = ensureSupabase();
 
   const users = Array.isArray(payload?.users) ? payload.users : [];
   const vendas = Array.isArray(payload?.vendas) ? payload.vendas : [];
 
   if (users.length) {
-    const { data: existingUsers, error: usersError } = await supabase.from("users").select("username");
+    const { data: existingUsers, error: usersError } = await client.from("users").select("username");
     if (usersError) throw new Error(usersError.message || "Erro ao migrar usuarios.");
     const usernames = new Set((existingUsers || []).map((item) => item.username));
 
@@ -273,13 +290,13 @@ export async function migrateLegacyData(payload) {
     }
 
     if (newUsers.length) {
-      const { error } = await supabase.from("users").insert(newUsers);
+      const { error } = await client.from("users").insert(newUsers);
       if (error) throw new Error(error.message || "Erro ao migrar usuarios.");
     }
   }
 
   if (vendas.length) {
-    const { data: existingVendas, error: vendasError } = await supabase.from("vendas").select("id");
+    const { data: existingVendas, error: vendasError } = await client.from("vendas").select("id");
     if (vendasError) throw new Error(vendasError.message || "Erro ao migrar vendas.");
     const ids = new Set((existingVendas || []).map((item) => item.id));
 
@@ -296,7 +313,7 @@ export async function migrateLegacyData(payload) {
       }));
 
     if (newVendas.length) {
-      const { error } = await supabase.from("vendas").insert(newVendas);
+      const { error } = await client.from("vendas").insert(newVendas);
       if (error) throw new Error(error.message || "Erro ao migrar vendas.");
     }
   }
@@ -304,7 +321,8 @@ export async function migrateLegacyData(payload) {
 
 export async function changePassword(currentSenha, newSenha) {
   const user = await requireCurrentUser();
-  const { data, error } = await supabase.from("users").select("password_hash").eq("id", user.id).maybeSingle();
+  const client = ensureSupabase();
+  const { data, error } = await client.from("users").select("password_hash").eq("id", user.id).maybeSingle();
   if (error) throw new Error(error.message || "Erro ao carregar usuario.");
   if (!data) throw new Error("Usuario nao encontrado.");
 
@@ -317,7 +335,7 @@ export async function changePassword(currentSenha, newSenha) {
     throw new Error("A nova senha deve ter pelo menos 6 caracteres.");
   }
 
-  const { error: updateError } = await supabase.from("users").update({ password_hash: await hashPassword(newSenha) }).eq("id", user.id);
+  const { error: updateError } = await client.from("users").update({ password_hash: await hashPassword(newSenha) }).eq("id", user.id);
   if (updateError) throw new Error(updateError.message || "Erro ao alterar senha.");
 }
 
