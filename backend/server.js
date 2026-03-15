@@ -5,7 +5,7 @@ const crypto = require("crypto");
 const { DatabaseSync } = require("node:sqlite");
 
 const PORT = process.env.PORT || 4000;
-const JWT_SECRET = process.env.JWT_SECRET || "televendas-dev-secret-change-me";
+const JWT_SECRET = process.env.JWT_SECRET || "telefonia-teste-dev-secret-change-me";
 const TOKEN_TTL_SECONDS = 60 * 60 * 8;
 const DATA_DIR = path.join(__dirname, "data");
 const SQLITE_FILE = path.join(DATA_DIR, "db.sqlite");
