@@ -24,15 +24,112 @@ import ReportsTab from "./components/sections/ReportsTab";
 import SellersTab from "./components/sections/SellersTab";
 import VendasTab from "./components/sections/VendasTab";
 import { Badge, Modal, StatCard, btnDanger, btnPrimary, btnSecondary } from "./components/ui";
-import { PLANO_COLORS, PLANO_EXTRAS, PLANO_ICONS, PLANO_LABELS, STATUS_COLORS, STATUS_OPTIONS, STORAGE_KEYS, MONTH_NAMES } from "./constants/sales";
-import { fmtBRL, fmtDate, loadUsers, loadVendas, normalizeLegacyVenda } from "./utils/sales";
+import { PLANOS, PLANO_COLORS, PLANO_EXTRAS, PLANO_ICONS, PLANO_LABELS, STATUS_COLORS, STATUS_OPTIONS, STORAGE_KEYS, MONTH_NAMES } from "./constants/sales";
+import { exportExcelReport, fmtBRL, fmtDate, fmtMonth, loadUsers, loadVendas, normalizeLegacyVenda } from "./utils/sales";
 import "./App.css";
+
+const getTodayDate = () => new Date().toISOString().split("T")[0];
+const getTodayMonth = () => new Date().toISOString().slice(0, 7);
 
 const APP_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=DM+Sans:wght@400;500;600&display=swap');
+  :root{
+    --bg:#060b18;
+    --bg-soft:#0b1427;
+    --panel:#0f1a2f;
+    --panel-strong:#0d172b;
+    --line:rgba(71,85,105,0.55);
+    --text:#e2e8f0;
+    --muted:#94a3b8;
+    --brand:#22d3ee;
+  }
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{background:#070e1c;}
+  body{
+    background:
+      radial-gradient(circle at 15% 10%, rgba(14,165,233,0.12), transparent 30%),
+      radial-gradient(circle at 88% 14%, rgba(34,211,238,0.08), transparent 28%),
+      linear-gradient(180deg, var(--bg-soft), var(--bg));
+    color:var(--text);
+  }
   @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible{
+    outline:2px solid #22d3ee;
+    outline-offset:2px;
+  }
+  .touch-btn:hover{transform:translateY(-1px);}
+  .touch-btn:active{transform:translateY(0);}
+  .lift-hover:hover{transform:translateY(-2px) scale(1.01);}
+  .panel-surface{
+    background:linear-gradient(180deg,var(--panel),var(--panel-strong));
+    border:1px solid var(--line);
+    border-radius:16px;
+    box-shadow:0 12px 26px rgba(2,6,23,0.32);
+  }
+  .action-pill{
+    border:none;
+    border-radius:11px;
+    padding:7px 10px;
+    cursor:pointer;
+    font-size:12px;
+    font-weight:700;
+    min-height:36px;
+    transition:all .15s ease;
+  }
+  .action-pill:hover{filter:brightness(1.08);}
+  .action-pill-info{background:rgba(6,182,212,0.16);color:#67e8f9;border:1px solid rgba(6,182,212,0.25);}
+  .action-pill-edit{background:rgba(14,165,233,0.16);color:#bae6fd;border:1px solid rgba(14,165,233,0.26);}
+  .action-pill-delete{background:rgba(239,68,68,0.16);color:#fca5a5;border:1px solid rgba(239,68,68,0.26);}
+  .quick-filter-btn:hover{border-color:#22d3ee!important;color:#67e8f9!important;}
+  input[type="date"],
+  input[type="month"]{
+    color-scheme:dark;
+    background:
+      linear-gradient(180deg, rgba(30,41,59,0.95), rgba(22,30,45,0.95)),
+      radial-gradient(circle at 92% 50%, rgba(34,211,238,0.2), transparent 30%);
+    border:1px solid rgba(71,85,105,0.9);
+    border-radius:12px;
+    color:#f1f5f9;
+    min-height:44px;
+    padding-right:42px;
+    box-shadow:inset 0 1px 0 rgba(148,163,184,0.08);
+    transition:all .2s ease;
+  }
+  input[type="date"]:hover,
+  input[type="month"]:hover{
+    border-color:rgba(34,211,238,0.45);
+    box-shadow:0 0 0 2px rgba(34,211,238,0.08);
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="month"]::-webkit-calendar-picker-indicator{
+    cursor:pointer;
+    opacity:.95;
+    border-radius:8px;
+    padding:4px;
+    background:
+      radial-gradient(circle at center, rgba(34,211,238,0.2), rgba(15,23,42,0.05));
+    filter:brightness(1.2) contrast(1.1);
+  }
+  input[type="date"]::-webkit-datetime-edit,
+  input[type="month"]::-webkit-datetime-edit{
+    color:#e2e8f0;
+  }
+  .app-nav button:hover{
+    transform:translateY(-1px);
+    border-color:rgba(34,211,238,0.28)!important;
+    color:#e0f2fe!important;
+    background:rgba(30,41,59,0.68)!important;
+  }
+  .app-nav button:focus-visible{
+    outline:2px solid #22d3ee;
+    outline-offset:1px;
+  }
+  .plan-choice:hover,
+  .status-choice:hover{
+    transform:translateY(-1px);
+    filter:brightness(1.05);
+  }
   ::-webkit-scrollbar{width:5px;}
   ::-webkit-scrollbar-track{background:#0d1526;}
   ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px;}
@@ -50,6 +147,11 @@ const APP_STYLES = `
   @media (max-width: 768px){
     .app-shell{
       padding:18px 14px !important;
+    }
+    .action-pill{
+      min-height:40px;
+      font-size:12px;
+      padding:8px 10px;
     }
     .app-header{
       padding:14px !important;
@@ -152,8 +254,12 @@ export default function App() {
   const [fPlano, setFPlano] = useState("Todos");
   const [fStatus, setFStatus] = useState("Todos");
   const [fVendedor, setFVendedor] = useState("Todos");
-  const [fMes, setFMes] = useState("");
-  const [fDia, setFDia] = useState("");
+  const [fMes, setFMes] = useState(getTodayMonth);
+  const [fDia, setFDia] = useState(getTodayDate);
+  const [reportSeller, setReportSeller] = useState("Todos");
+  const [monthlyReportMonth, setMonthlyReportMonth] = useState(getTodayMonth);
+  const [dailyReportDate, setDailyReportDate] = useState(getTodayDate);
+  const [cycleDate, setCycleDate] = useState(getTodayDate);
   const [sortBy, setSortBy] = useState("data");
   const [sortDir, setSortDir] = useState("desc");
   const [page, setPage] = useState(1);
@@ -209,6 +315,22 @@ export default function App() {
     migrateLegacy();
   }, [currentUser]);
 
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const nowDate = getTodayDate();
+      if (nowDate === cycleDate) return;
+
+      setCycleDate(nowDate);
+      setFMes(getTodayMonth());
+      setFDia(nowDate);
+      setMonthlyReportMonth(getTodayMonth());
+      setDailyReportDate(nowDate);
+      setPage(1);
+    }, 60000);
+
+    return () => clearInterval(timer);
+  }, [cycleDate]);
+
   const scopedVendas = vendas.filter((venda) => {
     if (!currentUser) return false;
     if (currentUser.role === "admin") return true;
@@ -241,21 +363,47 @@ export default function App() {
 
   const ativas = scopedVendas.filter((venda) => venda.status === "Ativa");
   const totalVal = ativas.reduce((sum, venda) => sum + venda.valor, 0);
-  const ticket = ativas.length ? totalVal / ativas.length : 0;
+  const vendasValidas = scopedVendas.filter((venda) => venda.status !== "Cancelada");
+  const ticketCelAcessorioVendas = vendasValidas.filter((venda) => ["Aparelho Celular", "Acessorios"].includes(venda.plano));
+  const ticketCelAcessorioTotal = ticketCelAcessorioVendas.reduce((sum, venda) => sum + venda.valor * 0.05, 0);
+  const ticketCelAcessorio = ticketCelAcessorioVendas.length ? ticketCelAcessorioTotal / ticketCelAcessorioVendas.length : 0;
+  const ticketPlanosPrincipaisVendas = vendasValidas.filter((venda) => ["Plano Controle", "Plano Pós-Pago", "TV", "Internet Residencial"].includes(venda.plano));
+  const ticketPlanosPrincipaisTotal = ticketPlanosPrincipaisVendas.reduce((sum, venda) => sum + venda.valor, 0);
+  const ticketPlanosPrincipais = ticketPlanosPrincipaisVendas.length ? ticketPlanosPrincipaisTotal / ticketPlanosPrincipaisVendas.length : 0;
   const pendentes = scopedVendas.filter((venda) => venda.status === "Pendente").length;
 
   const byMonth = {};
+  let hasOtherPlanoInMonth = false;
   scopedVendas.forEach((venda) => {
     if (venda.status === "Cancelada") return;
     const month = venda.data?.slice(0, 7);
     if (!month) return;
-    byMonth[month] = (byMonth[month] || 0) + venda.valor;
+    if (!byMonth[month]) {
+      byMonth[month] = {
+        total: 0,
+      };
+      PLANOS.forEach((plano) => {
+        byMonth[month][plano] = 0;
+      });
+    }
+
+    if (PLANOS.includes(venda.plano)) {
+      byMonth[month][venda.plano] += venda.valor;
+    } else {
+      byMonth[month].Outros = (byMonth[month].Outros || 0) + venda.valor;
+      hasOtherPlanoInMonth = true;
+    }
+    byMonth[month].total += venda.valor;
   });
 
+  const monthPlanSeries = hasOtherPlanoInMonth ? [...PLANOS, "Outros"] : PLANOS;
   const monthData = Object.entries(byMonth)
     .sort(([a], [b]) => a.localeCompare(b))
     .slice(-6)
-    .map(([key, value]) => ({ name: MONTH_NAMES[parseInt(key.split("-")[1], 10) - 1], valor: value }));
+    .map(([key, value]) => ({
+      name: MONTH_NAMES[parseInt(key.split("-")[1], 10) - 1],
+      ...value,
+    }));
 
   const byPlano = {};
   scopedVendas.forEach((venda) => {
@@ -267,6 +415,27 @@ export default function App() {
     name: status,
     value: scopedVendas.filter((venda) => venda.status === status).length,
   }));
+
+  const reportScopedVendas = scopedVendas.filter((venda) => {
+    if (currentUser?.role !== "admin") return true;
+    if (reportSeller === "Todos") return true;
+    return venda.vendedorId === reportSeller;
+  });
+
+  const dailyReportVendas = reportScopedVendas
+    .filter((venda) => !dailyReportDate || venda.data === dailyReportDate)
+    .sort((a, b) => a.data.localeCompare(b.data) || a.cliente.localeCompare(b.cliente));
+  const dailyReportTotal = dailyReportVendas.reduce((sum, venda) => sum + venda.valor, 0);
+  const monthlyReportVendas = reportScopedVendas
+    .filter((venda) => !monthlyReportMonth || venda.data?.slice(0, 7) === monthlyReportMonth)
+    .sort((a, b) => a.data.localeCompare(b.data) || a.cliente.localeCompare(b.cliente));
+  const monthlyReportTotal = monthlyReportVendas.reduce((sum, venda) => sum + venda.valor, 0);
+
+  const reportSellerName = currentUser
+    ? currentUser.role === "admin"
+      ? sellers.find((seller) => seller.id === reportSeller)?.nome || "Todos vendedores"
+      : currentUser.nome
+    : "Todos vendedores";
 
   const sellerSummaries = sellers
     .map((seller) => {
@@ -359,13 +528,79 @@ export default function App() {
     setSellerDeleteId(null);
   }
 
+  function handleExportDailyReport() {
+    if (!dailyReportDate || dailyReportVendas.length === 0) {
+      window.alert("Selecione um dia com vendas para exportar.");
+      return;
+    }
+
+    const rows = dailyReportVendas.map((venda) => [
+        fmtDate(venda.data),
+        venda.cliente,
+        venda.cpf || "",
+        PLANO_LABELS[venda.plano] || venda.plano,
+        venda.status,
+        venda.valor,
+        venda.vendedor || "",
+        venda.descricao || "",
+      ]);
+
+    exportExcelReport(`relatorio-vendas-${dailyReportDate}.xls`, {
+      sheetName: "Relatorio Diario",
+      title: "Relatorio Diario de Vendas",
+      meta: [
+        ["Data", fmtDate(dailyReportDate)],
+        ["Vendedor", reportSellerName],
+        ["Quantidade de vendas", dailyReportVendas.length],
+      ],
+      headers: ["Data", "Cliente", "CPF", "Plano", "Status", "Valor", "Vendedor", "Descricao"],
+      rows,
+      totalLabel: "Total do dia",
+      totalValue: dailyReportTotal,
+      columnWidths: [80, 180, 100, 140, 90, 90, 120, 220],
+    });
+  }
+
+  function handleExportMonthlyReport() {
+    if (!monthlyReportMonth || monthlyReportVendas.length === 0) {
+      window.alert("Selecione um mes com vendas para exportar.");
+      return;
+    }
+
+    const rows = monthlyReportVendas.map((venda) => [
+        fmtDate(venda.data),
+        venda.cliente,
+        venda.cpf || "",
+        PLANO_LABELS[venda.plano] || venda.plano,
+        venda.status,
+        venda.valor,
+        venda.vendedor || "",
+        venda.descricao || "",
+      ]);
+
+    exportExcelReport(`relatorio-mensal-${monthlyReportMonth}.xls`, {
+      sheetName: "Relatorio Mensal",
+      title: "Relatorio Mensal de Vendas",
+      meta: [
+        ["Mes", fmtMonth(monthlyReportMonth)],
+        ["Vendedor", reportSellerName],
+        ["Quantidade de vendas", monthlyReportVendas.length],
+      ],
+      headers: ["Data", "Cliente", "CPF", "Plano", "Status", "Valor", "Vendedor", "Descricao"],
+      rows,
+      totalLabel: "Total do mes",
+      totalValue: monthlyReportTotal,
+      columnWidths: [80, 180, 100, 140, 90, 90, 120, 220],
+    });
+  }
+
   function clearFilters() {
     setSearch("");
     setFPlano("Todos");
     setFStatus("Todos");
     setFVendedor("Todos");
-    setFMes("");
-    setFDia("");
+    setFMes(getTodayMonth());
+    setFDia(getTodayDate());
     setPage(1);
   }
 
@@ -398,10 +633,11 @@ export default function App() {
         />
 
         <div className="app-shell" style={{ padding: "28px 32px", maxWidth: 1320, margin: "0 auto" }}>
-          <div className="kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 14, marginBottom: 24 }}>
-            <StatCard icon="💰" label="Receita Ativa" value={fmtBRL(totalVal)} sub={`${ativas.length} vendas ativas`} color="#6366f1" />
-            <StatCard icon="🎯" label="Ticket Medio" value={fmtBRL(ticket)} color="#8b5cf6" />
-            <StatCard icon="📦" label="Total Lancamentos" value={scopedVendas.length} sub={`${pendentes} pendentes`} color="#06b6d4" />
+          <div className="kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 14, marginBottom: 24 }}>
+            <StatCard icon="💰" label="Receita Ativa" value={fmtBRL(totalVal)} sub={`${ativas.length} vendas ativas`} color="#22c55e" />
+            <StatCard icon="🎯" label="Ticket Cel + Acess (5%)" value={fmtBRL(ticketCelAcessorio)} sub={`${ticketCelAcessorioVendas.length} vendas`} color="#f59e0b" />
+            <StatCard icon="📊" label="Ticket Controle + Pos + TV + Internet" value={fmtBRL(ticketPlanosPrincipais)} sub={`${ticketPlanosPrincipaisVendas.length} vendas`} color="#0ea5e9" />
+            <StatCard icon="📦" label="Total Lancamentos" value={scopedVendas.length} sub={`${pendentes} pendentes`} color="#a855f7" />
             <StatCard icon="📱" label="Planos Moveis" value={scopedVendas.filter((venda) => ["Plano Controle", "Plano Pós-Pago"].includes(venda.plano) && venda.status === "Ativa").length} color="#10b981" />
             <StatCard icon="🌐" label="Internet + TV" value={scopedVendas.filter((venda) => ["Internet Residencial", "TV"].includes(venda.plano) && venda.status === "Ativa").length} color="#f59e0b" />
           </div>
@@ -438,7 +674,29 @@ export default function App() {
             />
           )}
 
-          {tab === "relatorios" && <ReportsTab currentUser={currentUser} scopedVendas={scopedVendas} monthData={monthData} planoData={planoData} byStatus={byStatus} />}
+          {tab === "relatorios" && (
+            <ReportsTab
+              currentUser={currentUser}
+              sellers={sellers}
+              scopedVendas={scopedVendas}
+              monthData={monthData}
+              monthPlanSeries={monthPlanSeries}
+              planoData={planoData}
+              byStatus={byStatus}
+              reportSeller={reportSeller}
+              setReportSeller={setReportSeller}
+              dailyReportDate={dailyReportDate}
+              setDailyReportDate={setDailyReportDate}
+              dailyReportVendas={dailyReportVendas}
+              dailyReportTotal={dailyReportTotal}
+              onExportDailyReport={handleExportDailyReport}
+              monthlyReportMonth={monthlyReportMonth}
+              setMonthlyReportMonth={setMonthlyReportMonth}
+              monthlyReportVendas={monthlyReportVendas}
+              monthlyReportTotal={monthlyReportTotal}
+              onExportMonthlyReport={handleExportMonthlyReport}
+            />
+          )}
 
           {tab === "vendedores" && currentUser.role === "admin" && (
             <SellersTab sellerSummaries={sellerSummaries} onOpenSellerModal={() => setModal("seller")} onDeleteSeller={setSellerDeleteId} />

@@ -2,26 +2,31 @@ import { PLANO_COLORS } from "../constants/sales";
 
 const btn = (extra = {}) => ({
   fontFamily: "'DM Sans',sans-serif",
-  fontWeight: 600,
-  fontSize: 13,
-  borderRadius: 9,
-  padding: "9px 18px",
+  fontWeight: 700,
+  fontSize: 14,
+  borderRadius: 14,
+  padding: "11px 18px",
+  minHeight: 44,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
   cursor: "pointer",
   border: "none",
-  transition: "all 0.18s",
+  transition: "all 0.2s ease",
   ...extra,
 });
 
 export const btnPrimary = btn({
-  background: "linear-gradient(135deg,#6366f1,#8b5cf6)",
+  background: "linear-gradient(135deg,#0ea5e9,#0284c7 55%,#0369a1)",
   color: "#fff",
-  boxShadow: "0 4px 14px rgba(99,102,241,0.35)",
+  boxShadow: "0 10px 24px rgba(14,165,233,0.34)",
 });
 
 export const btnSecondary = btn({
-  background: "transparent",
-  color: "#94a3b8",
-  border: "1px solid #334155",
+  background: "linear-gradient(180deg,rgba(30,41,59,0.88),rgba(15,23,42,0.88))",
+  color: "#cbd5e1",
+  border: "1px solid rgba(71,85,105,0.9)",
 });
 
 export const btnDanger = btn({
@@ -30,11 +35,12 @@ export const btnDanger = btn({
 });
 
 export const inputStyle = {
-  background: "#1e293b",
-  border: "1px solid #334155",
-  borderRadius: 8,
-  color: "#e2e8f0",
-  padding: "10px 14px",
+  background: "linear-gradient(180deg,rgba(30,41,59,0.95),rgba(22,30,45,0.95))",
+  border: "1px solid rgba(71,85,105,0.9)",
+  borderRadius: 12,
+  color: "#f1f5f9",
+  padding: "12px 14px",
+  minHeight: 44,
   fontFamily: "'DM Sans',sans-serif",
   fontSize: 14,
   width: "100%",
@@ -56,10 +62,11 @@ export function Badge({ color, children }) {
   return (
     <span
       style={{
-        background: `${color}22`,
+        background: `${color}20`,
+        border: `1px solid ${color}44`,
         color,
-        borderRadius: 6,
-        padding: "3px 10px",
+        borderRadius: 999,
+        padding: "4px 10px",
         fontSize: 12,
         fontWeight: 700,
         whiteSpace: "nowrap",
@@ -74,12 +81,13 @@ export function StatCard({ icon, label, value, sub, color = PLANO_COLORS["Plano 
   return (
     <div
       style={{
-        background: "linear-gradient(135deg,#0f172a,#1a2744)",
-        border: "1px solid #1e293b",
-        borderRadius: 14,
+        background: "linear-gradient(155deg,rgba(15,23,42,0.96),rgba(13,21,38,0.96) 58%,rgba(9,18,34,0.96))",
+        border: "1px solid rgba(71,85,105,0.55)",
+        borderRadius: 16,
         padding: "20px 22px",
         position: "relative",
         overflow: "hidden",
+        boxShadow: "0 10px 24px rgba(2,6,23,0.34)",
       }}
     >
       <div
@@ -89,15 +97,15 @@ export function StatCard({ icon, label, value, sub, color = PLANO_COLORS["Plano 
           right: -12,
           width: 72,
           height: 72,
-          background: color,
+          background: "#94a3b8",
           borderRadius: "50%",
-          opacity: 0.12,
+          opacity: 0.1,
         }}
       />
-      <div style={{ fontSize: 24, marginBottom: 8 }}>{icon}</div>
-      <div style={{ fontSize: 11, color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 24, marginBottom: 8, filter: "drop-shadow(0 4px 10px rgba(2,6,23,0.4))" }}>{icon}</div>
+      <div style={{ fontSize: 11, color: "#cbd5e1", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{label}</div>
       <div style={{ fontSize: 24, fontFamily: "'Crimson Pro',Georgia,serif", color: "#f1f5f9", fontWeight: 700 }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: "#475569", marginTop: 3 }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>{sub}</div>}
     </div>
   );
 }
@@ -109,8 +117,8 @@ export function Modal({ title, onClose, children, wide }) {
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,0.75)",
-        backdropFilter: "blur(5px)",
+        background: "rgba(2,6,23,0.76)",
+        backdropFilter: "blur(8px)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -121,9 +129,9 @@ export function Modal({ title, onClose, children, wide }) {
       <div
         className="modal-panel"
         style={{
-          background: "#0d1526",
-          border: "1px solid #1e293b",
-          borderRadius: 16,
+          background: "linear-gradient(180deg,rgba(14,24,41,0.98),rgba(10,17,31,0.98))",
+          border: "1px solid rgba(71,85,105,0.55)",
+          borderRadius: 18,
           width: "100%",
           maxWidth: wide ? 680 : 560,
           maxHeight: "92vh",

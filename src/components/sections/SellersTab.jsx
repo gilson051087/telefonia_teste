@@ -5,9 +5,8 @@ export default function SellersTab({ sellerSummaries, onOpenSellerModal, onDelet
   return (
     <div style={{ display: "grid", gap: 18 }}>
       <div
+        className="panel-surface"
         style={{
-          background: "#0d1526",
-          border: "1px solid #1e293b",
           borderRadius: 16,
           padding: 22,
           display: "flex",
@@ -46,9 +45,8 @@ export default function SellersTab({ sellerSummaries, onOpenSellerModal, onDelet
           {sellerSummaries.map((seller) => (
             <div
               key={seller.id}
+              className="panel-surface"
               style={{
-                background: "linear-gradient(180deg,#111b31,#0d1526)",
-                border: "1px solid #1e293b",
                 borderRadius: 16,
                 padding: 18,
                 display: "grid",

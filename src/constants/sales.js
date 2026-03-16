@@ -16,13 +16,13 @@ export const PLANOS = [
 ];
 
 export const PLANO_LABELS = {
-  "Plano Controle": "Plano Controle",
-  "Plano Pós-Pago": "Plano Pós-Pago",
-  "Internet Residencial": "Internet Residencial",
+  "Plano Controle": "Controle",
+  "Plano Pós-Pago": "Pos-pago",
+  "Internet Residencial": "Internet",
   TV: "TV",
-  "Aparelho Celular": "Aparelho Celular",
+  "Aparelho Celular": "Aparelho",
   Acessorios: "Acessorios",
-  "Seguro Movel Celular": "Seguro Movel Celular",
+  "Seguro Movel Celular": "Seguro",
 };
 
 export const PLANO_ICONS = {

@@ -91,38 +91,46 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
     />
   );
 
-  const sel = (key, options) => (
-    <select value={form[key] || ""} onChange={(e) => setField(key, e.target.value)} style={{ ...inputStyle, appearance: "none" }}>
-      {options.map((option) => (
-        <option key={option}>{option}</option>
-      ))}
-    </select>
-  );
-
   return (
     <div>
+      <div
+        style={{
+          border: "1px solid #164e63",
+          background: "linear-gradient(135deg, rgba(8,145,178,0.2), rgba(22,78,99,0.2))",
+          borderRadius: 14,
+          padding: "12px 14px",
+          marginBottom: 16,
+          color: "#a5f3fc",
+          fontSize: 13,
+          lineHeight: 1.5,
+        }}
+      >
+        Preenchimento guiado: escolha o plano, complete os dados e toque em <strong style={{ color: "#ecfeff" }}>Registrar venda</strong>.
+      </div>
+
       <div style={{ marginBottom: 20 }}>
-        <label style={labelStyle}>Tipo de Plano / Produto</label>
-        <div className="plan-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
+        <label style={labelStyle}>Passo 1: Escolha o plano</label>
+        <div className="plan-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
           {PLANOS.map((plano) => (
             <button
               key={plano}
               onClick={() => setField("plano", plano)}
+              className="plan-choice"
               style={{
                 background: currentPlano === plano ? `${PLANO_COLORS[plano]}22` : "#1e293b",
                 border: `1.5px solid ${currentPlano === plano ? PLANO_COLORS[plano] : "#334155"}`,
-                borderRadius: 10,
-                padding: "10px 6px",
+                borderRadius: 12,
+                padding: "12px 8px",
                 cursor: "pointer",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                gap: 4,
+                gap: 6,
                 transition: "all 0.18s",
               }}
             >
-              <span style={{ fontSize: 20 }}>{PLANO_ICONS[plano]}</span>
-              <span style={{ fontSize: 10, color: currentPlano === plano ? PLANO_COLORS[plano] : "#64748b", fontWeight: 700, textAlign: "center", lineHeight: 1.2 }}>
+              <span style={{ fontSize: 22 }}>{PLANO_ICONS[plano]}</span>
+              <span style={{ fontSize: 12, color: currentPlano === plano ? PLANO_COLORS[plano] : "#94a3b8", fontWeight: 700, textAlign: "center", lineHeight: 1.2 }}>
                 {PLANO_LABELS[plano]}
               </span>
             </button>
@@ -132,7 +140,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
 
       <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
         <div style={{ gridColumn: "1/-1" }}>
-          <Field label="Nome do Cliente" error={errors.cliente}>
+          <Field label="Passo 2: Nome do cliente" error={errors.cliente}>
             {inp("cliente", "text", "Nome completo")}
           </Field>
         </div>
@@ -165,16 +173,41 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
         )}
 
         <div style={{ gridColumn: "1/-1" }}>
-          <Field label="Descricao / Observacao">{inp("descricao", "text", "Detalhes da venda...")}</Field>
+          <Field label="Descricao / observacao">{inp("descricao", "text", "Detalhes da venda...")}</Field>
         </div>
 
         <Field label="Valor (R$)" error={errors.valor}>
           {inp("valor", "number", "0,00")}
         </Field>
-        <Field label="Data da Venda" error={errors.data}>
+        <Field label="Data da venda" error={errors.data}>
           {inp("data", "date")}
         </Field>
-        <Field label="Status">{sel("status", STATUS_OPTIONS)}</Field>
+      </div>
+
+      <div style={{ marginBottom: 14 }}>
+        <label style={labelStyle}>Status da venda</label>
+        <div className="status-grid" style={{ display: "grid", gap: 8, gridTemplateColumns: `repeat(${STATUS_OPTIONS.length}, minmax(0,1fr))` }}>
+          {STATUS_OPTIONS.map((status) => (
+            <button
+              key={status}
+              type="button"
+              onClick={() => setField("status", status)}
+              className="status-choice"
+              style={{
+                borderRadius: 12,
+                border: `1px solid ${form.status === status ? "#22d3ee" : "#334155"}`,
+                background: form.status === status ? "rgba(34,211,238,0.14)" : "#111b31",
+                color: form.status === status ? "#67e8f9" : "#94a3b8",
+                fontSize: 13,
+                fontWeight: 700,
+                padding: "10px 8px",
+                cursor: "pointer",
+              }}
+            >
+              {status}
+            </button>
+          ))}
+        </div>
       </div>
 
       {extras.length > 0 && (
@@ -199,11 +232,11 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
       )}
 
       <div className="modal-actions" style={{ display: "flex", gap: 12, justifyContent: "flex-end", marginTop: 8 }}>
-        <button style={btnSecondary} onClick={onClose}>
+        <button className="touch-btn" style={btnSecondary} onClick={onClose}>
           Cancelar
         </button>
-        <button style={{ ...btnPrimary, opacity: isSaving ? 0.7 : 1 }} onClick={handleSave} disabled={isSaving}>
-          {isSaving ? "Salvando..." : initial ? "Salvar Alteracoes" : "Registrar Venda"}
+        <button className="touch-btn lift-hover" style={{ ...btnPrimary, opacity: isSaving ? 0.7 : 1 }} onClick={handleSave} disabled={isSaving}>
+          {isSaving ? "Salvando..." : initial ? "Salvar alteracoes" : "Registrar venda"}
         </button>
       </div>
     </div>

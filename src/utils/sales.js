@@ -81,3 +81,131 @@ export function maskCPF(value) {
     .replace(/(\d{3})(\d{1,2})$/, "$1-$2")
     .slice(0, 14);
 }
+
+function escapeXml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function buildWorksheetRow(cells, options = {}) {
+  const { header = false, title = false, currencyColumns = [] } = options;
+  const styleId = title ? "Title" : header ? "Header" : "Cell";
+
+  return `
+    <Row>
+      ${cells
+        .map((cell, index) => {
+          const isNumber = typeof cell === "number";
+          const type = isNumber ? "Number" : "String";
+          const value = isNumber ? cell : escapeXml(cell);
+          const cellStyle = currencyColumns.includes(index) ? "Currency" : styleId;
+          return `<Cell ss:StyleID="${cellStyle}"><Data ss:Type="${type}">${value}</Data></Cell>`;
+        })
+        .join("")}
+    </Row>`;
+}
+
+export function exportExcelReport(filename, { sheetName, title, meta = [], headers, rows, totalLabel, totalValue, columnWidths = [] }) {
+  const widths = columnWidths
+    .map((width) => `<Column ss:AutoFitWidth="0" ss:Width="${width}"/>`)
+    .join("");
+
+  const metaRows = meta
+    .map(([label, value]) => buildWorksheetRow([label, value], { header: true }))
+    .join("");
+
+  const dataRows = rows
+    .map((row) =>
+      buildWorksheetRow(
+        row.map((cell) => (typeof cell === "number" ? Number(cell.toFixed(2)) : cell)),
+        { currencyColumns: row.map((_, index) => index).filter((index) => headers[index]?.toLowerCase?.() === "valor") }
+      )
+    )
+    .join("");
+
+  const xml = `<?xml version="1.0"?>
+  <?mso-application progid="Excel.Sheet"?>
+  <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+    xmlns:o="urn:schemas-microsoft-com:office:office"
+    xmlns:x="urn:schemas-microsoft-com:office:excel"
+    xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+    xmlns:html="http://www.w3.org/TR/REC-html40">
+    <Styles>
+      <Style ss:ID="Default" ss:Name="Normal">
+        <Alignment ss:Vertical="Center"/>
+        <Borders/>
+        <Font ss:FontName="Calibri" ss:Size="11" ss:Color="#111827"/>
+        <Interior/>
+        <NumberFormat/>
+        <Protection/>
+      </Style>
+      <Style ss:ID="Title">
+        <Font ss:FontName="Calibri" ss:Size="16" ss:Bold="1" ss:Color="#0F172A"/>
+      </Style>
+      <Style ss:ID="Header">
+        <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/>
+        <Interior ss:Color="#334155" ss:Pattern="Solid"/>
+      </Style>
+      <Style ss:ID="Cell">
+        <Borders>
+          <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+        </Borders>
+      </Style>
+      <Style ss:ID="Currency">
+        <Borders>
+          <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+        </Borders>
+        <NumberFormat ss:Format="&quot;R$&quot; #,##0.00"/>
+      </Style>
+      <Style ss:ID="TotalLabel">
+        <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#0F172A"/>
+        <Interior ss:Color="#E2E8F0" ss:Pattern="Solid"/>
+      </Style>
+      <Style ss:ID="TotalValue">
+        <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#0F172A"/>
+        <Interior ss:Color="#DCFCE7" ss:Pattern="Solid"/>
+        <NumberFormat ss:Format="&quot;R$&quot; #,##0.00"/>
+      </Style>
+    </Styles>
+    <Worksheet ss:Name="${escapeXml(sheetName)}">
+      <Table>
+        ${widths}
+        ${buildWorksheetRow([title], { title: true })}
+        <Row/>
+        ${metaRows}
+        <Row/>
+        ${buildWorksheetRow(headers, { header: true })}
+        ${dataRows}
+        <Row/>
+        <Row>
+          <Cell ss:StyleID="TotalLabel"><Data ss:Type="String">${escapeXml(totalLabel)}</Data></Cell>
+          <Cell/>
+          <Cell/>
+          <Cell/>
+          <Cell ss:StyleID="TotalValue"><Data ss:Type="Number">${Number(totalValue.toFixed(2))}</Data></Cell>
+        </Row>
+      </Table>
+      <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+        <FreezePanes/>
+        <FrozenNoSplit/>
+        <SplitHorizontal>4</SplitHorizontal>
+        <TopRowBottomPane>4</TopRowBottomPane>
+        <ProtectObjects>False</ProtectObjects>
+        <ProtectScenarios>False</ProtectScenarios>
+      </WorksheetOptions>
+    </Worksheet>
+  </Workbook>`;
+
+  const blob = new Blob([xml], { type: "application/vnd.ms-excel;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
