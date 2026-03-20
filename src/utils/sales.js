@@ -82,6 +82,26 @@ export function maskCPF(value) {
     .slice(0, 14);
 }
 
+export function isValidCPF(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (!digits) return true;
+  if (digits.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(digits)) return false;
+
+  function calcCheckDigit(base, factor) {
+    let total = 0;
+    for (let i = 0; i < base.length; i += 1) {
+      total += Number(base[i]) * (factor - i);
+    }
+    const remainder = (total * 10) % 11;
+    return remainder === 10 ? 0 : remainder;
+  }
+
+  const first = calcCheckDigit(digits.slice(0, 9), 10);
+  const second = calcCheckDigit(digits.slice(0, 10), 11);
+  return first === Number(digits[9]) && second === Number(digits[10]);
+}
+
 function escapeXml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")

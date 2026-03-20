@@ -23,8 +23,8 @@ import VendaForm from "./components/forms/VendaForm";
 import ReportsTab from "./components/sections/ReportsTab";
 import SellersTab from "./components/sections/SellersTab";
 import VendasTab from "./components/sections/VendasTab";
-import { Badge, Modal, StatCard, btnDanger, btnPrimary, btnSecondary } from "./components/ui";
-import { PLANOS, PLANO_COLORS, PLANO_EXTRAS, PLANO_ICONS, PLANO_LABELS, STATUS_COLORS, STATUS_OPTIONS, STORAGE_KEYS, MONTH_NAMES } from "./constants/sales";
+import { Modal, Panel, StatCard, btnDanger, btnPrimary, btnSecondary } from "./components/ui";
+import { PLANOS, PLANO_COLORS, PLANO_EXTRAS, PLANO_ICONS, PLANO_LABELS, STORAGE_KEYS, MONTH_NAMES, getRemunerationValue } from "./constants/sales";
 import { exportExcelReport, fmtBRL, fmtDate, fmtMonth, loadUsers, loadVendas, normalizeLegacyVenda } from "./utils/sales";
 import "./App.css";
 
@@ -136,17 +136,35 @@ const APP_STYLES = `
   select option{background:#1e293b;}
   input[type=number]::-webkit-inner-spin-button{opacity:0;}
   tr:hover td{background:rgba(99,102,241,0.05)!important;}
-  @media (max-width: 960px){
-    .kpi-grid,
-    .rel-grid,
-    .rel-grid-2,
-    .auth-grid{
-      grid-template-columns:1fr !important;
+  .app-shell{
+    padding:28px 24px;
+    width:100%;
+  }
+  .app-content{
+    max-width:1240px;
+    margin:0 auto;
+    display:grid;
+    gap:20px;
+  }
+  .kpi-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(190px, 220px));
+    justify-content:center;
+    gap:12px;
+    align-items:stretch;
+  }
+  @media (max-width: 900px){
+    .kpi-grid{
+      grid-template-columns:repeat(2, minmax(0, 1fr));
+      justify-content:stretch;
     }
   }
   @media (max-width: 768px){
     .app-shell{
       padding:18px 14px !important;
+    }
+    .app-content{
+      gap:16px;
     }
     .action-pill{
       min-height:40px;
@@ -178,9 +196,6 @@ const APP_STYLES = `
     .app-user-meta{
       width:100%;
       text-align:left !important;
-    }
-    .kpi-grid{
-      grid-template-columns:1fr 1fr !important;
     }
     .auth-grid,
     .auth-login-row,
@@ -224,10 +239,12 @@ const APP_STYLES = `
       padding-top:16px !important;
     }
   }
-  @media (max-width: 480px){
+  @media (max-width: 560px){
     .kpi-grid{
-      grid-template-columns:1fr !important;
+      grid-template-columns:1fr;
     }
+  }
+   (max-width: 480px){
     .plan-grid{
       grid-template-columns:1fr !important;
     }
@@ -252,7 +269,6 @@ export default function App() {
   const [tab, setTab] = useState("vendas");
   const [search, setSearch] = useState("");
   const [fPlano, setFPlano] = useState("Todos");
-  const [fStatus, setFStatus] = useState("Todos");
   const [fVendedor, setFVendedor] = useState("Todos");
   const [fMes, setFMes] = useState(getTodayMonth);
   const [fDia, setFDia] = useState(getTodayDate);
@@ -339,10 +355,9 @@ export default function App() {
 
   const filtered = scopedVendas
     .filter((venda) => {
-      const haystack = `${venda.cliente} ${venda.plano} ${venda.descricao || ""} ${venda.vendedor || ""}`.toLowerCase();
+      const haystack = `${venda.cliente} ${venda.plano} ${venda.tipoPlano || ""} ${venda.descricao || ""} ${venda.vendedor || ""}`.toLowerCase();
       if (search && !haystack.includes(search.toLowerCase())) return false;
       if (fPlano !== "Todos" && venda.plano !== fPlano) return false;
-      if (fStatus !== "Todos" && venda.status !== fStatus) return false;
       if (fMes && venda.data?.slice(0, 7) !== fMes) return false;
       if (fDia && venda.data !== fDia) return false;
       if (currentUser?.role === "admin" && fVendedor !== "Todos" && venda.vendedorId !== fVendedor) return false;
@@ -361,21 +376,51 @@ export default function App() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
-  const ativas = scopedVendas.filter((venda) => venda.status === "Ativa");
-  const totalVal = ativas.reduce((sum, venda) => sum + venda.valor, 0);
-  const vendasValidas = scopedVendas.filter((venda) => venda.status !== "Cancelada");
-  const ticketCelAcessorioVendas = vendasValidas.filter((venda) => ["Aparelho Celular", "Acessorios"].includes(venda.plano));
-  const ticketCelAcessorioTotal = ticketCelAcessorioVendas.reduce((sum, venda) => sum + venda.valor * 0.05, 0);
-  const ticketCelAcessorio = ticketCelAcessorioVendas.length ? ticketCelAcessorioTotal / ticketCelAcessorioVendas.length : 0;
-  const ticketPlanosPrincipaisVendas = vendasValidas.filter((venda) => ["Plano Controle", "Plano Pós-Pago", "TV", "Internet Residencial"].includes(venda.plano));
-  const ticketPlanosPrincipaisTotal = ticketPlanosPrincipaisVendas.reduce((sum, venda) => sum + venda.valor, 0);
-  const ticketPlanosPrincipais = ticketPlanosPrincipaisVendas.length ? ticketPlanosPrincipaisTotal / ticketPlanosPrincipaisVendas.length : 0;
+  const vendasComValor = scopedVendas.filter((venda) => venda.status === "Ativa");
+  const ativas = vendasComValor;
+  const totalVal = vendasComValor.reduce((sum, venda) => {
+    if (["Plano Controle", "Plano Pós-Pago", "TV", "Internet Residencial", "Internet Movel Mais"].includes(venda.plano)) {
+      const remuneracaoTabela = getRemunerationValue(venda.plano, venda.tipoPlano);
+      return sum + (remuneracaoTabela ?? venda.valor);
+    }
+    if (venda.plano === "Aparelho Celular") return sum + venda.valor * 0.05;
+    if (venda.plano === "Acessorios") return sum + venda.valor * 0.15;
+    return sum;
+  }, 0);
+  const ticketCelularVendas = vendasComValor.filter((venda) => venda.plano === "Aparelho Celular");
+  const ticketCelularTotal = ticketCelularVendas.reduce((sum, venda) => sum + venda.valor * 0.05, 0);
+  const ticketCelular = ticketCelularVendas.length ? ticketCelularTotal / ticketCelularVendas.length : 0;
+  const ticketAcessoriosVendas = vendasComValor.filter((venda) => venda.plano === "Acessorios");
+  const ticketAcessoriosTotal = ticketAcessoriosVendas.reduce((sum, venda) => sum + venda.valor * 0.15, 0);
+  const ticketAcessorios = ticketAcessoriosVendas.length ? ticketAcessoriosTotal / ticketAcessoriosVendas.length : 0;
+  const ticketPlanosPrincipaisVendas = vendasComValor.filter((venda) => ["Plano Controle", "Plano Pós-Pago", "TV", "Internet Residencial", "Internet Movel Mais"].includes(venda.plano));
+  const ticketPlanosPrincipaisTotal = ticketPlanosPrincipaisVendas.reduce((sum, venda) => {
+    const remuneracaoTabela = getRemunerationValue(venda.plano, venda.tipoPlano);
+    return sum + (remuneracaoTabela ?? venda.valor);
+  }, 0);
   const pendentes = scopedVendas.filter((venda) => venda.status === "Pendente").length;
+  const installationReminders = scopedVendas
+    .filter((venda) => ["Internet Residencial", "TV"].includes(venda.plano) && venda.status !== "Cancelada" && venda.dataInstalacao)
+    .filter((venda) => venda.dataInstalacao <= cycleDate)
+    .map((venda) => {
+      const statusInstalacao = venda.statusInstalacao || "Pendente";
+      return {
+        id: venda.id,
+        cliente: venda.cliente,
+        plano: venda.plano,
+        tipoPlano: venda.tipoPlano || "—",
+        dataInstalacao: venda.dataInstalacao,
+        statusInstalacao,
+        isInstalled: statusInstalacao === "Instalado",
+      };
+    })
+    .sort((a, b) => a.dataInstalacao.localeCompare(b.dataInstalacao));
+  const pendingInstallationCount = installationReminders.filter((item) => !item.isInstalled).length;
 
   const byMonth = {};
   let hasOtherPlanoInMonth = false;
   scopedVendas.forEach((venda) => {
-    if (venda.status === "Cancelada") return;
+    if (venda.status !== "Ativa") return;
     const month = venda.data?.slice(0, 7);
     if (!month) return;
     if (!byMonth[month]) {
@@ -407,14 +452,9 @@ export default function App() {
 
   const byPlano = {};
   scopedVendas.forEach((venda) => {
-    if (venda.status !== "Cancelada") byPlano[venda.plano] = (byPlano[venda.plano] || 0) + venda.valor;
+    if (venda.status === "Ativa") byPlano[venda.plano] = (byPlano[venda.plano] || 0) + venda.valor;
   });
   const planoData = Object.entries(byPlano).map(([name, value]) => ({ name, value }));
-
-  const byStatus = STATUS_OPTIONS.map((status) => ({
-    name: status,
-    value: scopedVendas.filter((venda) => venda.status === status).length,
-  }));
 
   const reportScopedVendas = scopedVendas.filter((venda) => {
     if (currentUser?.role !== "admin") return true;
@@ -425,11 +465,11 @@ export default function App() {
   const dailyReportVendas = reportScopedVendas
     .filter((venda) => !dailyReportDate || venda.data === dailyReportDate)
     .sort((a, b) => a.data.localeCompare(b.data) || a.cliente.localeCompare(b.cliente));
-  const dailyReportTotal = dailyReportVendas.reduce((sum, venda) => sum + venda.valor, 0);
+  const dailyReportTotal = dailyReportVendas.filter((venda) => venda.status === "Ativa").reduce((sum, venda) => sum + venda.valor, 0);
   const monthlyReportVendas = reportScopedVendas
     .filter((venda) => !monthlyReportMonth || venda.data?.slice(0, 7) === monthlyReportMonth)
     .sort((a, b) => a.data.localeCompare(b.data) || a.cliente.localeCompare(b.cliente));
-  const monthlyReportTotal = monthlyReportVendas.reduce((sum, venda) => sum + venda.valor, 0);
+  const monthlyReportTotal = monthlyReportVendas.filter((venda) => venda.status === "Ativa").reduce((sum, venda) => sum + venda.valor, 0);
 
   const reportSellerName = currentUser
     ? currentUser.role === "admin"
@@ -539,7 +579,7 @@ export default function App() {
         venda.cliente,
         venda.cpf || "",
         PLANO_LABELS[venda.plano] || venda.plano,
-        venda.status,
+        venda.tipoPlano || "",
         venda.valor,
         venda.vendedor || "",
         venda.descricao || "",
@@ -553,11 +593,11 @@ export default function App() {
         ["Vendedor", reportSellerName],
         ["Quantidade de vendas", dailyReportVendas.length],
       ],
-      headers: ["Data", "Cliente", "CPF", "Plano", "Status", "Valor", "Vendedor", "Descricao"],
+      headers: ["Data", "Cliente", "CPF", "Plano", "Tipo Plano", "Valor", "Vendedor", "Descricao"],
       rows,
       totalLabel: "Total do dia",
       totalValue: dailyReportTotal,
-      columnWidths: [80, 180, 100, 140, 90, 90, 120, 220],
+      columnWidths: [80, 180, 100, 140, 210, 90, 120, 220],
     });
   }
 
@@ -572,7 +612,7 @@ export default function App() {
         venda.cliente,
         venda.cpf || "",
         PLANO_LABELS[venda.plano] || venda.plano,
-        venda.status,
+        venda.tipoPlano || "",
         venda.valor,
         venda.vendedor || "",
         venda.descricao || "",
@@ -586,18 +626,17 @@ export default function App() {
         ["Vendedor", reportSellerName],
         ["Quantidade de vendas", monthlyReportVendas.length],
       ],
-      headers: ["Data", "Cliente", "CPF", "Plano", "Status", "Valor", "Vendedor", "Descricao"],
+      headers: ["Data", "Cliente", "CPF", "Plano", "Tipo Plano", "Valor", "Vendedor", "Descricao"],
       rows,
       totalLabel: "Total do mes",
       totalValue: monthlyReportTotal,
-      columnWidths: [80, 180, 100, 140, 90, 90, 120, 220],
+      columnWidths: [80, 180, 100, 140, 210, 90, 120, 220],
     });
   }
 
   function clearFilters() {
     setSearch("");
     setFPlano("Todos");
-    setFStatus("Todos");
     setFVendedor("Todos");
     setFMes(getTodayMonth());
     setFDia(getTodayDate());
@@ -632,14 +671,16 @@ export default function App() {
           onLogout={handleLogout}
         />
 
-        <div className="app-shell" style={{ padding: "28px 32px", maxWidth: 1320, margin: "0 auto" }}>
-          <div className="kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 14, marginBottom: 24 }}>
+        <div className="app-shell">
+          <div className="app-content">
+          <div className="kpi-grid">
             <StatCard icon="💰" label="Receita Ativa" value={fmtBRL(totalVal)} sub={`${ativas.length} vendas ativas`} color="#22c55e" />
-            <StatCard icon="🎯" label="Ticket Cel + Acess (5%)" value={fmtBRL(ticketCelAcessorio)} sub={`${ticketCelAcessorioVendas.length} vendas`} color="#f59e0b" />
-            <StatCard icon="📊" label="Ticket Controle + Pos + TV + Internet" value={fmtBRL(ticketPlanosPrincipais)} sub={`${ticketPlanosPrincipaisVendas.length} vendas`} color="#0ea5e9" />
+            <StatCard icon="📲" label="Ticket Celular (5%)" value={fmtBRL(ticketCelular)} sub={`${ticketCelularVendas.length} vendas`} color="#10b981" />
+            <StatCard icon="🎧" label="Ticket Acessorios (15%)" value={fmtBRL(ticketAcessorios)} sub={`${ticketAcessoriosVendas.length} vendas`} color="#ec4899" />
+            <StatCard icon="📊" label="Controle + Pos + TV + Internet" value={fmtBRL(ticketPlanosPrincipaisTotal)} sub={`${ticketPlanosPrincipaisVendas.length} vendas`} color="#0ea5e9" />
             <StatCard icon="📦" label="Total Lancamentos" value={scopedVendas.length} sub={`${pendentes} pendentes`} color="#a855f7" />
             <StatCard icon="📱" label="Planos Moveis" value={scopedVendas.filter((venda) => ["Plano Controle", "Plano Pós-Pago"].includes(venda.plano) && venda.status === "Ativa").length} color="#10b981" />
-            <StatCard icon="🌐" label="Internet + TV" value={scopedVendas.filter((venda) => ["Internet Residencial", "TV"].includes(venda.plano) && venda.status === "Ativa").length} color="#f59e0b" />
+            <StatCard icon="🌐" label="Internet + TV" value={scopedVendas.filter((venda) => ["Internet Residencial", "Internet Movel Mais", "TV"].includes(venda.plano) && venda.status === "Ativa").length} color="#f59e0b" />
           </div>
 
           {tab === "vendas" && (
@@ -650,8 +691,6 @@ export default function App() {
               setSearch={setSearch}
               fPlano={fPlano}
               setFPlano={setFPlano}
-              fStatus={fStatus}
-              setFStatus={setFStatus}
               fVendedor={fVendedor}
               setFVendedor={setFVendedor}
               fMes={fMes}
@@ -671,6 +710,8 @@ export default function App() {
               onEdit={(venda) => setModal({ edit: venda })}
               onDelete={setDeleteId}
               onClearFilters={clearFilters}
+              installationReminders={installationReminders}
+              pendingInstallationCount={pendingInstallationCount}
             />
           )}
 
@@ -682,7 +723,6 @@ export default function App() {
               monthData={monthData}
               monthPlanSeries={monthPlanSeries}
               planoData={planoData}
-              byStatus={byStatus}
               reportSeller={reportSeller}
               setReportSeller={setReportSeller}
               dailyReportDate={dailyReportDate}
@@ -701,6 +741,7 @@ export default function App() {
           {tab === "vendedores" && currentUser.role === "admin" && (
             <SellersTab sellerSummaries={sellerSummaries} onOpenSellerModal={() => setModal("seller")} onDeleteSeller={setSellerDeleteId} />
           )}
+          </div>
         </div>
       </div>
 
@@ -723,8 +764,19 @@ export default function App() {
       )}
 
       {sellerDeleteId && currentUser.role === "admin" && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(5px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ background: "#0d1526", border: "1px solid #334155", borderRadius: 16, padding: 36, maxWidth: 420, width: "90%", textAlign: "center" }}>
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.75)",
+            backdropFilter: "blur(5px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+        >
+          <Panel style={{ maxWidth: 420, width: "90%", textAlign: "center", padding: 28 }}>
             <div style={{ fontSize: 42, marginBottom: 14 }}>👤</div>
             <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 20, color: "#f1f5f9", marginBottom: 8 }}>Excluir vendedor?</div>
             <div style={{ color: "#94a3b8", fontSize: 14, marginBottom: 10 }}>
@@ -739,7 +791,7 @@ export default function App() {
                 Sim, excluir
               </button>
             </div>
-          </div>
+          </Panel>
         </div>
       )}
 
@@ -763,7 +815,6 @@ export default function App() {
                 <div style={{ color: "#94a3b8", fontSize: 13 }}>{viewItem.descricao || "Sem descricao"}</div>
               </div>
               <div style={{ marginLeft: "auto" }}>
-                <Badge color={STATUS_COLORS[viewItem.status]}>{viewItem.status}</Badge>
               </div>
             </div>
 
@@ -800,8 +851,19 @@ export default function App() {
       )}
 
       {deleteId && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(5px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ background: "#0d1526", border: "1px solid #334155", borderRadius: 16, padding: 36, maxWidth: 380, width: "90%", textAlign: "center" }}>
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.75)",
+            backdropFilter: "blur(5px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+        >
+          <Panel style={{ maxWidth: 380, width: "90%", textAlign: "center", padding: 28 }}>
             <div style={{ fontSize: 42, marginBottom: 14 }}>🗑️</div>
             <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 20, color: "#f1f5f9", marginBottom: 8 }}>Excluir lancamento?</div>
             <div style={{ color: "#64748b", fontSize: 14, marginBottom: 24 }}>Esta acao nao pode ser desfeita.</div>
@@ -813,7 +875,7 @@ export default function App() {
                 Sim, excluir
               </button>
             </div>
-          </div>
+          </Panel>
         </div>
       )}
     </>

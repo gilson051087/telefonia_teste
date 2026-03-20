@@ -1,13 +1,11 @@
 import { useState } from "react";
-import { PLANOS, PLANO_COLORS, PLANO_ICONS, PLANO_LABELS, STATUS_COLORS, STATUS_OPTIONS } from "../../constants/sales";
+import { PLANOS, PLANO_COLORS, PLANO_ICONS, PLANO_LABELS } from "../../constants/sales";
 import { fmtBRL, fmtDate, fmtMonth } from "../../utils/sales";
 import { Badge, btnPrimary, btnSecondary, inputStyle } from "../ui";
 
 function SortArrow({ col, sortBy, sortDir }) {
   return <span style={{ opacity: 0.5 }}>{sortBy === col ? (sortDir === "asc" ? " ↑" : " ↓") : " ↕"}</span>;
 }
-
-const QUICK_STATUS = ["Todos", ...STATUS_OPTIONS];
 
 export default function VendasTab({
   currentUser,
@@ -16,8 +14,6 @@ export default function VendasTab({
   setSearch,
   fPlano,
   setFPlano,
-  fStatus,
-  setFStatus,
   fVendedor,
   setFVendedor,
   fMes,
@@ -34,9 +30,11 @@ export default function VendasTab({
   onEdit,
   onDelete,
   onClearFilters,
+  installationReminders,
+  pendingInstallationCount,
 }) {
   const [openGroups, setOpenGroups] = useState({});
-  const activeFilters = [fPlano !== "Todos", fStatus !== "Todos", fMes, fDia, currentUser.role === "admin" && fVendedor !== "Todos", search.trim()].filter(Boolean).length;
+  const activeFilters = [fPlano !== "Todos", fMes, fDia, currentUser.role === "admin" && fVendedor !== "Todos", search.trim()].filter(Boolean).length;
 
   const grouped = PLANOS.map((plano) => ({
     plano,
@@ -77,31 +75,51 @@ export default function VendasTab({
         </button>
       </div>
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
-        {QUICK_STATUS.map((status) => (
-          <button
-            key={status}
-            onClick={() => {
-              setFStatus(status);
-              setPage(1);
-            }}
-            className="quick-filter-btn"
-            style={{
-              border: `1px solid ${fStatus === status ? "#22d3ee" : "#334155"}`,
-              borderRadius: 999,
-              padding: "9px 14px",
-              background: fStatus === status ? "rgba(34,211,238,0.2)" : "rgba(15,23,42,0.9)",
-              color: fStatus === status ? "#67e8f9" : "#94a3b8",
-              fontWeight: 700,
-              fontSize: 12,
-              cursor: "pointer",
-              boxShadow: fStatus === status ? "0 6px 18px rgba(6,182,212,0.2)" : "none",
-            }}
-          >
-            {status}
-          </button>
-        ))}
-      </div>
+      {installationReminders.length > 0 && (
+        <div
+          style={{
+            marginBottom: 14,
+            border: "1px solid rgba(245,158,11,0.35)",
+            borderRadius: 14,
+            background: "linear-gradient(135deg, rgba(245,158,11,0.12), rgba(30,41,59,0.45))",
+            padding: "12px 14px",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
+            <div style={{ color: "#fef3c7", fontWeight: 700, fontSize: 14 }}>Lembretes de instalacao (Internet e TV)</div>
+            <Badge color={pendingInstallationCount > 0 ? "#f59e0b" : "#10b981"}>
+              {pendingInstallationCount > 0 ? `${pendingInstallationCount} pendente${pendingInstallationCount > 1 ? "s" : ""}` : "Tudo instalado"}
+            </Badge>
+          </div>
+          <div style={{ display: "grid", gap: 8 }}>
+            {installationReminders.slice(0, 6).map((item) => (
+              <div
+                key={item.id}
+                style={{
+                  border: "1px solid rgba(51,65,85,0.6)",
+                  borderRadius: 10,
+                  padding: "9px 10px",
+                  background: "rgba(15,23,42,0.75)",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 10,
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                }}
+              >
+                <div style={{ color: "#e2e8f0", fontSize: 13 }}>
+                  <strong style={{ color: "#f8fafc" }}>{item.cliente}</strong> · {PLANO_LABELS[item.plano] || item.plano} · {item.tipoPlano}
+                  <span style={{ color: "#94a3b8" }}> · Inst.: {fmtDate(item.dataInstalacao)}</span>
+                </div>
+                <Badge color={item.statusInstalacao === "Instalado" ? "#10b981" : item.statusInstalacao === "Nao instalado" ? "#ef4444" : "#f59e0b"}>
+                  {item.statusInstalacao}
+                </Badge>
+              </div>
+            ))}
+          </div>
+          {installationReminders.length > 6 && <div style={{ marginTop: 8, color: "#94a3b8", fontSize: 12 }}>Mostrando 6 de {installationReminders.length} lembretes.</div>}
+        </div>
+      )}
 
       <div
         className="filters-bar"
@@ -139,19 +157,6 @@ export default function VendasTab({
             <option key={plano} value={plano}>
               {PLANO_LABELS[plano]}
             </option>
-          ))}
-        </select>
-        <select
-          value={fStatus}
-          onChange={(event) => {
-            setFStatus(event.target.value);
-            setPage(1);
-          }}
-          style={{ ...inputStyle, width: 150, appearance: "none" }}
-        >
-          <option>Todos</option>
-          {STATUS_OPTIONS.map((status) => (
-            <option key={status}>{status}</option>
           ))}
         </select>
         <input
@@ -259,7 +264,7 @@ export default function VendasTab({
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 920 }}>
                     <thead>
                       <tr style={{ borderBottom: "1px solid #1e293b", background: "rgba(15,23,42,0.7)" }}>
-                        {["cliente", "descricao", "valor", "data", "vendedor", "status"].map((col) => (
+                        {["cliente", "descricao", "valor", "data", "vendedor"].map((col) => (
                           <th
                             key={col}
                             onClick={() => onToggleSort(col)}
@@ -276,7 +281,7 @@ export default function VendasTab({
                               whiteSpace: "nowrap",
                             }}
                           >
-                            {col === "cliente" ? "Cliente" : col === "descricao" ? "Descricao" : col === "valor" ? "Valor" : col === "data" ? "Data" : col === "vendedor" ? "Vendedor" : "Status"}
+                            {col === "cliente" ? "Cliente" : col === "descricao" ? "Descricao" : col === "valor" ? "Valor" : col === "data" ? "Data" : "Vendedor"}
                             <SortArrow col={col} sortBy={sortBy} sortDir={sortDir} />
                           </th>
                         ))}
@@ -291,9 +296,6 @@ export default function VendasTab({
                           <td style={{ padding: "11px 12px", fontWeight: 700, color: "#34d399", fontFamily: "'Crimson Pro',serif", fontSize: 16 }}>{fmtBRL(venda.valor)}</td>
                           <td style={{ padding: "11px 12px", color: "#94a3b8" }}>{fmtDate(venda.data)}</td>
                           <td style={{ padding: "11px 12px", color: "#cbd5e1" }}>{venda.vendedor || "-"}</td>
-                          <td style={{ padding: "11px 12px" }}>
-                            <Badge color={STATUS_COLORS[venda.status] || "#10b981"}>{venda.status}</Badge>
-                          </td>
                           <td style={{ padding: "11px 12px" }}>
                             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                               <button title="Ver detalhes" onClick={() => onView(venda)} className="action-pill action-pill-info">
@@ -316,10 +318,9 @@ export default function VendasTab({
                 <div className="mobile-cards" style={{ display: "none", gap: 10, padding: 12 }}>
                   {group.items.map((venda) => (
                     <div key={venda.id} style={{ border: "1px solid rgba(51,65,85,0.7)", borderRadius: 14, padding: 14, background: "linear-gradient(180deg,#111b31,#0b1324)", boxShadow: "0 8px 20px rgba(2,6,23,0.35)" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 10, alignItems: "flex-start" }}>
-                        <div style={{ fontWeight: 700, color: "#f1f5f9", fontSize: 15 }}>{venda.cliente}</div>
-                        <Badge color={STATUS_COLORS[venda.status] || "#10b981"}>{venda.status}</Badge>
-                      </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 10, alignItems: "flex-start" }}>
+                          <div style={{ fontWeight: 700, color: "#f1f5f9", fontSize: 15 }}>{venda.cliente}</div>
+                        </div>
 
                       <div style={{ display: "grid", gap: 8, marginBottom: 12 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13 }}>

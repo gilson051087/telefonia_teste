@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
-import { PLANOS, PLANO_COLORS, PLANO_EXTRAS, PLANO_ICONS, PLANO_LABELS, STATUS_OPTIONS } from "../../constants/sales";
-import { maskCPF, normalizePlanoName } from "../../utils/sales";
+import { useEffect, useMemo, useState } from "react";
+import { PLANOS, PLANO_COLORS, PLANO_EXTRAS, PLANO_ICONS, PLANO_LABELS, REMUNERATION_OPTIONS_BY_PLANO, getRemunerationValue } from "../../constants/sales";
+import { isValidCPF, maskCPF, normalizePlanoName } from "../../utils/sales";
 import { Field, btnPrimary, btnSecondary, inputStyle, labelStyle } from "../ui";
 
 export default function VendaForm({ initial, onSave, onClose, currentUser, sellers }) {
+  const installationPlanos = ["Internet Residencial", "TV"];
   const defaultSellerId = currentUser.role === "seller" ? currentUser.id : sellers[0]?.id || "";
   const defaultSellerName = currentUser.role === "seller" ? currentUser.nome : sellers[0]?.nome || "";
 
@@ -11,10 +12,10 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
     cliente: "",
     cpf: "",
     plano: "Plano Controle",
+    tipoPlano: "",
     descricao: "",
     valor: "",
     data: new Date().toISOString().split("T")[0],
-    status: "Ativa",
     vendedor: defaultSellerName,
     vendedorId: defaultSellerId,
   };
@@ -24,6 +25,9 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
   const [isSaving, setIsSaving] = useState(false);
   const currentPlano = normalizePlanoName(form.plano) || "Plano Controle";
   const extras = PLANO_EXTRAS[currentPlano] || [];
+  const remunerationOptions = useMemo(() => REMUNERATION_OPTIONS_BY_PLANO[currentPlano] || [], [currentPlano]);
+  const isRemunerationLocked = remunerationOptions.length > 0;
+  const usesInstallationStatus = installationPlanos.includes(currentPlano);
 
   useEffect(() => {
     if (currentUser.role === "seller") {
@@ -36,8 +40,45 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
     }
   }, [currentUser, sellers, form.vendedorId]);
 
+  useEffect(() => {
+    if (!remunerationOptions.length) return;
+
+    setForm((current) => {
+      const selectedOption = remunerationOptions.find((item) => item.label === current.tipoPlano);
+      if (selectedOption) {
+        const nextValor = selectedOption.value.toFixed(2);
+        if (String(current.valor || "") === nextValor) return current;
+        return { ...current, valor: nextValor };
+      }
+      if (!current.tipoPlano && !current.valor) return current;
+      return { ...current, tipoPlano: "", valor: "" };
+    });
+  }, [currentPlano, remunerationOptions]);
+
   function setField(key, value) {
-    setForm((current) => ({ ...current, [key]: key === "plano" ? normalizePlanoName(value) : value }));
+    if (key === "plano") {
+      const normalizedPlano = normalizePlanoName(value);
+      const hasRemunerationOptions = (REMUNERATION_OPTIONS_BY_PLANO[normalizedPlano] || []).length > 0;
+      setForm((current) => ({
+        ...current,
+        plano: normalizedPlano,
+        tipoPlano: "",
+        valor: hasRemunerationOptions ? "" : current.valor,
+        statusInstalacao: installationPlanos.includes(normalizedPlano) ? current.statusInstalacao || "Pendente" : current.statusInstalacao,
+      }));
+      return;
+    }
+
+    if (key === "dataInstalacao") {
+      setForm((current) => ({
+        ...current,
+        dataInstalacao: value,
+        statusInstalacao: value ? current.statusInstalacao || "Pendente" : current.statusInstalacao,
+      }));
+      return;
+    }
+
+    setForm((current) => ({ ...current, [key]: value }));
   }
 
   function handleSellerChange(value) {
@@ -52,7 +93,11 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
   function validate() {
     const next = {};
     if (!form.cliente.trim()) next.cliente = "Obrigatorio";
+    if (form.cpf && !isValidCPF(form.cpf)) next.cpf = "CPF invalido";
     if (!form.plano) next.plano = "Obrigatorio";
+    if (remunerationOptions.length > 0 && !form.tipoPlano) next.tipoPlano = "Obrigatorio";
+    if (usesInstallationStatus && !form.statusInstalacao) next.statusInstalacao = "Obrigatorio";
+    if (!usesInstallationStatus && form.dataInstalacao && !form.statusInstalacao) next.statusInstalacao = "Obrigatorio";
     if (!form.valor || Number.isNaN(+form.valor) || +form.valor <= 0) next.valor = "Valor invalido";
     if (!form.data) next.data = "Obrigatorio";
     if (!form.vendedorId && currentUser.role === "admin") next.vendedor = "Selecione um vendedor";
@@ -70,6 +115,14 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
       setIsSaving(true);
       await onSave({
         ...form,
+        status:
+          usesInstallationStatus
+            ? form.statusInstalacao === "Instalado"
+              ? "Ativa"
+              : form.statusInstalacao === "Nao instalado"
+                ? "Cancelada"
+                : "Pendente"
+            : "Ativa",
         valor: parseFloat(form.valor),
         vendedor: currentUser.role === "seller" ? currentUser.nome : form.vendedor,
         vendedorId: currentUser.role === "seller" ? currentUser.id : form.vendedorId,
@@ -138,20 +191,27 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
         </div>
       </div>
 
-      <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+      <div
+        className="form-grid"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
+          gap: 16,
+        }}
+      >
         <div style={{ gridColumn: "1/-1" }}>
           <Field label="Passo 2: Nome do cliente" error={errors.cliente}>
             {inp("cliente", "text", "Nome completo")}
           </Field>
         </div>
 
-        <Field label="CPF">
+        <Field label="CPF" error={errors.cpf}>
           <input
             type="text"
             value={form.cpf || ""}
             placeholder="000.000.000-00"
             onChange={(e) => setField("cpf", maskCPF(e.target.value))}
-            style={inputStyle}
+            style={{ ...inputStyle, borderColor: errors.cpf ? "#ef4444" : undefined }}
           />
         </Field>
 
@@ -177,37 +237,22 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
         </div>
 
         <Field label="Valor (R$)" error={errors.valor}>
-          {inp("valor", "number", "0,00")}
+          <div>
+            <input
+              type="number"
+              value={form.valor || ""}
+              placeholder="0,00"
+              onChange={(e) => setField("valor", e.target.value)}
+              style={{ ...inputStyle, borderColor: errors.valor ? "#ef4444" : "#334155", opacity: isRemunerationLocked ? 0.8 : 1 }}
+              step="0.01"
+              readOnly={isRemunerationLocked}
+            />
+            {isRemunerationLocked && <div style={{ marginTop: 6, fontSize: 11, color: "#67e8f9" }}>Valor preenchido automaticamente para remuneracao.</div>}
+          </div>
         </Field>
         <Field label="Data da venda" error={errors.data}>
           {inp("data", "date")}
         </Field>
-      </div>
-
-      <div style={{ marginBottom: 14 }}>
-        <label style={labelStyle}>Status da venda</label>
-        <div className="status-grid" style={{ display: "grid", gap: 8, gridTemplateColumns: `repeat(${STATUS_OPTIONS.length}, minmax(0,1fr))` }}>
-          {STATUS_OPTIONS.map((status) => (
-            <button
-              key={status}
-              type="button"
-              onClick={() => setField("status", status)}
-              className="status-choice"
-              style={{
-                borderRadius: 12,
-                border: `1px solid ${form.status === status ? "#22d3ee" : "#334155"}`,
-                background: form.status === status ? "rgba(34,211,238,0.14)" : "#111b31",
-                color: form.status === status ? "#67e8f9" : "#94a3b8",
-                fontSize: 13,
-                fontWeight: 700,
-                padding: "10px 8px",
-                cursor: "pointer",
-              }}
-            >
-              {status}
-            </button>
-          ))}
-        </div>
       </div>
 
       {extras.length > 0 && (
@@ -217,14 +262,41 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
           </div>
           <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
             {extras.map((extra) => (
-              <Field key={extra.key} label={extra.label}>
-                <input
-                  type={extra.type}
-                  value={form[extra.key] || ""}
-                  placeholder={extra.placeholder}
-                  onChange={(e) => setField(extra.key, extra.numericOnly ? e.target.value.replace(/\D/g, "") : e.target.value)}
-                  style={inputStyle}
-                />
+              <Field key={extra.key} label={extra.label} error={errors[extra.key]}>
+                {extra.type === "select" ? (
+                  <select
+                    value={form[extra.key] || ""}
+                    onChange={(e) => {
+                      const nextValue = e.target.value;
+                      if (extra.key === "tipoPlano") {
+                        const remunerationValue = getRemunerationValue(currentPlano, nextValue);
+                        setForm((current) => ({
+                          ...current,
+                          tipoPlano: nextValue,
+                          valor: remunerationValue !== null ? remunerationValue.toFixed(2) : current.valor,
+                        }));
+                        return;
+                      }
+                      setField(extra.key, nextValue);
+                    }}
+                    style={{ ...inputStyle, appearance: "none", borderColor: errors[extra.key] ? "#ef4444" : "#334155" }}
+                  >
+                    <option value="">{extra.placeholderSelect || "Selecione"}</option>
+                    {(extra.options || []).map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type={extra.type}
+                    value={form[extra.key] || ""}
+                    placeholder={extra.placeholder}
+                    onChange={(e) => setField(extra.key, extra.numericOnly ? e.target.value.replace(/\D/g, "") : e.target.value)}
+                    style={inputStyle}
+                  />
+                )}
               </Field>
             ))}
           </div>

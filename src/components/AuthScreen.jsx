@@ -47,7 +47,6 @@ export default function AuthScreen({ onLogin }) {
       }}
     >
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap');
         .login-card{position:relative;overflow:hidden;}
         .login-card::before{
           content:"";
@@ -63,13 +62,39 @@ export default function AuthScreen({ onLogin }) {
       <div className="login-card" style={{ ...cardStyle, width: "100%", maxWidth: 480 }}>
         <div className="login-content">
           <div style={{ textAlign: "center", marginBottom: 20 }}>
-            <div style={{ fontFamily: "'Manrope',sans-serif", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: "#7dd3fc", marginBottom: 8 }}>
+            <div
+              style={{
+                fontFamily: "'DM Sans',sans-serif",
+                fontSize: 10,
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+                color: "#7dd3fc",
+                marginBottom: 8,
+              }}
+            >
               Sistema Comercial
             </div>
-            <h1 className="auth-hero-title" style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 38, lineHeight: 1, marginBottom: 8, color: "#f8fafc", fontWeight: 600 }}>
+            <h1
+              className="auth-hero-title"
+              style={{
+                fontFamily: "'Crimson Pro',serif",
+                fontSize: 38,
+                lineHeight: 1,
+                marginBottom: 8,
+                color: "#f8fafc",
+                fontWeight: 600,
+              }}
+            >
               Painel de Vendas
             </h1>
-            <div style={{ color: "#94a3b8", fontSize: 13, letterSpacing: "0.01em", fontFamily: "'Manrope',sans-serif" }}>
+            <div
+              style={{
+                color: "#94a3b8",
+                fontSize: 13,
+                letterSpacing: "0.01em",
+                fontFamily: "'DM Sans',sans-serif",
+              }}
+            >
               Acesse com seu usuario e senha
             </div>
           </div>
@@ -79,7 +104,17 @@ export default function AuthScreen({ onLogin }) {
                 value={loginForm.username}
                 onChange={(e) => setLoginForm((current) => ({ ...current, username: e.target.value }))}
                 onKeyDown={handleKeyDown}
-                style={{ ...inputStyle, background: "rgba(15,23,42,0.75)", borderColor: "rgba(125,211,252,0.16)", borderRadius: 12, height: 44, fontSize: 13, padding: "10px 12px", fontFamily: "'Manrope',sans-serif", fontWeight: 500 }}
+                style={{
+                  ...inputStyle,
+                  background: "rgba(15,23,42,0.75)",
+                  borderColor: "rgba(125,211,252,0.16)",
+                  borderRadius: 12,
+                  height: 44,
+                  fontSize: 13,
+                  padding: "10px 12px",
+                  fontFamily: "'DM Sans',sans-serif",
+                  fontWeight: 500,
+                }}
                 placeholder="Digite seu login"
               />
             </Field>
@@ -89,14 +124,45 @@ export default function AuthScreen({ onLogin }) {
                 value={loginForm.senha}
                 onChange={(e) => setLoginForm((current) => ({ ...current, senha: e.target.value }))}
                 onKeyDown={handleKeyDown}
-                style={{ ...inputStyle, background: "rgba(15,23,42,0.75)", borderColor: "rgba(125,211,252,0.16)", borderRadius: 12, height: 44, fontSize: 13, padding: "10px 12px", fontFamily: "'Manrope',sans-serif", fontWeight: 500 }}
+                style={{
+                  ...inputStyle,
+                  background: "rgba(15,23,42,0.75)",
+                  borderColor: "rgba(125,211,252,0.16)",
+                  borderRadius: 12,
+                  height: 44,
+                  fontSize: 13,
+                  padding: "10px 12px",
+                  fontFamily: "'DM Sans',sans-serif",
+                  fontWeight: 500,
+                }}
                 placeholder="Digite sua senha"
               />
             </Field>
           </div>
-          {error && <div style={{ color: "#fca5a5", fontSize: 12, marginBottom: 12, textAlign: "center", fontFamily: "'Manrope',sans-serif" }}>{error}</div>}
+          {error && (
+            <div
+              style={{
+                color: "#fca5a5",
+                fontSize: 12,
+                marginBottom: 12,
+                textAlign: "center",
+                fontFamily: "'DM Sans',sans-serif",
+              }}
+            >
+              {error}
+            </div>
+          )}
           <button
-            style={{ ...btnPrimary, width: "100%", borderRadius: 14, height: 46, fontSize: 13, fontFamily: "'Manrope',sans-serif", boxShadow: "0 8px 24px rgba(99,102,241,0.22)", opacity: isSubmitting ? 0.7 : 1 }}
+            style={{
+              ...btnPrimary,
+              width: "100%",
+              borderRadius: 14,
+              height: 46,
+              fontSize: 13,
+              fontFamily: "'DM Sans',sans-serif",
+              boxShadow: "0 8px 24px rgba(99,102,241,0.22)",
+              opacity: isSubmitting ? 0.7 : 1,
+            }}
             onClick={handleLogin}
             disabled={isSubmitting}
           >

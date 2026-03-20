@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-import { PIE_COLORS, PLANO_COLORS, PLANO_ICONS, PLANO_LABELS, STATUS_COLORS } from "../../constants/sales";
+import { PIE_COLORS, PLANO_COLORS, PLANO_ICONS, PLANO_LABELS } from "../../constants/sales";
 import { fmtBRL, fmtDate, fmtMonth } from "../../utils/sales";
 import { btnPrimary, inputStyle } from "../ui";
 
@@ -11,7 +11,6 @@ export default function ReportsTab({
   monthData,
   monthPlanSeries,
   planoData,
-  byStatus,
   reportSeller,
   setReportSeller,
   dailyReportDate,
@@ -110,11 +109,10 @@ export default function ReportsTab({
 
         {showMonthlySales && (
           <div style={{ border: "1px solid rgba(71,85,105,0.55)", borderRadius: 12, overflow: "hidden" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1.4fr 1fr 1fr 1.2fr", gap: 12, padding: "12px 16px", background: "rgba(255,255,255,0.02)", color: "#64748b", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1.8fr 1fr 1.2fr", gap: 12, padding: "12px 16px", background: "rgba(255,255,255,0.02)", color: "#64748b", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
               <span>Data</span>
               <span>Cliente</span>
               <span>Plano</span>
-              <span>Status</span>
               <span>Valor</span>
               <span>Vendedor</span>
             </div>
@@ -126,7 +124,7 @@ export default function ReportsTab({
                   key={venda.id}
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "1fr 2fr 1.4fr 1fr 1fr 1.2fr",
+                    gridTemplateColumns: "1fr 2fr 1.8fr 1fr 1.2fr",
                     gap: 12,
                     padding: "12px 16px",
                     borderTop: index === 0 ? "none" : "1px solid #1e293b",
@@ -137,7 +135,6 @@ export default function ReportsTab({
                   <span>{fmtDate(venda.data)}</span>
                   <span>{venda.cliente}</span>
                   <span>{PLANO_LABELS[venda.plano] || venda.plano}</span>
-                  <span style={{ color: STATUS_COLORS[venda.status] || "#e2e8f0" }}>{venda.status}</span>
                   <span>{fmtBRL(venda.valor)}</span>
                   <span>{venda.vendedor || "—"}</span>
                 </div>
@@ -185,10 +182,9 @@ export default function ReportsTab({
         </div>
 
         <div style={{ border: "1px solid rgba(71,85,105,0.55)", borderRadius: 12, overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1.4fr 1fr 1fr 1.2fr", gap: 12, padding: "12px 16px", background: "rgba(255,255,255,0.02)", color: "#64748b", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1.8fr 1fr 1.2fr", gap: 12, padding: "12px 16px", background: "rgba(255,255,255,0.02)", color: "#64748b", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
             <span>Cliente</span>
             <span>Plano</span>
-            <span>Status</span>
             <span>Valor</span>
             <span>Vendedor</span>
           </div>
@@ -200,7 +196,7 @@ export default function ReportsTab({
                 key={venda.id}
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "2fr 1.4fr 1fr 1fr 1.2fr",
+                  gridTemplateColumns: "2fr 1.8fr 1fr 1.2fr",
                   gap: 12,
                   padding: "12px 16px",
                   borderTop: index === 0 ? "none" : "1px solid #1e293b",
@@ -210,7 +206,6 @@ export default function ReportsTab({
               >
                 <span>{venda.cliente}</span>
                 <span>{PLANO_LABELS[venda.plano] || venda.plano}</span>
-                <span style={{ color: STATUS_COLORS[venda.status] || "#e2e8f0" }}>{venda.status}</span>
                 <span>{fmtBRL(venda.valor)}</span>
                 <span>{venda.vendedor || "—"}</span>
               </div>
@@ -265,25 +260,7 @@ export default function ReportsTab({
         </div>
       </div>
 
-      <div className="rel-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
-        <div className="panel-surface" style={{ borderRadius: 14, padding: 24 }}>
-          <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 18, color: "#f1f5f9", marginBottom: 2 }}>Status das Vendas</div>
-          <div style={{ fontSize: 12, color: "#475569", marginBottom: 18 }}>Quantidade por status</div>
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={byStatus} layout="vertical" barSize={20}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" horizontal={false} />
-              <XAxis type="number" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis dataKey="name" type="category" tick={{ fill: "#94a3b8", fontSize: 12 }} axisLine={false} tickLine={false} width={80} />
-              <Tooltip contentStyle={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 8, color: "#e2e8f0" }} />
-              <Bar dataKey="value" radius={[0, 6, 6, 0]}>
-                {byStatus.map((item, index) => (
-                  <Cell key={index} fill={STATUS_COLORS[item.name] || "#6366f1"} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
+      <div className="rel-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 18 }}>
         <div className="panel-surface" style={{ borderRadius: 14, padding: 24 }}>
           <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 18, color: "#f1f5f9", marginBottom: 2 }}>
             {currentUser.role === "admin" ? "Ranking de Vendedores" : "Ranking de Produtos"}

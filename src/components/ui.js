@@ -80,14 +80,11 @@ export function Badge({ color, children }) {
 export function StatCard({ icon, label, value, sub, color = PLANO_COLORS["Plano Controle"] }) {
   return (
     <div
+      className="panel-surface"
       style={{
-        background: "linear-gradient(155deg,rgba(15,23,42,0.96),rgba(13,21,38,0.96) 58%,rgba(9,18,34,0.96))",
-        border: "1px solid rgba(71,85,105,0.55)",
-        borderRadius: 16,
-        padding: "20px 22px",
+        padding: "clamp(10px, 1.4vw, 20px) clamp(10px, 1.5vw, 22px)",
         position: "relative",
         overflow: "hidden",
-        boxShadow: "0 10px 24px rgba(2,6,23,0.34)",
       }}
     >
       <div
@@ -95,17 +92,37 @@ export function StatCard({ icon, label, value, sub, color = PLANO_COLORS["Plano 
           position: "absolute",
           top: -12,
           right: -12,
-          width: 72,
-          height: 72,
+          width: 58,
+          height: 58,
           background: "#94a3b8",
           borderRadius: "50%",
           opacity: 0.1,
         }}
       />
-      <div style={{ fontSize: 24, marginBottom: 8, filter: "drop-shadow(0 4px 10px rgba(2,6,23,0.4))" }}>{icon}</div>
-      <div style={{ fontSize: 11, color: "#cbd5e1", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 24, fontFamily: "'Crimson Pro',Georgia,serif", color: "#f1f5f9", fontWeight: 700 }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>{sub}</div>}
+      <div
+        style={{
+          fontSize: "clamp(12px, 1vw, 15px)",
+          lineHeight: 1,
+          marginBottom: 4,
+          transform: "scaleX(0.72)",
+          transformOrigin: "left center",
+          display: "inline-block",
+          filter: "drop-shadow(0 4px 10px rgba(2,6,23,0.4))",
+        }}
+      >
+        {icon}
+      </div>
+      <div style={{ fontSize: "clamp(9px, 0.8vw, 11px)", color: "#cbd5e1", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: "clamp(16px, 2vw, 24px)", fontFamily: "'Crimson Pro',Georgia,serif", color: "#f1f5f9", fontWeight: 700 }}>{value}</div>
+      {sub && <div style={{ fontSize: "clamp(9px, 0.8vw, 11px)", color: "#94a3b8", marginTop: 3 }}>{sub}</div>}
+    </div>
+  );
+}
+
+export function Panel({ children, style }) {
+  return (
+    <div className="panel-surface" style={{ padding: 20, ...style }}>
+      {children}
     </div>
   );
 }
