@@ -8,6 +8,7 @@ export default function ReportsTab({
   currentUser,
   sellers,
   scopedVendas,
+  reportScopedVendas,
   monthData,
   monthPlanSeries,
   planoData,
@@ -25,6 +26,28 @@ export default function ReportsTab({
   onExportMonthlyReport,
 }) {
   const [showMonthlySales, setShowMonthlySales] = useState(false);
+  const [openCategories, setOpenCategories] = useState({});
+  const [openDailyCategories, setOpenDailyCategories] = useState({});
+  const groupedAllSales = (reportScopedVendas || []).reduce((acc, venda) => {
+    const key = venda.plano || "Outros";
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(venda);
+    return acc;
+  }, {});
+  const groupedAllSalesEntries = Object.entries(groupedAllSales).sort((a, b) => (PLANO_LABELS[a[0]] || a[0]).localeCompare(PLANO_LABELS[b[0]] || b[0]));
+  const groupedDailySales = (dailyReportVendas || []).reduce((acc, venda) => {
+    const key = venda.plano || "Outros";
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(venda);
+    return acc;
+  }, {});
+  const groupedDailySalesEntries = Object.entries(groupedDailySales).sort((a, b) => (PLANO_LABELS[a[0]] || a[0]).localeCompare(PLANO_LABELS[b[0]] || b[0]));
+  function toggleCategory(category) {
+    setOpenCategories((current) => ({ ...current, [category]: !current[category] }));
+  }
+  function toggleDailyCategory(category) {
+    setOpenDailyCategories((current) => ({ ...current, [category]: !current[category] }));
+  }
 
   return (
     <div style={{ display: "grid", gap: 18 }}>
@@ -95,48 +118,69 @@ export default function ReportsTab({
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <div style={{ fontSize: 12, color: "#64748b" }}>
-            {showMonthlySales ? "Lista mensal expandida." : "Lista mensal recolhida para facilitar a visualizacao."}
+            {showMonthlySales ? "Lista completa de vendas expandida por categoria." : "Lista completa de vendas recolhida."}
           </div>
           <button
             type="button"
             onClick={() => setShowMonthlySales((value) => !value)}
-            style={{ ...btnPrimary, padding: "8px 14px", opacity: monthlyReportVendas.length === 0 ? 0.5 : 1 }}
-            disabled={monthlyReportVendas.length === 0}
+            style={{ ...btnPrimary, padding: "8px 14px", opacity: reportScopedVendas.length === 0 ? 0.5 : 1 }}
+            disabled={reportScopedVendas.length === 0}
           >
             {showMonthlySales ? "Recolher vendas" : "Mostrar vendas"}
           </button>
         </div>
 
         {showMonthlySales && (
-          <div style={{ border: "1px solid rgba(71,85,105,0.55)", borderRadius: 12, overflow: "hidden" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1.8fr 1fr 1.2fr", gap: 12, padding: "12px 16px", background: "rgba(255,255,255,0.02)", color: "#64748b", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-              <span>Data</span>
-              <span>Cliente</span>
-              <span>Plano</span>
-              <span>Valor</span>
-              <span>Vendedor</span>
-            </div>
-            {monthlyReportVendas.length === 0 ? (
-              <div style={{ padding: "18px 16px", color: "#64748b", fontSize: 13 }}>Nenhuma venda encontrada para o mes selecionado.</div>
+          <div style={{ border: "1px solid rgba(71,85,105,0.55)", borderRadius: 12, overflow: "hidden", maxHeight: 460, overflowY: "auto" }}>
+            {groupedAllSalesEntries.length === 0 ? (
+              <div style={{ padding: "18px 16px", color: "#64748b", fontSize: 13 }}>Nenhuma venda encontrada.</div>
             ) : (
-              monthlyReportVendas.slice(0, 8).map((venda, index) => (
-                <div
-                  key={venda.id}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 2fr 1.8fr 1fr 1.2fr",
-                    gap: 12,
-                    padding: "12px 16px",
-                    borderTop: index === 0 ? "none" : "1px solid #1e293b",
-                    color: "#e2e8f0",
-                    fontSize: 13,
-                  }}
-                >
-                  <span>{fmtDate(venda.data)}</span>
-                  <span>{venda.cliente}</span>
-                  <span>{PLANO_LABELS[venda.plano] || venda.plano}</span>
-                  <span>{fmtBRL(venda.valor)}</span>
-                  <span>{venda.vendedor || "—"}</span>
+              groupedAllSalesEntries.map(([plano, vendas]) => (
+                <div key={plano} style={{ borderTop: "1px solid #1e293b" }}>
+                  <button
+                    type="button"
+                    onClick={() => toggleCategory(plano)}
+                    style={{
+                      width: "100%",
+                      border: "none",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      padding: "10px 16px",
+                      background: "rgba(255,255,255,0.03)",
+                      color: "#cbd5e1",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <span>{PLANO_LABELS[plano] || plano} • {vendas.length} venda{vendas.length !== 1 ? "s" : ""}</span>
+                    <span>{openCategories[plano] ? "▼" : "▶"}</span>
+                  </button>
+                  {openCategories[plano] &&
+                    vendas
+                      .slice()
+                      .sort((a, b) => (b.data || "").localeCompare(a.data || ""))
+                      .map((venda, index) => (
+                        <div
+                          key={venda.id}
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "1fr 2fr 1fr 1.2fr",
+                            gap: 12,
+                            padding: "10px 16px",
+                            borderTop: index === 0 ? "none" : "1px solid #1e293b",
+                            color: "#e2e8f0",
+                            fontSize: 13,
+                          }}
+                        >
+                          <span>{fmtDate(venda.data)}</span>
+                          <span>{venda.cliente}</span>
+                          <span>{fmtBRL(venda.valor)}</span>
+                          <span>{venda.vendedor || "—"}</span>
+                        </div>
+                      ))}
                 </div>
               ))
             )}
@@ -181,33 +225,56 @@ export default function ReportsTab({
           </div>
         </div>
 
-        <div style={{ border: "1px solid rgba(71,85,105,0.55)", borderRadius: 12, overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1.8fr 1fr 1.2fr", gap: 12, padding: "12px 16px", background: "rgba(255,255,255,0.02)", color: "#64748b", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            <span>Cliente</span>
-            <span>Plano</span>
-            <span>Valor</span>
-            <span>Vendedor</span>
-          </div>
-          {dailyReportVendas.length === 0 ? (
+        <div style={{ border: "1px solid rgba(71,85,105,0.55)", borderRadius: 12, overflow: "hidden", maxHeight: 420, overflowY: "auto" }}>
+          {groupedDailySalesEntries.length === 0 ? (
             <div style={{ padding: "18px 16px", color: "#64748b", fontSize: 13 }}>Nenhuma venda encontrada para a data selecionada.</div>
           ) : (
-            dailyReportVendas.slice(0, 8).map((venda, index) => (
-              <div
-                key={venda.id}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "2fr 1.8fr 1fr 1.2fr",
-                  gap: 12,
-                  padding: "12px 16px",
-                  borderTop: index === 0 ? "none" : "1px solid #1e293b",
-                  color: "#e2e8f0",
-                  fontSize: 13,
-                }}
-              >
-                <span>{venda.cliente}</span>
-                <span>{PLANO_LABELS[venda.plano] || venda.plano}</span>
-                <span>{fmtBRL(venda.valor)}</span>
-                <span>{venda.vendedor || "—"}</span>
+            groupedDailySalesEntries.map(([plano, vendas]) => (
+              <div key={plano} style={{ borderTop: "1px solid #1e293b" }}>
+                <button
+                  type="button"
+                  onClick={() => toggleDailyCategory(plano)}
+                  style={{
+                    width: "100%",
+                    border: "none",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    padding: "10px 16px",
+                    background: "rgba(255,255,255,0.03)",
+                    color: "#cbd5e1",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <span>{PLANO_LABELS[plano] || plano} • {vendas.length} venda{vendas.length !== 1 ? "s" : ""}</span>
+                  <span>{openDailyCategories[plano] ? "▼" : "▶"}</span>
+                </button>
+                {openDailyCategories[plano] &&
+                  vendas
+                    .slice()
+                    .sort((a, b) => (b.data || "").localeCompare(a.data || ""))
+                    .map((venda, index) => (
+                      <div
+                        key={venda.id}
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr 2fr 1fr 1.2fr",
+                          gap: 12,
+                          padding: "10px 16px",
+                          borderTop: index === 0 ? "none" : "1px solid #1e293b",
+                          color: "#e2e8f0",
+                          fontSize: 13,
+                        }}
+                      >
+                        <span>{fmtDate(venda.data)}</span>
+                        <span>{venda.cliente}</span>
+                        <span>{fmtBRL(venda.valor)}</span>
+                        <span>{venda.vendedor || "—"}</span>
+                      </div>
+                    ))}
               </div>
             ))
           )}

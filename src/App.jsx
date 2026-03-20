@@ -679,7 +679,7 @@ export default function App() {
             <StatCard icon="🎧" label="Ticket Acessorios (15%)" value={fmtBRL(ticketAcessorios)} sub={`${ticketAcessoriosVendas.length} vendas`} color="#ec4899" />
             <StatCard icon="📊" label="Controle + Pos + TV + Internet" value={fmtBRL(ticketPlanosPrincipaisTotal)} sub={`${ticketPlanosPrincipaisVendas.length} vendas`} color="#0ea5e9" />
             <StatCard icon="📦" label="Total Lancamentos" value={scopedVendas.length} sub={`${pendentes} pendentes`} color="#a855f7" />
-            <StatCard icon="📱" label="Planos Moveis" value={scopedVendas.filter((venda) => ["Plano Controle", "Plano Pós-Pago"].includes(venda.plano) && venda.status === "Ativa").length} color="#10b981" />
+            <StatCard icon="📱" label="Planos Moveis" value={scopedVendas.filter((venda) => ["Plano Controle", "Plano Pós-Pago"].includes(venda.plano)).length} color="#10b981" />
             <StatCard icon="🌐" label="Internet + TV" value={scopedVendas.filter((venda) => ["Internet Residencial", "Internet Movel Mais", "TV"].includes(venda.plano) && venda.status === "Ativa").length} color="#f59e0b" />
           </div>
 
@@ -720,6 +720,7 @@ export default function App() {
               currentUser={currentUser}
               sellers={sellers}
               scopedVendas={scopedVendas}
+              reportScopedVendas={reportScopedVendas}
               monthData={monthData}
               monthPlanSeries={monthPlanSeries}
               planoData={planoData}
