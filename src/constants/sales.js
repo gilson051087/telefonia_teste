@@ -53,7 +53,6 @@ export const REMUNERATION_OPTIONS_BY_PLANO = {
   "Plano Controle": [
     { label: "CLARO CONTROLE 2025 ON+ 15GB + 5GB", value: 54.9 },
     { label: "CLARO CONTROLE 2025 ON+ 20GB + 5GB", value: 59.9 },
-    { label: "DEPENDENTE BANDA LARGA", value: 1.0 },
     { label: "Claro Flex 8GB", value: 39.99 },
     { label: "Claro Flex 10GB", value: 49.99 },
     { label: "Claro Flex 30GB", value: 69.99 },
@@ -96,6 +95,14 @@ export const REMUNERATION_OPTIONS_BY_PLANO = {
     { label: "Claro TV MAIS BOX", value: 96.0 },
     { label: "Claro TV Mais SoundBox", value: 136.0 },
   ],
+  "Seguro Movel Celular": [
+    { label: "Seguro R$ 17,00", value: 6.8 },
+    { label: "Seguro R$ 25,00", value: 10.0 },
+    { label: "Seguro R$ 35,00", value: 14.0 },
+    { label: "Seguro R$ 45,00", value: 18.0 },
+    { label: "Seguro R$ 55,00", value: 22.0 },
+    { label: "Seguro R$ 60,00", value: 24.0 },
+  ],
 };
 
 export function getRemunerationValue(plano, tipoPlano) {
@@ -117,7 +124,7 @@ export const PLANO_EXTRAS = {
     },
     { key: "franquia", label: "Franquia de Dados", type: "text", placeholder: "Ex: 15GB" },
     { key: "numero", label: "Numero do Chip", type: "text", placeholder: "Ex: (41) 99999-0000" },
-    { key: "portabilidade", label: "Numero da Portabilidade", type: "text", placeholder: "Ex: (41) 98888-7777" },
+    { key: "portabilidade", label: "Numero da Portabilidade", type: "text", placeholder: "Ex: (41) 98765-1234" },
   ],
   "Plano Pós-Pago": [
     {
@@ -177,8 +184,13 @@ export const PLANO_EXTRAS = {
     { key: "qty", label: "Quantidade", type: "number", placeholder: "1" },
   ],
   "Seguro Movel Celular": [
-    { key: "modelo", label: "Aparelho Segurado", type: "text", placeholder: "Ex: Samsung S24" },
-    { key: "cobertura", label: "Cobertura", type: "text", placeholder: "Ex: Roubo + Quebra" },
+    {
+      key: "tipoPlano",
+      label: "Tipo de Plano",
+      type: "select",
+      placeholderSelect: "Selecione o tipo do plano",
+      options: REMUNERATION_OPTIONS_BY_PLANO["Seguro Movel Celular"].map((item) => item.label),
+    },
   ],
 };
 
