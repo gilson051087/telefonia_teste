@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, Line } from "recharts";
-import { PIE_COLORS, PLANO_COLORS, PLANO_ICONS, PLANO_LABELS } from "../../constants/sales";
+import { PIE_COLORS, PLANO_COLORS, PLANO_LABELS } from "../../constants/sales";
 import { fmtBRL, fmtDate, fmtMonth } from "../../utils/sales";
 import { btnPrimary, inputStyle } from "../ui";
 
@@ -366,54 +366,6 @@ export default function ReportsTab({
         </div>
       </div>
 
-      <div className="rel-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 18 }}>
-        <div className="panel-surface" style={{ borderRadius: 14, padding: 24 }}>
-          <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 18, color: "#f1f5f9", marginBottom: 2 }}>
-            {currentUser.role === "admin" ? "Ranking de Vendedores" : "Ranking de Produtos"}
-          </div>
-          <div style={{ fontSize: 12, color: "#475569", marginBottom: 18 }}>
-            {currentUser.role === "admin" ? "Quantidade de vendas por vendedor" : "Quantidade de vendas por produto"}
-          </div>
-          {(() => {
-            const counter = {};
-
-            if (currentUser.role === "admin") {
-              scopedVendas.forEach((venda) => {
-                counter[venda.vendedor || "Sem vendedor"] = (counter[venda.vendedor || "Sem vendedor"] || 0) + 1;
-              });
-            } else {
-              scopedVendas.forEach((venda) => {
-                counter[venda.plano] = (counter[venda.plano] || 0) + 1;
-              });
-            }
-
-            const sorted = Object.entries(counter).sort(([, a], [, b]) => b - a);
-            const max = sorted[0]?.[1] || 1;
-
-            return sorted.map(([name, count], index) => (
-              <div key={name} style={{ marginBottom: 14 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 5 }}>
-                  <span style={{ color: "#94a3b8" }}>
-                    {currentUser.role === "admin" ? "👤" : PLANO_ICONS[name]} {PLANO_LABELS[name] || name}
-                  </span>
-                  <span style={{ color: "#f1f5f9", fontWeight: 700 }}>{count}</span>
-                </div>
-                <div style={{ height: 6, background: "#1e293b", borderRadius: 3, overflow: "hidden" }}>
-                  <div
-                    style={{
-                      height: "100%",
-                      borderRadius: 3,
-                      background: currentUser.role === "admin" ? PIE_COLORS[index % PIE_COLORS.length] : PLANO_COLORS[name] || PIE_COLORS[index % PIE_COLORS.length],
-                      width: `${(count / max) * 100}%`,
-                      transition: "width 0.8s ease",
-                    }}
-                  />
-                </div>
-              </div>
-            ));
-          })()}
-        </div>
-      </div>
     </div>
   );
 }
