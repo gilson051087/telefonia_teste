@@ -1,7 +1,13 @@
 import { Badge, StatCard, btnDanger, btnPrimary } from "../ui";
 import { fmtBRL } from "../../utils/sales";
 
-export default function SellersTab({ sellerSummaries, onOpenSellerModal, onDeleteSeller }) {
+function fmtMonthLabel(value) {
+  if (!value) return "";
+  const [year, month] = value.split("-");
+  return `${month}/${year}`;
+}
+
+export default function SellersTab({ sellerSummaries, currentCycleMonth, onOpenSellerModal, onDeleteSeller }) {
   return (
     <div style={{ display: "grid", gap: 18 }}>
       <div
@@ -18,7 +24,7 @@ export default function SellersTab({ sellerSummaries, onOpenSellerModal, onDelet
       >
         <div>
           <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 26, color: "#f1f5f9", marginBottom: 4 }}>Vendedores cadastrados</div>
-          <div style={{ color: "#94a3b8", fontSize: 14 }}>Acompanhe os acessos da equipe e quantas vendas estao vinculadas a cada vendedor.</div>
+          <div style={{ color: "#94a3b8", fontSize: 14 }}>Visao mensal {fmtMonthLabel(currentCycleMonth)} da equipe e vendas vinculadas.</div>
         </div>
         <button onClick={onOpenSellerModal} style={btnPrimary}>
           + Novo vendedor
@@ -55,7 +61,9 @@ export default function SellersTab({ sellerSummaries, onOpenSellerModal, onDelet
             >
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
                 <div>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: "#f1f5f9", marginBottom: 4 }}>{seller.nome}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>{seller.nome}</div>
+                  </div>
                   <div style={{ color: "#94a3b8", fontSize: 13 }}>Login: {seller.username}</div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>

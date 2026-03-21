@@ -77,14 +77,21 @@ export function Badge({ color, children }) {
   );
 }
 
-export function StatCard({ icon, label, value, sub, color = PLANO_COLORS["Plano Controle"] }) {
+export function StatCard({ icon, label, value, sub, color = PLANO_COLORS["Plano Controle"], featured = false }) {
+  const featuredGlow = `${color}33`;
   return (
     <div
-      className="panel-surface"
+      className="panel-surface stat-card lift-hover"
       style={{
-        padding: "clamp(10px, 1.4vw, 20px) clamp(10px, 1.5vw, 22px)",
+        padding: featured ? "clamp(14px, 1.8vw, 24px) clamp(14px, 2vw, 28px)" : "clamp(10px, 1.4vw, 20px) clamp(10px, 1.5vw, 22px)",
         position: "relative",
         overflow: "hidden",
+        borderColor: featured ? `${color}66` : undefined,
+        boxShadow: featured ? `0 14px 30px ${featuredGlow}` : undefined,
+        background: featured
+          ? `linear-gradient(145deg, ${color}26 0%, rgba(15,23,42,0.98) 48%, rgba(15,23,42,1) 100%)`
+          : undefined,
+        gridColumn: featured ? "1 / -1" : undefined,
       }}
     >
       <div
@@ -101,9 +108,9 @@ export function StatCard({ icon, label, value, sub, color = PLANO_COLORS["Plano 
       />
       <div
         style={{
-          fontSize: "clamp(12px, 1vw, 15px)",
+          fontSize: featured ? "clamp(16px, 1.4vw, 22px)" : "clamp(12px, 1vw, 15px)",
           lineHeight: 1,
-          marginBottom: 4,
+          marginBottom: featured ? 6 : 4,
           transform: "scaleX(0.72)",
           transformOrigin: "left center",
           display: "inline-block",
@@ -112,9 +119,13 @@ export function StatCard({ icon, label, value, sub, color = PLANO_COLORS["Plano 
       >
         {icon}
       </div>
-      <div style={{ fontSize: "clamp(9px, 0.8vw, 11px)", color: "#cbd5e1", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: "clamp(16px, 2vw, 24px)", fontFamily: "'Crimson Pro',Georgia,serif", color: "#f1f5f9", fontWeight: 700 }}>{value}</div>
-      {sub && <div style={{ fontSize: "clamp(9px, 0.8vw, 11px)", color: "#94a3b8", marginTop: 3 }}>{sub}</div>}
+      <div style={{ fontSize: featured ? "clamp(14px, 1.2vw, 18px)" : "clamp(9px, 0.8vw, 11px)", color: featured ? "#d1fae5" : "#cbd5e1", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: featured ? 6 : 4 }}>
+        {label}
+      </div>
+      <div style={{ fontSize: featured ? "clamp(34px, 4.8vw, 52px)" : "clamp(16px, 2vw, 24px)", fontFamily: "'Crimson Pro',Georgia,serif", color: "#f1f5f9", fontWeight: 700 }}>
+        {value}
+      </div>
+      {sub && <div style={{ fontSize: featured ? "clamp(11px, 0.95vw, 13px)" : "clamp(9px, 0.8vw, 11px)", color: featured ? "#cbd5e1" : "#94a3b8", marginTop: featured ? 6 : 3 }}>{sub}</div>}
     </div>
   );
 }

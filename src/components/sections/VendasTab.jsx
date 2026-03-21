@@ -17,7 +17,6 @@ export default function VendasTab({
   fVendedor,
   setFVendedor,
   fMes,
-  setFMes,
   fDia,
   setFDia,
   filtered,
@@ -70,10 +69,48 @@ export default function VendasTab({
           <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 28, color: "#f1f5f9", marginBottom: 4 }}>Lancamentos de vendas</div>
           <div style={{ color: "#94a3b8", fontSize: 14 }}>Agora as vendas ficam separadas por categoria de plano.</div>
         </div>
-        <button onClick={onOpenNew} className="touch-btn lift-hover" style={{ ...btnPrimary, padding: "12px 22px" }}>
-          + Nova venda rapida
+        <button
+          onClick={onOpenNew}
+          className="touch-btn lift-hover"
+          style={{
+            ...btnPrimary,
+            padding: "12px 22px",
+            background: "linear-gradient(135deg,#22c55e,#0ea5e9 55%,#0284c7)",
+            border: "1px solid rgba(125,211,252,0.55)",
+            boxShadow: "0 14px 28px rgba(14,165,233,0.34)",
+            fontSize: 15,
+            gap: 10,
+          }}
+        >
+          <span style={{ fontSize: 20, lineHeight: 1 }}>➕</span>
+          <span>Nova venda rapida</span>
         </button>
       </div>
+
+      <button
+        onClick={onOpenNew}
+        className="touch-btn lift-hover"
+        aria-label="Nova venda rapida"
+        title="Nova venda rapida"
+        style={{
+          ...btnPrimary,
+          position: "fixed",
+          right: 18,
+          bottom: 18,
+          zIndex: 85,
+          borderRadius: 999,
+          width: 62,
+          height: 62,
+          minHeight: 62,
+          padding: 0,
+          fontSize: 28,
+          background: "linear-gradient(135deg,#0ea5e9,#22c55e)",
+          border: "1px solid rgba(52,211,153,0.7)",
+          boxShadow: "0 16px 34px rgba(14,165,233,0.42)",
+        }}
+      >
+        ➕
+      </button>
 
       {installationReminders.length > 0 && (
         <div
@@ -135,15 +172,30 @@ export default function VendasTab({
           flexWrap: "wrap",
         }}
       >
-        <input
-          placeholder="Buscar cliente, plano ou vendedor"
-          value={search}
-          onChange={(event) => {
-            setSearch(event.target.value);
-            setPage(1);
-          }}
-          style={{ ...inputStyle, width: 280 }}
-        />
+        <div style={{ position: "relative", width: 280 }}>
+          <span
+            style={{
+              position: "absolute",
+              left: 12,
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: "#67e8f9",
+              fontSize: 14,
+              pointerEvents: "none",
+            }}
+          >
+            🔍
+          </span>
+          <input
+            placeholder="Buscar por cliente ou plano..."
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+            style={{ ...inputStyle, width: "100%", paddingLeft: 34 }}
+          />
+        </div>
         <select
           value={fPlano}
           onChange={(event) => {
@@ -162,21 +214,35 @@ export default function VendasTab({
         <input
           type="month"
           value={fMes}
-          onChange={(event) => {
-            setFMes(event.target.value);
-            setPage(1);
-          }}
-          style={{ ...inputStyle, width: 170 }}
+          onChange={() => {}}
+          disabled
+          title="Ciclo mensal automatico"
+          style={{ ...inputStyle, width: 170, opacity: 0.75, cursor: "not-allowed" }}
         />
-        <input
-          type="date"
-          value={fDia}
-          onChange={(event) => {
-            setFDia(event.target.value);
-            setPage(1);
-          }}
-          style={{ ...inputStyle, width: 170 }}
-        />
+        <div style={{ position: "relative", width: 170 }}>
+          <span
+            style={{
+              position: "absolute",
+              left: 12,
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: "#67e8f9",
+              fontSize: 13,
+              pointerEvents: "none",
+            }}
+          >
+            📅
+          </span>
+          <input
+            type="date"
+            value={fDia}
+            onChange={(event) => {
+              setFDia(event.target.value);
+              setPage(1);
+            }}
+            style={{ ...inputStyle, width: "100%", paddingLeft: 34 }}
+          />
+        </div>
         {currentUser.role === "admin" && (
           <select
             value={fVendedor}
@@ -221,10 +287,12 @@ export default function VendasTab({
             const icon = PLANO_ICONS[group.plano] || "📦";
             const title = PLANO_LABELS[group.plano] || group.plano;
             const isOpen = Boolean(openGroups[group.plano]);
+            const groupTotal = group.items.reduce((sum, venda) => sum + (Number(venda.valor) || 0), 0);
 
             return (
               <div
                 key={group.plano}
+                className="sales-group-card"
                 style={{
                   background: "linear-gradient(180deg, rgba(13,21,38,1), rgba(10,16,29,1))",
                   border: "1px solid rgba(51,65,85,0.55)",
@@ -244,22 +312,35 @@ export default function VendasTab({
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
+                    flexWrap: "wrap",
                     gap: 10,
                     background: `linear-gradient(135deg, ${color}1f, rgba(15,23,42,0.88))`,
                     border: "none",
                     cursor: "pointer",
                   }}
                 >
-                  <div style={{ color, fontWeight: 800, letterSpacing: "0.01em", display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ color: "#cbd5e1", fontSize: 12 }}>{isOpen ? "▼" : "▶"}</span>
-                    <span>{icon}</span>
-                    <span style={{ fontSize: 15 }}>{title}</span>
+                  <div style={{ color, fontWeight: 800, letterSpacing: "0.01em", display: "grid", gap: 5, minWidth: 220, flex: "1 1 280px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                      <span style={{ color: "#cbd5e1", fontSize: 12 }}>{isOpen ? "▼" : "▶"}</span>
+                      <span>{icon}</span>
+                      <span style={{ fontSize: 18 }}>{title}</span>
+                    </div>
+                    <div style={{ color: "#cbd5e1", fontSize: 15, fontWeight: 700, lineHeight: 1.35 }}>
+                      {group.items.length} venda{group.items.length !== 1 ? "s" : ""} | {fmtBRL(groupTotal)}
+                    </div>
                   </div>
                   <Badge color={color}>{group.items.length} venda{group.items.length !== 1 ? "s" : ""}</Badge>
                 </button>
 
-                {isOpen && (
-                  <>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateRows: isOpen ? "1fr" : "0fr",
+                    transition: "grid-template-rows 260ms ease, opacity 220ms ease",
+                    opacity: isOpen ? 1 : 0,
+                  }}
+                >
+                  <div style={{ overflow: "hidden" }}>
                 <div className="desktop-table" style={{ overflowX: "auto", padding: "4px 10px 10px" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 920 }}>
                     <thead>
@@ -357,9 +438,8 @@ export default function VendasTab({
                     </div>
                   ))}
                 </div>
-
-                  </>
-                )}
+                  </div>
+                </div>
               </div>
             );
           })}

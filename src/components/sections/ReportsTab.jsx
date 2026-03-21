@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, Line } from "recharts";
 import { PIE_COLORS, PLANO_COLORS, PLANO_ICONS, PLANO_LABELS } from "../../constants/sales";
 import { fmtBRL, fmtDate, fmtMonth } from "../../utils/sales";
 import { btnPrimary, inputStyle } from "../ui";
@@ -42,6 +42,34 @@ export default function ReportsTab({
     return acc;
   }, {});
   const groupedDailySalesEntries = Object.entries(groupedDailySales).sort((a, b) => (PLANO_LABELS[a[0]] || a[0]).localeCompare(PLANO_LABELS[b[0]] || b[0]));
+  const monthDataWithTotal = monthData.map((entry) => ({
+    ...entry,
+    total: monthPlanSeries.reduce((sum, plano) => sum + (Number(entry[plano]) || 0), 0),
+  }));
+
+  function RevenueTooltip({ active, payload, label }) {
+    if (!active || !payload?.length) return null;
+    const orderedPayload = payload
+      .filter((item) => item.dataKey !== "total" && Number(item.value) > 0)
+      .sort((a, b) => Number(b.value) - Number(a.value));
+    const total = payload.find((item) => item.dataKey === "total")?.value || 0;
+
+    return (
+      <div style={{ background: "linear-gradient(180deg,#0f172a,#111827)", border: "1px solid rgba(51,65,85,0.9)", borderRadius: 10, color: "#e2e8f0", padding: "10px 12px", minWidth: 180 }}>
+        <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 6 }}>{label}</div>
+        <div style={{ fontSize: 14, fontWeight: 800, color: "#22d3ee", marginBottom: 8 }}>Total: {fmtBRL(total)}</div>
+        <div style={{ display: "grid", gap: 4 }}>
+          {orderedPayload.map((item) => (
+            <div key={item.dataKey} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12 }}>
+              <span style={{ color: "#cbd5e1" }}>{PLANO_LABELS[item.dataKey] || item.dataKey}</span>
+              <span style={{ color: "#f8fafc", fontWeight: 700 }}>{fmtBRL(item.value)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   function toggleCategory(category) {
     setOpenCategories((current) => ({ ...current, [category]: !current[category] }));
   }
@@ -284,20 +312,31 @@ export default function ReportsTab({
       <div className="rel-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 18 }}>
         <div className="panel-surface" style={{ borderRadius: 14, padding: 24 }}>
           <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 18, color: "#f1f5f9", marginBottom: 2 }}>Receita por Mes</div>
-          <div style={{ fontSize: 12, color: "#475569", marginBottom: 18 }}>Separada por tipo de venda (Controle, Pos-pago, Seguro etc.)</div>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={monthData} barSize={28}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="name" tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(value) => `R$${(value / 1000).toFixed(0)}k`} />
-              <Tooltip
-                contentStyle={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 8, color: "#e2e8f0" }}
-                formatter={(value, name) => [fmtBRL(value), PLANO_LABELS[name] || name]}
-              />
+          <div style={{ fontSize: 12, color: "#475569", marginBottom: 18 }}>Colunas separadas por servico em cada mes + linha de total mensal.</div>
+          <ResponsiveContainer width="100%" height={320}>
+            <BarChart data={monthDataWithTotal} barSize={36} barGap={1} barCategoryGap="2%" margin={{ top: 10, right: 6, left: -8, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="4 4" stroke="rgba(51,65,85,0.65)" vertical={false} />
+              <XAxis dataKey="name" tick={{ fill: "#94a3b8", fontSize: 12, fontWeight: 700 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(value) => `R$${(value / 1000).toFixed(0)}k`} />
+              <Tooltip content={<RevenueTooltip />} cursor={{ fill: "rgba(34,211,238,0.08)", stroke: "rgba(34,211,238,0.35)", strokeWidth: 1 }} />
               <Legend formatter={(value) => PLANO_LABELS[value] || value} wrapperStyle={{ fontSize: 11, color: "#94a3b8" }} />
               {monthPlanSeries.map((plano, index) => (
-                <Bar key={plano} dataKey={plano} stackId="receita" fill={PLANO_COLORS[plano] || PIE_COLORS[index % PIE_COLORS.length]} radius={[index === monthPlanSeries.length - 1 ? 6 : 0, index === monthPlanSeries.length - 1 ? 6 : 0, 0, 0]} />
+                <Bar
+                  key={plano}
+                  dataKey={plano}
+                  fill={PLANO_COLORS[plano] || PIE_COLORS[index % PIE_COLORS.length]}
+                  fillOpacity={0.88}
+                  radius={[4, 4, 0, 0]}
+                  animationDuration={700}
+                  activeBar={{
+                    fillOpacity: 1,
+                    stroke: "rgba(226,232,240,0.65)",
+                    strokeWidth: 1,
+                    radius: [6, 6, 0, 0],
+                  }}
+                />
               ))}
+              <Line type="monotone" dataKey="total" stroke="#22d3ee" strokeWidth={2.2} dot={{ r: 2, strokeWidth: 1, fill: "#0f172a" }} activeDot={{ r: 4 }} />
             </BarChart>
           </ResponsiveContainer>
         </div>

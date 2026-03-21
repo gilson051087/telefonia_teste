@@ -52,6 +52,7 @@ const APP_STYLES = `
     color:var(--text);
   }
   @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
   button:focus-visible,
   input:focus-visible,
   select:focus-visible{
@@ -66,6 +67,38 @@ const APP_STYLES = `
     border:1px solid var(--line);
     border-radius:16px;
     box-shadow:0 12px 26px rgba(2,6,23,0.32);
+  }
+  .stat-card{
+    transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+    animation:fadeUp .34s ease both;
+  }
+  .kpi-grid .stat-card:nth-child(1){animation-delay:.02s;}
+  .kpi-grid .stat-card:nth-child(2){animation-delay:.05s;}
+  .kpi-grid .stat-card:nth-child(3){animation-delay:.08s;}
+  .kpi-grid .stat-card:nth-child(4){animation-delay:.11s;}
+  .kpi-grid .stat-card:nth-child(5){animation-delay:.14s;}
+  .kpi-grid .stat-card:nth-child(6){animation-delay:.17s;}
+  .kpi-grid .stat-card:nth-child(7){animation-delay:.2s;}
+  .sales-group-card{
+    transition:transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+    animation:fadeUp .3s ease both;
+  }
+  .sales-group-card:hover{
+    transform:translateY(-2px);
+    border-color:rgba(56,189,248,0.5) !important;
+    box-shadow:0 14px 28px rgba(14,165,233,0.18) !important;
+  }
+  .skeleton{
+    background:linear-gradient(90deg, rgba(51,65,85,0.3) 25%, rgba(100,116,139,0.45) 50%, rgba(51,65,85,0.3) 75%);
+    background-size:200% 100%;
+    animation:shimmer 1.2s linear infinite;
+    border-radius:12px;
+  }
+  .skeleton-card{
+    padding:14px;
+    border:1px solid rgba(71,85,105,0.45);
+    border-radius:16px;
+    background:linear-gradient(180deg, rgba(15,23,42,0.8), rgba(15,23,42,0.92));
   }
   .action-pill{
     border:none;
@@ -165,6 +198,10 @@ const APP_STYLES = `
     }
     .app-content{
       gap:16px;
+    }
+    .kpi-grid{
+      grid-template-columns:1fr !important;
+      justify-content:stretch;
     }
     .action-pill{
       min-height:40px;
@@ -271,7 +308,7 @@ export default function App() {
   const [fPlano, setFPlano] = useState("Todos");
   const [fVendedor, setFVendedor] = useState("Todos");
   const [fMes, setFMes] = useState(getTodayMonth);
-  const [fDia, setFDia] = useState(getTodayDate);
+  const [fDia, setFDia] = useState("");
   const [reportSeller, setReportSeller] = useState("Todos");
   const [monthlyReportMonth, setMonthlyReportMonth] = useState(getTodayMonth);
   const [dailyReportDate, setDailyReportDate] = useState(getTodayDate);
@@ -338,7 +375,7 @@ export default function App() {
 
       setCycleDate(nowDate);
       setFMes(getTodayMonth());
-      setFDia(nowDate);
+      setFDia("");
       setMonthlyReportMonth(getTodayMonth());
       setDailyReportDate(nowDate);
       setPage(1);
@@ -353,12 +390,14 @@ export default function App() {
     return venda.vendedorId === currentUser.id || venda.vendedor === currentUser.nome;
   });
 
+  const currentCycleMonth = cycleDate.slice(0, 7);
+
   const filtered = scopedVendas
     .filter((venda) => {
       const haystack = `${venda.cliente} ${venda.plano} ${venda.tipoPlano || ""} ${venda.descricao || ""} ${venda.vendedor || ""}`.toLowerCase();
       if (search && !haystack.includes(search.toLowerCase())) return false;
       if (fPlano !== "Todos" && venda.plano !== fPlano) return false;
-      if (fMes && venda.data?.slice(0, 7) !== fMes) return false;
+      if (venda.data?.slice(0, 7) !== currentCycleMonth) return false;
       if (fDia && venda.data !== fDia) return false;
       if (currentUser?.role === "admin" && fVendedor !== "Todos" && venda.vendedorId !== fVendedor) return false;
       return true;
@@ -379,7 +418,7 @@ export default function App() {
   const vendasComValor = scopedVendas.filter((venda) => venda.status === "Ativa");
   const ativas = vendasComValor;
   const totalVal = vendasComValor.reduce((sum, venda) => {
-    if (["Plano Controle", "Plano Pós-Pago", "TV", "Internet Residencial", "Internet Movel Mais"].includes(venda.plano)) {
+    if (["Plano Controle", "Plano Pós-Pago", "TV", "Internet Residencial", "Internet Movel Mais", "Seguro Movel Celular"].includes(venda.plano)) {
       const remuneracaoTabela = getRemunerationValue(venda.plano, venda.tipoPlano);
       return sum + (remuneracaoTabela ?? venda.valor);
     }
@@ -389,7 +428,7 @@ export default function App() {
   }, 0);
   const ticketCelularVendas = vendasComValor.filter((venda) => venda.plano === "Aparelho Celular");
   const ticketCelularTotal = ticketCelularVendas.reduce((sum, venda) => sum + venda.valor * 0.05, 0);
-  const ticketCelular = ticketCelularVendas.length ? ticketCelularTotal / ticketCelularVendas.length : 0;
+  const ticketCelular = ticketCelularTotal;
   const ticketAcessoriosVendas = vendasComValor.filter((venda) => venda.plano === "Acessorios");
   const ticketAcessoriosTotal = ticketAcessoriosVendas.reduce((sum, venda) => sum + venda.valor * 0.15, 0);
   const ticketAcessorios = ticketAcessoriosVendas.length ? ticketAcessoriosTotal / ticketAcessoriosVendas.length : 0;
@@ -398,12 +437,12 @@ export default function App() {
     const remuneracaoTabela = getRemunerationValue(venda.plano, venda.tipoPlano);
     return sum + (remuneracaoTabela ?? venda.valor);
   }, 0);
-  const pendentes = scopedVendas.filter((venda) => venda.status === "Pendente").length;
   const installationReminders = scopedVendas
     .filter((venda) => ["Internet Residencial", "TV"].includes(venda.plano) && venda.status !== "Cancelada" && venda.dataInstalacao)
     .filter((venda) => venda.dataInstalacao <= cycleDate)
     .map((venda) => {
-      const statusInstalacao = venda.statusInstalacao || "Pendente";
+      const statusInstalacao =
+        venda.statusInstalacao || (venda.status === "Ativa" ? "Instalado" : venda.status === "Cancelada" ? "Nao instalado" : "Pendente");
       return {
         id: venda.id,
         cliente: venda.cliente,
@@ -414,8 +453,9 @@ export default function App() {
         isInstalled: statusInstalacao === "Instalado",
       };
     })
+    .filter((item) => item.statusInstalacao === "Pendente")
     .sort((a, b) => a.dataInstalacao.localeCompare(b.dataInstalacao));
-  const pendingInstallationCount = installationReminders.filter((item) => !item.isInstalled).length;
+  const pendingInstallationCount = installationReminders.length;
 
   const byMonth = {};
   let hasOtherPlanoInMonth = false;
@@ -490,7 +530,7 @@ export default function App() {
         receita: activeRevenue,
       };
     })
-    .sort((a, b) => b.vendas - a.vendas || a.nome.localeCompare(b.nome));
+    .sort((a, b) => a.nome.localeCompare(b.nome));
 
   const saveVenda = useCallback(
     async (data) => {
@@ -639,14 +679,36 @@ export default function App() {
     setFPlano("Todos");
     setFVendedor("Todos");
     setFMes(getTodayMonth());
-    setFDia(getTodayDate());
+    setFDia("");
     setPage(1);
   }
 
   if (isBooting) {
     return (
-      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "#070e1c", color: "#e2e8f0", fontFamily: "'DM Sans',sans-serif" }}>
-        Carregando...
+      <div style={{ minHeight: "100vh", background: "#070e1c", color: "#e2e8f0", fontFamily: "'DM Sans',sans-serif" }}>
+        <style>{APP_STYLES}</style>
+        <div className="app-shell">
+          <div className="app-content">
+            <div className="panel-surface" style={{ padding: 18, display: "grid", gap: 12 }}>
+              <div className="skeleton" style={{ height: 24, width: 260 }} />
+              <div className="skeleton" style={{ height: 14, width: 180 }} />
+            </div>
+            <div className="kpi-grid">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div key={index} className="skeleton-card">
+                  <div className="skeleton" style={{ height: 12, width: 80, marginBottom: 10 }} />
+                  <div className="skeleton" style={{ height: 30, width: "70%", marginBottom: 10 }} />
+                  <div className="skeleton" style={{ height: 12, width: "55%" }} />
+                </div>
+              ))}
+            </div>
+            <div className="panel-surface" style={{ padding: 18, display: "grid", gap: 10 }}>
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div key={index} className="skeleton" style={{ height: 44, width: "100%" }} />
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -674,11 +736,10 @@ export default function App() {
         <div className="app-shell">
           <div className="app-content">
           <div className="kpi-grid">
-            <StatCard icon="💰" label="Receita Ativa" value={fmtBRL(totalVal)} sub={`${ativas.length} vendas ativas`} color="#22c55e" />
+            <StatCard icon="💰" label="Receita Total" value={fmtBRL(totalVal)} sub={`${ativas.length} vendas ativas`} color="#22c55e" featured />
             <StatCard icon="📲" label="Ticket Celular (5%)" value={fmtBRL(ticketCelular)} sub={`${ticketCelularVendas.length} vendas`} color="#10b981" />
             <StatCard icon="🎧" label="Ticket Acessorios (15%)" value={fmtBRL(ticketAcessorios)} sub={`${ticketAcessoriosVendas.length} vendas`} color="#ec4899" />
             <StatCard icon="📊" label="Controle + Pos + TV + Internet" value={fmtBRL(ticketPlanosPrincipaisTotal)} sub={`${ticketPlanosPrincipaisVendas.length} vendas`} color="#0ea5e9" />
-            <StatCard icon="📦" label="Total Lancamentos" value={scopedVendas.length} sub={`${pendentes} pendentes`} color="#a855f7" />
             <StatCard icon="📱" label="Planos Moveis" value={scopedVendas.filter((venda) => ["Plano Controle", "Plano Pós-Pago"].includes(venda.plano)).length} color="#10b981" />
             <StatCard icon="🌐" label="Internet + TV" value={scopedVendas.filter((venda) => ["Internet Residencial", "Internet Movel Mais", "TV"].includes(venda.plano) && venda.status === "Ativa").length} color="#f59e0b" />
           </div>
@@ -694,7 +755,6 @@ export default function App() {
               fVendedor={fVendedor}
               setFVendedor={setFVendedor}
               fMes={fMes}
-              setFMes={setFMes}
               fDia={fDia}
               setFDia={setFDia}
               filtered={filtered}
@@ -740,9 +800,20 @@ export default function App() {
           )}
 
           {tab === "vendedores" && currentUser.role === "admin" && (
-            <SellersTab sellerSummaries={sellerSummaries} onOpenSellerModal={() => setModal("seller")} onDeleteSeller={setSellerDeleteId} />
+            <SellersTab sellerSummaries={sellerSummaries} currentCycleMonth={currentCycleMonth} onOpenSellerModal={() => setModal("seller")} onDeleteSeller={setSellerDeleteId} />
           )}
           </div>
+          <footer
+            style={{
+              marginTop: 20,
+              textAlign: "center",
+              color: "#64748b",
+              fontSize: 12,
+              padding: "10px 6px 6px",
+            }}
+          >
+            © 2026 Painel de Vendas • Desenvolvido por Gilson Elias • Produto idealizado por Caio Cardoso
+          </footer>
         </div>
       </div>
 
