@@ -534,12 +534,30 @@ export default function App() {
 
   const saveVenda = useCallback(
     async (data) => {
+      const { autoSeguro, adicionarSeguro, tipoSeguro, ...baseData } = data || {};
       if (modal?.edit) {
-        const updated = await updateVenda(modal.edit.id, data);
+        const updated = await updateVenda(modal.edit.id, baseData);
         setVendas((current) => current.map((item) => (item.id === modal.edit.id ? normalizeLegacyVenda(updated) : item)));
       } else {
-        const created = await createVenda(data);
-        setVendas((current) => [normalizeLegacyVenda(created), ...current]);
+        const created = await createVenda(baseData);
+        const createdItems = [normalizeLegacyVenda(created)];
+
+        if (baseData.plano === "Aparelho Celular" && autoSeguro?.tipoPlano) {
+          const valorSeguro = getRemunerationValue("Seguro Movel Celular", autoSeguro.tipoPlano);
+          if (valorSeguro && valorSeguro > 0) {
+            const createdSeguro = await createVenda({
+              ...baseData,
+              plano: "Seguro Movel Celular",
+              tipoPlano: autoSeguro.tipoPlano,
+              valor: valorSeguro,
+              status: "Ativa",
+              descricao: baseData.descricao ? `${baseData.descricao} | Seguro incluso` : "Seguro incluso no lancamento de aparelho",
+            });
+            createdItems.unshift(normalizeLegacyVenda(createdSeguro));
+          }
+        }
+
+        setVendas((current) => [...createdItems, ...current]);
       }
       setModal(null);
     },

@@ -5,6 +5,7 @@ import { Field, btnPrimary, btnSecondary, inputStyle, labelStyle } from "../ui";
 
 export default function VendaForm({ initial, onSave, onClose, currentUser, sellers }) {
   const installationPlanos = ["Internet Residencial", "TV"];
+  const seguroOptions = REMUNERATION_OPTIONS_BY_PLANO["Seguro Movel Celular"] || [];
   const defaultSellerId = currentUser.role === "seller" ? currentUser.id : sellers[0]?.id || "";
   const defaultSellerName = currentUser.role === "seller" ? currentUser.nome : sellers[0]?.nome || "";
 
@@ -18,6 +19,8 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
     data: new Date().toISOString().split("T")[0],
     vendedor: defaultSellerName,
     vendedorId: defaultSellerId,
+    adicionarSeguro: false,
+    tipoSeguro: "",
   };
 
   const [form, setForm] = useState(initial ? { ...defaultForm, ...initial, plano: normalizePlanoName(initial.plano) } : defaultForm);
@@ -65,6 +68,8 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
         tipoPlano: "",
         valor: hasRemunerationOptions ? "" : current.valor,
         statusInstalacao: installationPlanos.includes(normalizedPlano) ? current.statusInstalacao || "Pendente" : current.statusInstalacao,
+        adicionarSeguro: normalizedPlano === "Aparelho Celular" ? current.adicionarSeguro : false,
+        tipoSeguro: normalizedPlano === "Aparelho Celular" ? current.tipoSeguro : "",
       }));
       return;
     }
@@ -98,6 +103,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
     if (remunerationOptions.length > 0 && !form.tipoPlano) next.tipoPlano = "Obrigatorio";
     if (usesInstallationStatus && !form.statusInstalacao) next.statusInstalacao = "Obrigatorio";
     if (!usesInstallationStatus && form.dataInstalacao && !form.statusInstalacao) next.statusInstalacao = "Obrigatorio";
+    if (!initial && currentPlano === "Aparelho Celular" && form.adicionarSeguro && !form.tipoSeguro) next.tipoSeguro = "Selecione o seguro";
     if (!form.valor || Number.isNaN(+form.valor) || +form.valor <= 0) next.valor = "Valor invalido";
     if (!form.data) next.data = "Obrigatorio";
     if (!form.vendedorId && currentUser.role === "admin") next.vendedor = "Selecione um vendedor";
@@ -115,6 +121,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
       setIsSaving(true);
       await onSave({
         ...form,
+        autoSeguro: !initial && currentPlano === "Aparelho Celular" && form.adicionarSeguro ? { tipoPlano: form.tipoSeguro } : null,
         status:
           usesInstallationStatus
             ? form.statusInstalacao === "Instalado"
@@ -254,6 +261,47 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
           {inp("data", "date")}
         </Field>
       </div>
+
+      {!initial && currentPlano === "Aparelho Celular" && (
+        <div style={{ borderTop: "1px solid #1e293b", margin: "6px 0 16px", paddingTop: 16 }}>
+          <div style={{ fontSize: 11, color: "#10b981", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 12 }}>
+            🛡️ Seguro automatico
+          </div>
+          <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+            <Field label="Incluir seguro junto com o celular">
+              <label style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 44, color: "#cbd5e1", fontSize: 14 }}>
+                <input
+                  type="checkbox"
+                  checked={Boolean(form.adicionarSeguro)}
+                  onChange={(e) =>
+                    setForm((current) => ({
+                      ...current,
+                      adicionarSeguro: e.target.checked,
+                      tipoSeguro: e.target.checked ? current.tipoSeguro : "",
+                    }))
+                  }
+                />
+                Adicionar venda de seguro automaticamente
+              </label>
+            </Field>
+            <Field label="Tipo de seguro" error={errors.tipoSeguro}>
+              <select
+                value={form.tipoSeguro || ""}
+                disabled={!form.adicionarSeguro}
+                onChange={(e) => setField("tipoSeguro", e.target.value)}
+                style={{ ...inputStyle, appearance: "none", borderColor: errors.tipoSeguro ? "#ef4444" : "#334155", opacity: form.adicionarSeguro ? 1 : 0.6 }}
+              >
+                <option value="">Selecione o seguro</option>
+                {seguroOptions.map((item) => (
+                  <option key={item.label} value={item.label}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+        </div>
+      )}
 
       {extras.length > 0 && (
         <div style={{ borderTop: "1px solid #1e293b", margin: "6px 0 16px", paddingTop: 16 }}>
