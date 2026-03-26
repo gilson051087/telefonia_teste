@@ -322,7 +322,21 @@ export default function VendasTab({
                   <div style={{ color, fontWeight: 800, letterSpacing: "0.01em", display: "grid", gap: 5, minWidth: 220, flex: "1 1 280px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                       <span style={{ color: "#cbd5e1", fontSize: 12 }}>{isOpen ? "▼" : "▶"}</span>
-                      <span>{icon}</span>
+                      <span
+                        style={{
+                          width: 30,
+                          height: 30,
+                          borderRadius: 999,
+                          display: "grid",
+                          placeItems: "center",
+                          fontSize: 15,
+                          background: `${color}2b`,
+                          border: `1px solid ${color}66`,
+                          boxShadow: `0 8px 14px ${color}22`,
+                        }}
+                      >
+                        {icon}
+                      </span>
                       <span style={{ fontSize: 18 }}>{title}</span>
                     </div>
                     <div style={{ color: "#cbd5e1", fontSize: 15, fontWeight: 700, lineHeight: 1.35 }}>

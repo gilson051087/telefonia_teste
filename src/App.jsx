@@ -24,8 +24,8 @@ import ReportsTab from "./components/sections/ReportsTab";
 import SellersTab from "./components/sections/SellersTab";
 import VendasTab from "./components/sections/VendasTab";
 import { Modal, Panel, StatCard, btnDanger, btnPrimary, btnSecondary } from "./components/ui";
-import { PLANOS, PLANO_COLORS, PLANO_EXTRAS, PLANO_ICONS, PLANO_LABELS, STORAGE_KEYS, MONTH_NAMES, getRemunerationValue } from "./constants/sales";
-import { exportExcelReport, fmtBRL, fmtDate, fmtMonth, loadUsers, loadVendas, normalizeLegacyVenda } from "./utils/sales";
+import { COMANDA_COMMON_FIELDS, PLANOS, PLANO_COLORS, PLANO_EXTRAS, PLANO_ICONS, PLANO_LABELS, STORAGE_KEYS, MONTH_NAMES, getRemunerationValue } from "./constants/sales";
+import { exportExcelReport, exportVendaComanda, fmtBRL, fmtDate, fmtMonth, loadUsers, loadVendas, normalizeLegacyVenda, slugify } from "./utils/sales";
 import "./App.css";
 
 const getTodayDate = () => new Date().toISOString().split("T")[0];
@@ -532,6 +532,13 @@ export default function App() {
     })
     .sort((a, b) => a.nome.localeCompare(b.nome));
 
+  const handleDownloadComanda = useCallback((venda) => {
+    if (!venda) return;
+    const baseDate = venda.data || new Date().toISOString().split("T")[0];
+    const safeClient = slugify(venda.cliente || "cliente").slice(0, 50) || "cliente";
+    exportVendaComanda(`comanda-venda-${baseDate}-${safeClient}.xls`, venda);
+  }, []);
+
   const saveVenda = useCallback(
     async (data) => {
       const { autoSeguro, adicionarSeguro, tipoSeguro, ...baseData } = data || {};
@@ -540,7 +547,108 @@ export default function App() {
         setVendas((current) => current.map((item) => (item.id === modal.edit.id ? normalizeLegacyVenda(updated) : item)));
       } else {
         const created = await createVenda(baseData);
-        const createdItems = [normalizeLegacyVenda(created)];
+        const createdVenda = normalizeLegacyVenda(created);
+        const createdItems = [createdVenda];
+
+        const additionalSales = [];
+        const addAdditional = (payload) => {
+          if (!payload?.plano || !payload?.tipoPlano || !payload?.valor || payload.valor <= 0) return;
+          additionalSales.push(payload);
+        };
+        const num = (value) => {
+          const parsed = Number(value);
+          return Number.isFinite(parsed) ? parsed : 0;
+        };
+
+        const additionalBase = {
+          cliente: baseData.cliente,
+          cpf: baseData.cpf,
+          data: baseData.data,
+          vendedor: baseData.vendedor,
+          vendedorId: baseData.vendedorId,
+          ordemVenda: baseData.ordemVenda,
+          cep: baseData.cep,
+          dataNascimento: baseData.dataNascimento,
+          descricao: baseData.descricao ? `${baseData.descricao} | Lancamento conjunto` : "Lancamento conjunto",
+          status: "Ativa",
+        };
+
+        const hasMovelExtra = Boolean(baseData.comandaMovelAtiva || baseData.comandaMovelServico);
+        const hasInternetExtra = Boolean(baseData.comandaInternetAtiva || baseData.comandaInternetPlano);
+        const hasTvExtra = Boolean(baseData.comandaTvAtiva || baseData.comandaTvPlano);
+        const hasAparelhoExtra = Boolean(baseData.comandaAparelhoAtiva || baseData.comandaAparelhoValor);
+        const hasAcessoriosExtra = Boolean(baseData.comandaAcessoriosAtiva || baseData.comandaAcessoriosValor);
+
+        const movelPlano = baseData.comandaMovelPlano || "Plano Controle";
+        if (hasMovelExtra && baseData.plano !== movelPlano && baseData.comandaMovelServico) {
+          addAdditional({
+            ...additionalBase,
+            plano: movelPlano,
+            tipoPlano: baseData.comandaMovelServico,
+            valor: getRemunerationValue(movelPlano, baseData.comandaMovelServico) || 0,
+            numero: baseData.comandaMovelNumero || "",
+            portabilidade: baseData.comandaMovelPortabilidade || baseData.comandaMovelNumero || "",
+            iccid: baseData.comandaMovelIccid || "",
+          });
+        }
+
+        if (hasInternetExtra && baseData.plano !== "Internet Residencial" && baseData.comandaInternetPlano) {
+          addAdditional({
+            ...additionalBase,
+            plano: "Internet Residencial",
+            tipoPlano: baseData.comandaInternetPlano,
+            valor: getRemunerationValue("Internet Residencial", baseData.comandaInternetPlano) || 0,
+            dataInstalacao: baseData.comandaInternetDataInstalacao || "",
+            contrato: baseData.comandaInternetContrato || "",
+            periodo: baseData.comandaInternetPeriodo || "",
+            hfcGpon: baseData.comandaInternetHfcGpon || "",
+          });
+        }
+
+        if (hasTvExtra && baseData.plano !== "TV" && baseData.comandaTvPlano) {
+          addAdditional({
+            ...additionalBase,
+            plano: "TV",
+            tipoPlano: baseData.comandaTvPlano,
+            valor: getRemunerationValue("TV", baseData.comandaTvPlano) || 0,
+            dataInstalacao: baseData.comandaTvDataInstalacao || "",
+            contrato: baseData.comandaTvContrato || "",
+            boxImediata: baseData.comandaTvBoxImediata || "",
+          });
+        }
+
+        if (hasAparelhoExtra && baseData.plano !== "Aparelho Celular") {
+          const aparelhoValor = num(baseData.comandaAparelhoValor);
+          if (aparelhoValor > 0) {
+            addAdditional({
+              ...additionalBase,
+              plano: "Aparelho Celular",
+              tipoPlano: baseData.comandaAparelhoModelo || "Aparelho adicional",
+              valor: aparelhoValor,
+              modelo: baseData.comandaAparelhoModelo || "",
+              imei: baseData.comandaAparelhoImei || "",
+            });
+          }
+        }
+
+        if (hasAcessoriosExtra && baseData.plano !== "Acessorios") {
+          const acessoriosValor = num(baseData.comandaAcessoriosValor);
+          if (acessoriosValor > 0) {
+            addAdditional({
+              ...additionalBase,
+              plano: "Acessorios",
+              tipoPlano: baseData.comandaAcessoriosDescricao || "Acessorio adicional",
+              valor: acessoriosValor,
+              modelo: baseData.comandaAcessoriosDescricao || "",
+              qty: baseData.comandaAcessoriosQuantidade || "",
+            });
+          }
+        }
+
+        if (additionalSales.length > 0) {
+          const createdAdditional = await Promise.all(additionalSales.map((payload) => createVenda(payload)));
+          createdItems.unshift(...createdAdditional.map((item) => normalizeLegacyVenda(item)));
+        }
 
         if (baseData.plano === "Aparelho Celular" && autoSeguro?.tipoPlano) {
           const valorSeguro = getRemunerationValue("Seguro Movel Celular", autoSeguro.tipoPlano);
@@ -558,10 +666,15 @@ export default function App() {
         }
 
         setVendas((current) => [...createdItems, ...current]);
+
+        const shouldExportComanda = window.confirm("Venda registrada com sucesso. Deseja gerar a planilha de comanda desta venda?");
+        if (shouldExportComanda) {
+          handleDownloadComanda(createdVenda);
+        }
       }
       setModal(null);
     },
-    [modal]
+    [handleDownloadComanda, modal]
   );
 
   const confirmDelete = useCallback(async () => {
@@ -899,7 +1012,21 @@ export default function App() {
                 gap: 14,
               }}
             >
-              <span style={{ fontSize: 36 }}>{PLANO_ICONS[viewItem.plano]}</span>
+              <span
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 999,
+                  display: "grid",
+                  placeItems: "center",
+                  fontSize: 24,
+                  background: `${PLANO_COLORS[viewItem.plano] || "#6366f1"}25`,
+                  border: `1px solid ${PLANO_COLORS[viewItem.plano] || "#6366f1"}66`,
+                  boxShadow: `0 10px 18px ${(PLANO_COLORS[viewItem.plano] || "#6366f1")}33`,
+                }}
+              >
+                {PLANO_ICONS[viewItem.plano]}
+              </span>
               <div>
                 <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 20, color: "#f1f5f9", fontWeight: 700 }}>{PLANO_LABELS[viewItem.plano] || viewItem.plano}</div>
                 <div style={{ color: "#94a3b8", fontSize: 13 }}>{viewItem.descricao || "Sem descricao"}</div>
@@ -914,6 +1041,7 @@ export default function App() {
               ["Vendedor", viewItem.vendedor || "—"],
               ["Valor", fmtBRL(viewItem.valor)],
               ["Data", fmtDate(viewItem.data)],
+              ...COMANDA_COMMON_FIELDS.map((field) => [field.label, viewItem[field.key] || "—"]),
               ...(PLANO_EXTRAS[viewItem.plano] || []).map((extra) => [extra.label, viewItem[extra.key] || "—"]),
             ].map(([label, value]) => (
               <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #1e293b", fontSize: 14 }}>
@@ -923,6 +1051,12 @@ export default function App() {
             ))}
 
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 8 }}>
+              <button
+                style={{ ...btnSecondary, borderColor: "#22d3ee", color: "#67e8f9" }}
+                onClick={() => handleDownloadComanda(viewItem)}
+              >
+                Baixar comanda
+              </button>
               <button style={btnSecondary} onClick={() => setViewItem(null)}>
                 Fechar
               </button>

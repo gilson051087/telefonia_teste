@@ -113,6 +113,12 @@ export function getRemunerationValue(plano, tipoPlano) {
 
 export const INSTALLATION_STATUS_OPTIONS = ["Pendente", "Instalado", "Nao instalado"];
 
+export const COMANDA_COMMON_FIELDS = [
+  { key: "ordemVenda", label: "Ordem de venda", type: "text", placeholder: "Ex: 129342591" },
+  { key: "cep", label: "CEP", type: "text", placeholder: "Ex: 82130110" },
+  { key: "dataNascimento", label: "Data de nascimento", type: "date" },
+];
+
 export const PLANO_EXTRAS = {
   "Plano Controle": [
     {
@@ -125,6 +131,7 @@ export const PLANO_EXTRAS = {
     { key: "franquia", label: "Franquia de Dados", type: "text", placeholder: "Ex: 15GB" },
     { key: "numero", label: "Numero do Chip", type: "text", placeholder: "Ex: (41) 99999-0000" },
     { key: "portabilidade", label: "Numero da Portabilidade", type: "text", placeholder: "Ex: (41) 98765-1234" },
+    { key: "iccid", label: "ICCID", type: "text", placeholder: "Ex: 8955..." },
   ],
   "Plano Pós-Pago": [
     {
@@ -137,6 +144,7 @@ export const PLANO_EXTRAS = {
     { key: "franquia", label: "Franquia de Dados", type: "text", placeholder: "Ex: Ilimitado" },
     { key: "numero", label: "Numero do Chip", type: "text", placeholder: "Ex: (41) 99999-0000" },
     { key: "portabilidade", label: "Numero da Portabilidade", type: "text", placeholder: "Ex: (41) 98888-7777" },
+    { key: "iccid", label: "ICCID", type: "text", placeholder: "Ex: 8955..." },
     { key: "linhas", label: "Qtd. Linhas", type: "number", placeholder: "1" },
   ],
   "Internet Residencial": [
@@ -159,6 +167,9 @@ export const PLANO_EXTRAS = {
       placeholderSelect: "Selecione o tipo do plano",
       options: REMUNERATION_OPTIONS_BY_PLANO["Internet Movel Mais"].map((item) => item.label),
     },
+    { key: "numero", label: "Numero do Chip", type: "text", placeholder: "Ex: (41) 99999-0000" },
+    { key: "portabilidade", label: "Numero da Portabilidade", type: "text", placeholder: "Ex: (41) 98888-7777" },
+    { key: "iccid", label: "ICCID", type: "text", placeholder: "Ex: 8955..." },
   ],
   TV: [
     {
@@ -191,6 +202,9 @@ export const PLANO_EXTRAS = {
       placeholderSelect: "Selecione o tipo do plano",
       options: REMUNERATION_OPTIONS_BY_PLANO["Seguro Movel Celular"].map((item) => item.label),
     },
+    { key: "numero", label: "Numero do Chip", type: "text", placeholder: "Ex: (41) 99999-0000" },
+    { key: "portabilidade", label: "Numero da Portabilidade", type: "text", placeholder: "Ex: (41) 98888-7777" },
+    { key: "iccid", label: "ICCID", type: "text", placeholder: "Ex: 8955..." },
   ],
 };
 
