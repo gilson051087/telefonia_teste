@@ -3,6 +3,7 @@ import { btnSecondary } from "./ui";
 export default function AppHeader({ currentUser, tab, onTabChange, onOpenSellerModal, onOpenPasswordModal, onLogout }) {
   const tabs = [
     ["vendas", "📋 Vendas"],
+    ["pendencias", "⏱ Pendências"],
     ["relatorios", "📊 Relatorios"],
     ...(currentUser.role === "admin" ? [["vendedores", "👥 Vendedores"]] : []),
   ];

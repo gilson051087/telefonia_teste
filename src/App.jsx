@@ -23,9 +23,11 @@ import VendaForm from "./components/forms/VendaForm";
 import ReportsTab from "./components/sections/ReportsTab";
 import SellersTab from "./components/sections/SellersTab";
 import VendasTab from "./components/sections/VendasTab";
+import PendenciasTab from "./components/sections/PendenciasTab";
 import { Modal, Panel, StatCard, btnDanger, btnPrimary, btnSecondary } from "./components/ui";
 import { COMANDA_COMMON_FIELDS, PLANOS, PLANO_COLORS, PLANO_EXTRAS, PLANO_ICONS, PLANO_LABELS, STORAGE_KEYS, MONTH_NAMES, getRemunerationValue } from "./constants/sales";
 import { exportExcelReport, exportVendaComanda, fmtBRL, fmtDate, fmtMonth, loadUsers, loadVendas, normalizeLegacyVenda, slugify } from "./utils/sales";
+import { appendHistory, buildPendingQueue, getInstallationStatus } from "./utils/workflow";
 import "./App.css";
 
 const getTodayDate = () => new Date().toISOString().split("T")[0];
@@ -281,7 +283,7 @@ const APP_STYLES = `
       grid-template-columns:1fr;
     }
   }
-   (max-width: 480px){
+    @media (max-width: 480px){
     .plan-grid{
       grid-template-columns:1fr !important;
     }
@@ -317,6 +319,7 @@ export default function App() {
   const [sortDir, setSortDir] = useState("desc");
   const [page, setPage] = useState(1);
   const PER_PAGE = 8;
+  const BACKUP_DAILY_PREFIX = "telefonia_backup_daily_";
 
   const sellers = users.filter((user) => user.role === "seller");
 
@@ -441,8 +444,7 @@ export default function App() {
     .filter((venda) => ["Internet Residencial", "TV"].includes(venda.plano) && venda.status !== "Cancelada" && venda.dataInstalacao)
     .filter((venda) => venda.dataInstalacao <= cycleDate)
     .map((venda) => {
-      const statusInstalacao =
-        venda.statusInstalacao || (venda.status === "Ativa" ? "Instalado" : venda.status === "Cancelada" ? "Nao instalado" : "Pendente");
+      const statusInstalacao = getInstallationStatus(venda);
       return {
         id: venda.id,
         cliente: venda.cliente,
@@ -456,6 +458,7 @@ export default function App() {
     .filter((item) => item.statusInstalacao === "Pendente")
     .sort((a, b) => a.dataInstalacao.localeCompare(b.dataInstalacao));
   const pendingInstallationCount = installationReminders.length;
+  const pendingQueue = buildPendingQueue(scopedVendas, cycleDate);
 
   const byMonth = {};
   let hasOtherPlanoInMonth = false;
@@ -539,14 +542,108 @@ export default function App() {
     exportVendaComanda(`comanda-venda-${baseDate}-${safeClient}.xls`, venda);
   }, []);
 
+  useEffect(() => {
+    if (!currentUser || currentUser.role !== "admin") return;
+    const backupKey = `${BACKUP_DAILY_PREFIX}${getTodayDate()}`;
+    if (localStorage.getItem(backupKey)) return;
+    try {
+      localStorage.setItem(
+        backupKey,
+        JSON.stringify({
+          createdAt: new Date().toISOString(),
+          users: users.filter((user) => user.role === "seller"),
+          vendas,
+        })
+      );
+    } catch {}
+  }, [currentUser, users, vendas]);
+
+  const handleInstallationStatusUpdate = useCallback(
+    async (vendaId, nextStatusInstalacao) => {
+      const current = vendas.find((item) => item.id === vendaId);
+      if (!current) return;
+      const nextStatus =
+        nextStatusInstalacao === "Instalado"
+          ? "Ativa"
+          : nextStatusInstalacao === "Nao instalado"
+            ? "Cancelada"
+            : "Pendente";
+      const withHistory = {
+        ...current,
+        statusInstalacao: nextStatusInstalacao,
+        status: nextStatus,
+        historico: appendHistory(current, {
+          action: "status-instalacao",
+          from: getInstallationStatus(current),
+          to: nextStatusInstalacao,
+          userId: currentUser?.id || "",
+          userName: currentUser?.nome || "",
+        }),
+      };
+      const updated = await updateVenda(vendaId, withHistory);
+      setVendas((currentList) => currentList.map((item) => (item.id === vendaId ? normalizeLegacyVenda(updated) : item)));
+    },
+    [vendas, currentUser]
+  );
+
+  const handleBackupExport = useCallback(() => {
+    const payload = {
+      createdAt: new Date().toISOString(),
+      users: users.filter((user) => user.role === "seller"),
+      vendas,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `backup-telefonia-${getTodayDate()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [users, vendas]);
+
+  const handleBackupImport = useCallback(async (file) => {
+    if (!file) return;
+    const text = await file.text();
+    const parsed = JSON.parse(text || "{}");
+    const backupUsers = Array.isArray(parsed.users) ? parsed.users : [];
+    const backupVendas = Array.isArray(parsed.vendas) ? parsed.vendas : [];
+    if (!backupUsers.length && !backupVendas.length) {
+      window.alert("Backup vazio ou inválido.");
+      return;
+    }
+    await migrateLegacyData({ users: backupUsers, vendas: backupVendas });
+    const [loadedUsers, loadedVendas] = await Promise.all([listUsers(), listVendas()]);
+    setUsers(loadedUsers);
+    setVendas(loadedVendas.map(normalizeLegacyVenda));
+    window.alert("Backup importado com sucesso.");
+  }, []);
+
   const saveVenda = useCallback(
     async (data) => {
       const { autoSeguro, adicionarSeguro, tipoSeguro, ...baseData } = data || {};
       if (modal?.edit) {
-        const updated = await updateVenda(modal.edit.id, baseData);
+        const current = vendas.find((item) => item.id === modal.edit.id) || {};
+        const updatedPayload = {
+          ...baseData,
+          historico: appendHistory(current, {
+            action: "edicao",
+            userId: currentUser?.id || "",
+            userName: currentUser?.nome || "",
+          }),
+        };
+        const updated = await updateVenda(modal.edit.id, updatedPayload);
         setVendas((current) => current.map((item) => (item.id === modal.edit.id ? normalizeLegacyVenda(updated) : item)));
       } else {
-        const created = await createVenda(baseData);
+        const created = await createVenda({
+          ...baseData,
+          historico: appendHistory({}, {
+            action: "criacao",
+            userId: currentUser?.id || "",
+            userName: currentUser?.nome || "",
+          }),
+        });
         const createdVenda = normalizeLegacyVenda(created);
         const createdItems = [createdVenda];
 
@@ -599,6 +696,8 @@ export default function App() {
             tipoPlano: baseData.comandaInternetPlano,
             valor: getRemunerationValue("Internet Residencial", baseData.comandaInternetPlano) || 0,
             dataInstalacao: baseData.comandaInternetDataInstalacao || "",
+            statusInstalacao: baseData.comandaInternetDataInstalacao ? "Pendente" : "",
+            status: baseData.comandaInternetDataInstalacao ? "Pendente" : "Ativa",
             contrato: baseData.comandaInternetContrato || "",
             periodo: baseData.comandaInternetPeriodo || "",
             hfcGpon: baseData.comandaInternetHfcGpon || "",
@@ -612,6 +711,8 @@ export default function App() {
             tipoPlano: baseData.comandaTvPlano,
             valor: getRemunerationValue("TV", baseData.comandaTvPlano) || 0,
             dataInstalacao: baseData.comandaTvDataInstalacao || "",
+            statusInstalacao: baseData.comandaTvDataInstalacao ? "Pendente" : "",
+            status: baseData.comandaTvDataInstalacao ? "Pendente" : "Ativa",
             contrato: baseData.comandaTvContrato || "",
             boxImediata: baseData.comandaTvBoxImediata || "",
           });
@@ -674,7 +775,7 @@ export default function App() {
       }
       setModal(null);
     },
-    [handleDownloadComanda, modal]
+    [handleDownloadComanda, modal, vendas, currentUser]
   );
 
   const confirmDelete = useCallback(async () => {
@@ -906,6 +1007,16 @@ export default function App() {
             />
           )}
 
+          {tab === "pendencias" && (
+            <PendenciasTab
+              installationPending={pendingQueue.installationPending}
+              installationOverdue={pendingQueue.installationOverdue}
+              installationUpcoming={pendingQueue.installationUpcoming}
+              onMarkInstalled={(vendaId) => handleInstallationStatusUpdate(vendaId, "Instalado")}
+              onMarkNotInstalled={(vendaId) => handleInstallationStatusUpdate(vendaId, "Nao instalado")}
+            />
+          )}
+
           {tab === "relatorios" && (
             <ReportsTab
               currentUser={currentUser}
@@ -927,6 +1038,8 @@ export default function App() {
               monthlyReportVendas={monthlyReportVendas}
               monthlyReportTotal={monthlyReportTotal}
               onExportMonthlyReport={handleExportMonthlyReport}
+              onExportBackup={handleBackupExport}
+              onImportBackup={handleBackupImport}
             />
           )}
 
@@ -1041,6 +1154,8 @@ export default function App() {
               ["Vendedor", viewItem.vendedor || "—"],
               ["Valor", fmtBRL(viewItem.valor)],
               ["Data", fmtDate(viewItem.data)],
+              ["Status", viewItem.status || "—"],
+              ["Status da instalação", getInstallationStatus(viewItem) || "—"],
               ...COMANDA_COMMON_FIELDS.map((field) => [field.label, viewItem[field.key] || "—"]),
               ...(PLANO_EXTRAS[viewItem.plano] || []).map((extra) => [extra.label, viewItem[extra.key] || "—"]),
             ].map(([label, value]) => (
@@ -1049,6 +1164,19 @@ export default function App() {
                 <span style={{ color: "#f1f5f9" }}>{value}</span>
               </div>
             ))}
+
+            {Array.isArray(viewItem.historico) && viewItem.historico.length > 0 && (
+              <div style={{ marginTop: 8, borderTop: "1px solid #1e293b", paddingTop: 10 }}>
+                <div style={{ color: "#94a3b8", fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Histórico</div>
+                <div style={{ display: "grid", gap: 6 }}>
+                  {viewItem.historico.slice().reverse().slice(0, 8).map((event, index) => (
+                    <div key={`${event.at || "evt"}-${index}`} style={{ fontSize: 12, color: "#cbd5e1" }}>
+                      {fmtDate(event.at || "")} · {event.action || "alteracao"} · {event.userName || "sistema"}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 8 }}>
               <button

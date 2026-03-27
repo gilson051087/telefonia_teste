@@ -1,8 +1,7 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen } from "@testing-library/react";
 import App from './App';
 
-test('renders learn react link', () => {
+test("renderiza tela de login quando não há sessão", () => {
   render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+  expect(screen.getByText(/Painel de Vendas/i)).toBeInTheDocument();
 });

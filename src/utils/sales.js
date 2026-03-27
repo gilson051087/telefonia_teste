@@ -345,6 +345,22 @@ export function exportVendaComanda(filename, venda = {}) {
         ? venda.comandaMovelPortabilidade || venda.comandaMovelNumero || ""
         : "";
   const titularIccid = isPlanoMovel ? venda.iccid || "" : hasComandaMovelExtra ? venda.comandaMovelIccid || "" : "";
+  const comandaDependentes = Array.isArray(venda.comandaDependentes)
+    ? venda.comandaDependentes
+        .filter((item) => item && (item.tipo || item.numero || item.portabilidade || item.iccid))
+        .slice(0, 5)
+    : [];
+  const dependentesRowsXml = Array.from({ length: 5 }, (_, index) => {
+    const dependente = comandaDependentes[index] || {};
+    return buildComandaRow([
+      buildComandaCell(`Dependente ${index + 1}`, { style: "ComandaLabel" }),
+      buildComandaCell(dependente.tipo || ""),
+      buildComandaCell(dependente.portabilidade || dependente.numero || "", { style: "ComandaValueCenter" }),
+      buildComandaCell("", { style: "ComandaValueCenter" }),
+      buildComandaCell("", { style: "ComandaValueCenter" }),
+      buildComandaCell(dependente.iccid || "", { style: "ComandaValueCenter" }),
+    ]);
+  }).join("");
   const modelo = isPlanoAparelho ? venda.modelo || "" : hasComandaAparelhoExtra ? venda.comandaAparelhoModelo || "" : "";
   const imei = isPlanoAparelho ? venda.imei || "" : hasComandaAparelhoExtra ? venda.comandaAparelhoImei || "" : "";
   const valorPre = isPlanoAparelho ? Number(venda.valor) || 0 : hasComandaAparelhoExtra ? Number(venda.comandaAparelhoValor) || 0 : 0;
@@ -457,11 +473,7 @@ export function exportVendaComanda(filename, venda = {}) {
         ${buildComandaRow([])}
         ${buildComandaRow([buildComandaCell("Plano", { style: "ComandaSection" }), buildComandaCell("Servico", { style: "ComandaSection" }), buildComandaCell("Numero portado", { style: "ComandaSection" }), buildComandaCell("Numero provisorio", { style: "ComandaSection" }), buildComandaCell("e-sim", { style: "ComandaSection" }), buildComandaCell("ICCID", { style: "ComandaSection" })])}
         ${buildComandaRow([buildComandaCell("Titular", { style: "ComandaLabel" }), buildComandaCell(titularServico), buildComandaCell(numeroPortado, { style: "ComandaValueCenter" }), buildComandaCell(numeroProvisorio, { style: "ComandaValueCenter" }), buildComandaCell("", { style: "ComandaValueCenter" }), buildComandaCell(titularIccid, { style: "ComandaValueCenter" })])}
-        ${buildComandaRow([buildComandaCell("Dependente 1", { style: "ComandaLabel" }), buildComandaCell(""), buildComandaCell("", { style: "ComandaValueCenter" }), buildComandaCell("", { style: "ComandaValueCenter" }), buildComandaCell("", { style: "ComandaValueCenter" }), buildComandaCell("", { style: "ComandaValueCenter" })])}
-        ${buildComandaRow([buildComandaCell("Dependente 2", { style: "ComandaLabel" }), buildComandaCell(""), buildComandaCell("", { style: "ComandaValueCenter" }), buildComandaCell("", { style: "ComandaValueCenter" }), buildComandaCell("", { style: "ComandaValueCenter" }), buildComandaCell("", { style: "ComandaValueCenter" })])}
-        ${buildComandaRow([buildComandaCell("Dependente 3", { style: "ComandaLabel" }), buildComandaCell(""), buildComandaCell("", { style: "ComandaValueCenter" }), buildComandaCell("", { style: "ComandaValueCenter" }), buildComandaCell("", { style: "ComandaValueCenter" }), buildComandaCell("", { style: "ComandaValueCenter" })])}
-        ${buildComandaRow([buildComandaCell("Dependente 4", { style: "ComandaLabel" }), buildComandaCell(""), buildComandaCell("", { style: "ComandaValueCenter" }), buildComandaCell("", { style: "ComandaValueCenter" }), buildComandaCell("", { style: "ComandaValueCenter" }), buildComandaCell("", { style: "ComandaValueCenter" })])}
-        ${buildComandaRow([buildComandaCell("Dependente 5", { style: "ComandaLabel" }), buildComandaCell(""), buildComandaCell("", { style: "ComandaValueCenter" }), buildComandaCell("", { style: "ComandaValueCenter" }), buildComandaCell("", { style: "ComandaValueCenter" }), buildComandaCell("", { style: "ComandaValueCenter" })])}
+        ${dependentesRowsXml}
         ${buildComandaRow([])}
         ${buildComandaRow([buildComandaCell("DADOS DOS APARELHOS", { style: "ComandaSection", mergeAcross: 3 }), buildComandaCell("SEGURO", { style: "ComandaSection", mergeAcross: 1 })])}
         ${buildComandaRow([buildComandaCell("Modelo", { style: "ComandaLabel" }), buildComandaCell(modelo, { mergeAcross: 2 }), buildComandaCell("Seguro", { style: "ComandaLabel" }), buildComandaCell(seguroTexto, { mergeAcross: 1 })])}

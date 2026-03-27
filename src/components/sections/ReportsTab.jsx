@@ -24,6 +24,8 @@ export default function ReportsTab({
   monthlyReportVendas,
   monthlyReportTotal,
   onExportMonthlyReport,
+  onExportBackup,
+  onImportBackup,
 }) {
   const [showMonthlySales, setShowMonthlySales] = useState(false);
   const [openCategories, setOpenCategories] = useState({});
@@ -77,6 +79,13 @@ export default function ReportsTab({
     setOpenDailyCategories((current) => ({ ...current, [category]: !current[category] }));
   }
 
+  function handleBackupFileChange(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    onImportBackup(file);
+    event.target.value = "";
+  }
+
   return (
     <div style={{ display: "grid", gap: 18 }}>
       {currentUser.role === "admin" && (
@@ -104,6 +113,24 @@ export default function ReportsTab({
               </option>
             ))}
           </select>
+        </div>
+      )}
+
+      {currentUser.role === "admin" && (
+        <div className="panel-surface" style={{ borderRadius: 14, padding: 18, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 20, color: "#f1f5f9", marginBottom: 2 }}>Backup</div>
+            <div style={{ color: "#94a3b8", fontSize: 13 }}>Exporte ou restaure backup em JSON (importação adiciona itens ausentes).</div>
+          </div>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <button onClick={onExportBackup} style={{ ...btnPrimary, padding: "9px 14px" }}>
+              Exportar backup
+            </button>
+            <label style={{ ...btnPrimary, padding: "9px 14px", cursor: "pointer", opacity: 0.9 }}>
+              Importar backup
+              <input type="file" accept="application/json" onChange={handleBackupFileChange} style={{ display: "none" }} />
+            </label>
+          </div>
         </div>
       )}
 

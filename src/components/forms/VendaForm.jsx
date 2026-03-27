@@ -52,6 +52,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
     comandaAcessoriosDescricao: "",
     comandaAcessoriosQuantidade: "",
     comandaAcessoriosValor: "",
+    posPagoDependentes: [],
   };
 
   const [form, setForm] = useState(() => {
@@ -97,6 +98,14 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
   const isCurrentTv = currentPlano === "TV";
   const isCurrentAparelho = currentPlano === "Aparelho Celular";
   const isCurrentAcessorios = currentPlano === "Acessorios";
+  const isCurrentPosPago = currentPlano === "Plano Pós-Pago";
+  const dependenteContaValue = getRemunerationValue("Plano Pós-Pago", "Dependente Conta") || 0;
+  const dependenteBandaLargaValue = getRemunerationValue("Plano Pós-Pago", "Dependente Banda Larga") || 0;
+  const dependentesList = Array.isArray(form.posPagoDependentes) ? form.posPagoDependentes : [];
+  const dependentesContaQtd = dependentesList.filter((item) => item?.tipo === "Dependente Conta").length;
+  const dependentesBandaLargaQtd = dependentesList.filter((item) => item?.tipo === "Dependente Banda Larga").length;
+  const dependentesAdicionaisTotal = dependentesContaQtd * dependenteContaValue + dependentesBandaLargaQtd * dependenteBandaLargaValue;
+  const canAddPosPagoDependentes = isCurrentPosPago && !!form.tipoPlano && !String(form.tipoPlano).startsWith("Dependente");
   const comandaServiceToggles = [
     { key: "comandaMovelAtiva", label: "Móvel" },
     { key: "comandaInternetAtiva", label: "Internet" },
@@ -159,6 +168,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
         adicionarSeguro: normalizedPlano === "Aparelho Celular" ? current.adicionarSeguro : false,
         tipoSeguro: normalizedPlano === "Aparelho Celular" ? current.tipoSeguro : "",
         tipoNumeroPortado: mobilePlanos.includes(normalizedPlano) ? current.tipoNumeroPortado || "numero-cliente" : current.tipoNumeroPortado,
+        posPagoDependentes: normalizedPlano === "Plano Pós-Pago" ? current.posPagoDependentes || [] : [],
       }));
       return;
     }
@@ -182,6 +192,38 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
       vendedorId: value,
       vendedor: selected?.nome || "",
     }));
+  }
+
+  function addDependente(tipo) {
+    setForm((current) => {
+      const currentList = Array.isArray(current.posPagoDependentes) ? current.posPagoDependentes : [];
+      return {
+        ...current,
+        posPagoDependentes: [...currentList, { tipo, numero: "", portabilidade: "", iccid: "" }],
+      };
+    });
+  }
+
+  function removeDependente(index) {
+    setForm((current) => {
+      const currentList = Array.isArray(current.posPagoDependentes) ? current.posPagoDependentes : [];
+      return {
+        ...current,
+        posPagoDependentes: currentList.filter((_, itemIndex) => itemIndex !== index),
+      };
+    });
+  }
+
+  function handleDependenteFieldChange(index, field, value) {
+    setForm((current) => {
+      const currentList = Array.isArray(current.posPagoDependentes) ? current.posPagoDependentes : [];
+      const nextList = [...currentList];
+      const currentItem = nextList[index] || { tipo: "Dependente Conta", numero: "", portabilidade: "", iccid: "" };
+      const nextValue =
+        field === "numero" || field === "portabilidade" ? maskPhone(value) : field === "iccid" ? maskICCID(value) : value;
+      nextList[index] = { ...currentItem, [field]: nextValue };
+      return { ...current, posPagoDependentes: nextList };
+    });
   }
 
   function validate() {
@@ -224,6 +266,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
             ? form.numero || ""
             : form.portabilidade || "",
         autoSeguro: !initial && currentPlano === "Aparelho Celular" && form.adicionarSeguro ? { tipoPlano: form.tipoSeguro } : null,
+        posPagoDependentes: !initial && isCurrentPosPago ? dependentesList : [],
         status:
           usesInstallationStatus
             ? form.statusInstalacao === "Instalado"
@@ -277,6 +320,8 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
                   ...current,
                   tipoPlano: nextValue,
                   valor: remunerationValue !== null ? remunerationValue.toFixed(2) : current.valor,
+                  posPagoDependentes:
+                    currentPlano === "Plano Pós-Pago" && String(nextValue).startsWith("Dependente") ? [] : current.posPagoDependentes,
                 }));
                 return;
               }
@@ -468,6 +513,128 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
         </Field>
       </div>
 
+      {extras.length > 0 && (
+        <div style={{ borderTop: "1px solid #1e293b", margin: "6px 0 16px", paddingTop: 16 }}>
+          <div style={{ fontSize: 11, color: PLANO_COLORS[currentPlano], fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+            <span
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: 999,
+                display: "grid",
+                placeItems: "center",
+                fontSize: 13,
+                background: `${PLANO_COLORS[currentPlano]}22`,
+                border: `1px solid ${PLANO_COLORS[currentPlano]}66`,
+              }}
+            >
+              {PLANO_ICONS[currentPlano]}
+            </span>
+            Dados do {PLANO_LABELS[currentPlano]}
+          </div>
+          {usesPortabilitySelector && (
+            <div style={{ marginBottom: 12 }}>
+              <Field label="Numero portado">
+                <select
+                  value={form.tipoNumeroPortado || "numero-cliente"}
+                  onChange={(e) => setField("tipoNumeroPortado", e.target.value)}
+                  style={{ ...inputStyle, appearance: "none", borderColor: "#334155", maxWidth: 320 }}
+                >
+                  <option value="numero-cliente">Habilitação Nova</option>
+                  <option value="portabilidade">Portabilidade</option>
+                </select>
+              </Field>
+            </div>
+          )}
+          <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+            {extras
+              .filter((fieldConfig) => !(usesPortabilitySelector && fieldConfig.key === "portabilidade" && form.tipoNumeroPortado !== "portabilidade"))
+              .map((fieldConfig) => renderConfiguredField(fieldConfig))}
+          </div>
+          {!initial && canAddPosPagoDependentes && (
+            <div style={{ marginTop: 12, borderTop: "1px dashed #334155", paddingTop: 12 }}>
+              <div style={{ color: "#67e8f9", fontSize: 12, fontWeight: 700, marginBottom: 8 }}>Dependentes do pós-pago</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => addDependente("Dependente Conta")}
+                  style={{ ...btnSecondary, padding: "8px 12px", fontSize: 12 }}
+                >
+                  + Dependente Conta
+                </button>
+                <button
+                  type="button"
+                  onClick={() => addDependente("Dependente Banda Larga")}
+                  style={{ ...btnSecondary, padding: "8px 12px", fontSize: 12 }}
+                >
+                  + Dependente Banda Larga
+                </button>
+              </div>
+              {dependentesList.length > 0 && (
+                <div style={{ display: "grid", gap: 10 }}>
+                  {dependentesList.map((dependente, index) => (
+                    <div key={`dep-${index}`} style={{ border: "1px solid #334155", borderRadius: 10, padding: 10, background: "rgba(15,23,42,0.5)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 8, alignItems: "center" }}>
+                        <div style={{ color: "#cbd5e1", fontSize: 12, fontWeight: 700 }}>Dependente {index + 1}</div>
+                        <button
+                          type="button"
+                          onClick={() => removeDependente(index)}
+                          style={{ ...btnSecondary, padding: "6px 10px", fontSize: 11 }}
+                        >
+                          Remover
+                        </button>
+                      </div>
+                      <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+                        <Field label="Tipo">
+                          <select
+                            value={dependente?.tipo || "Dependente Conta"}
+                            onChange={(e) => handleDependenteFieldChange(index, "tipo", e.target.value)}
+                            style={{ ...inputStyle, appearance: "none", borderColor: "#334155" }}
+                          >
+                            <option value="Dependente Conta">Dependente Conta</option>
+                            <option value="Dependente Banda Larga">Dependente Banda Larga</option>
+                          </select>
+                        </Field>
+                        <Field label="Telefone">
+                          <input
+                            type="text"
+                            value={dependente?.numero || ""}
+                            placeholder="Ex: (41) 99999-0000"
+                            onChange={(e) => handleDependenteFieldChange(index, "numero", e.target.value)}
+                            style={{ ...inputStyle, borderColor: "#334155" }}
+                          />
+                        </Field>
+                        <Field label="Portabilidade">
+                          <input
+                            type="text"
+                            value={dependente?.portabilidade || ""}
+                            placeholder="Ex: (41) 98888-7777"
+                            onChange={(e) => handleDependenteFieldChange(index, "portabilidade", e.target.value)}
+                            style={{ ...inputStyle, borderColor: "#334155" }}
+                          />
+                        </Field>
+                        <Field label="ICCID">
+                          <input
+                            type="text"
+                            value={dependente?.iccid || ""}
+                            placeholder="Ex: 8955..."
+                            onChange={(e) => handleDependenteFieldChange(index, "iccid", e.target.value)}
+                            style={{ ...inputStyle, borderColor: "#334155" }}
+                          />
+                        </Field>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ marginTop: 6, fontSize: 12, color: "#93c5fd" }}>
+                Dependentes adicionais: {dependentesList.length} | Conta: {dependentesContaQtd} | Banda Larga: {dependentesBandaLargaQtd} | Valor adicional: R$ {dependentesAdicionaisTotal.toFixed(2)}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <div style={{ borderTop: "1px solid #1e293b", margin: "10px 0 16px", paddingTop: 16 }}>
         <div style={{ fontSize: 11, color: "#67e8f9", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 12 }}>
           Dados da comanda
@@ -641,47 +808,6 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
                 ))}
               </select>
             </Field>
-          </div>
-        </div>
-      )}
-
-      {extras.length > 0 && (
-        <div style={{ borderTop: "1px solid #1e293b", margin: "6px 0 16px", paddingTop: 16 }}>
-          <div style={{ fontSize: 11, color: PLANO_COLORS[currentPlano], fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
-            <span
-              style={{
-                width: 24,
-                height: 24,
-                borderRadius: 999,
-                display: "grid",
-                placeItems: "center",
-                fontSize: 13,
-                background: `${PLANO_COLORS[currentPlano]}22`,
-                border: `1px solid ${PLANO_COLORS[currentPlano]}66`,
-              }}
-            >
-              {PLANO_ICONS[currentPlano]}
-            </span>
-            Dados do {PLANO_LABELS[currentPlano]}
-          </div>
-          {usesPortabilitySelector && (
-            <div style={{ marginBottom: 12 }}>
-              <Field label="Numero portado">
-                <select
-                  value={form.tipoNumeroPortado || "numero-cliente"}
-                  onChange={(e) => setField("tipoNumeroPortado", e.target.value)}
-                  style={{ ...inputStyle, appearance: "none", borderColor: "#334155", maxWidth: 320 }}
-                >
-                  <option value="numero-cliente">Numero do cliente</option>
-                  <option value="portabilidade">Portabilidade</option>
-                </select>
-              </Field>
-            </div>
-          )}
-          <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-            {extras
-              .filter((fieldConfig) => !(usesPortabilitySelector && fieldConfig.key === "portabilidade" && form.tipoNumeroPortado !== "portabilidade"))
-              .map((fieldConfig) => renderConfiguredField(fieldConfig))}
           </div>
         </div>
       )}
