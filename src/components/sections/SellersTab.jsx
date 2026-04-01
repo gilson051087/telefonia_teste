@@ -24,7 +24,7 @@ export default function SellersTab({ sellerSummaries, currentCycleMonth, onOpenS
       >
         <div>
           <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 26, color: "#f1f5f9", marginBottom: 4 }}>Vendedores cadastrados</div>
-          <div style={{ color: "#94a3b8", fontSize: 14 }}>Visao mensal {fmtMonthLabel(currentCycleMonth)} da equipe e vendas vinculadas.</div>
+          <div style={{ color: "#94a3b8", fontSize: 14 }}>Visão mensal {fmtMonthLabel(currentCycleMonth)} da equipe e vendas vinculadas.</div>
         </div>
         <button onClick={onOpenSellerModal} style={btnPrimary}>
           + Novo vendedor
@@ -62,7 +62,7 @@ export default function SellersTab({ sellerSummaries, currentCycleMonth, onOpenS
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>{seller.nome}</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>{String(seller.nome || "").toUpperCase()}</div>
                   </div>
                   <div style={{ color: "#94a3b8", fontSize: 13 }}>Login: {seller.username}</div>
                 </div>

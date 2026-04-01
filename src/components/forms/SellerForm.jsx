@@ -8,16 +8,16 @@ export default function SellerForm({ users, onSave, onClose }) {
   const [isSaving, setIsSaving] = useState(false);
 
   async function handleSave() {
-    const nome = form.nome.trim();
+    const nome = form.nome.trim().toUpperCase();
     const username = form.username.trim().toLowerCase() || slugify(nome);
 
     if (!nome || !username || !form.senha.trim()) {
-      setError("Preencha nome, usuario e senha.");
+      setError("Preencha nome, usuário e senha.");
       return;
     }
 
     if (users.some((item) => item.username.toLowerCase() === username)) {
-      setError("Ja existe um usuario com esse login.");
+      setError("Já existe um usuário com esse login.");
       return;
     }
 
@@ -45,7 +45,7 @@ export default function SellerForm({ users, onSave, onClose }) {
           onChange={(e) =>
             setForm((current) => ({
               ...current,
-              nome: e.target.value,
+              nome: e.target.value.toUpperCase(),
               username: current.username ? current.username : slugify(e.target.value),
             }))
           }
@@ -53,7 +53,7 @@ export default function SellerForm({ users, onSave, onClose }) {
           placeholder="Ex: Maria Souza"
         />
       </Field>
-      <Field label="Usuario de acesso">
+      <Field label="Usuário de acesso">
         <input
           value={form.username}
           onChange={(e) => setForm((current) => ({ ...current, username: slugify(e.target.value) }))}

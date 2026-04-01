@@ -3,7 +3,7 @@ import { appendHistory, buildPendingQueue, getInstallationStatus } from "./workf
 describe("workflow utils", () => {
   test("getInstallationStatus normaliza status para internet/tv", () => {
     expect(getInstallationStatus({ plano: "Internet Residencial", status: "Ativa" })).toBe("Instalado");
-    expect(getInstallationStatus({ plano: "TV", status: "Cancelada" })).toBe("Nao instalado");
+    expect(getInstallationStatus({ plano: "TV", status: "Cancelada" })).toBe("Não instalado");
     expect(getInstallationStatus({ plano: "TV", status: "Pendente" })).toBe("Pendente");
     expect(getInstallationStatus({ plano: "Internet Residencial", status: "Ativa", dataInstalacao: "2026-03-25" })).toBe("Pendente");
     expect(getInstallationStatus({ plano: "Plano Controle", status: "Ativa" })).toBeNull();

@@ -19,7 +19,7 @@ export default function AuthScreen({ onLogin }) {
       setError("");
       await onLogin(loginForm.username.trim(), loginForm.senha);
     } catch (err) {
-      setError(err.message || "Usuario ou senha invalidos.");
+      setError(err.message || "Usuário ou senha inválidos.");
     } finally {
       setIsSubmitting(false);
     }
@@ -95,7 +95,7 @@ export default function AuthScreen({ onLogin }) {
                 fontFamily: "'DM Sans',sans-serif",
               }}
             >
-              Acesse com seu usuario e senha
+              Acesse com seu usuário e senha.
             </div>
           </div>
           <div className="auth-login-row" style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>

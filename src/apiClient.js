@@ -131,7 +131,7 @@ export async function createSeller(payload) {
   await ensureAdmin();
   const client = ensureSupabase();
 
-  const nome = String(payload?.nome || "").trim();
+  const nome = String(payload?.nome || "").trim().toUpperCase();
   const username = String(payload?.username || "").trim().toLowerCase();
   const senha = String(payload?.senha || "");
 

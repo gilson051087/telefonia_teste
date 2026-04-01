@@ -5,15 +5,10 @@ import { fmtBRL, fmtDate, fmtMonth } from "../../utils/sales";
 import { btnPrimary, inputStyle } from "../ui";
 
 export default function ReportsTab({
-  currentUser,
-  sellers,
-  scopedVendas,
   reportScopedVendas,
   monthData,
   monthPlanSeries,
   planoData,
-  reportSeller,
-  setReportSeller,
   dailyReportDate,
   setDailyReportDate,
   dailyReportVendas,
@@ -79,33 +74,19 @@ export default function ReportsTab({
 
   return (
     <div style={{ display: "grid", gap: 18 }}>
-      {currentUser.role === "admin" && (
-        <div
-          className="panel-surface"
-          style={{
-            borderRadius: 14,
-            padding: 18,
-            display: "flex",
-            justifyContent: "space-between",
-            gap: 16,
-            alignItems: "center",
-            flexWrap: "wrap",
-          }}
-        >
-          <div>
-            <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 22, color: "#f1f5f9", marginBottom: 4 }}>Filtro de Relatorio</div>
-            <div style={{ fontSize: 13, color: "#94a3b8" }}>Escolha um vendedor para aplicar no relatorio diario, mensal e na exportacao.</div>
-          </div>
-          <select value={reportSeller} onChange={(event) => setReportSeller(event.target.value)} style={{ ...inputStyle, width: 220, appearance: "none" }}>
-            <option value="Todos">Todos vendedores</option>
-            {sellers.map((seller) => (
-              <option key={seller.id} value={seller.id}>
-                {seller.nome}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
+      <div
+        className="panel-surface"
+        style={{
+          borderRadius: 14,
+          padding: "12px 14px",
+          borderColor: "rgba(14,165,233,0.4)",
+          background: "linear-gradient(135deg, rgba(14,165,233,0.14), rgba(15,23,42,0.9))",
+          color: "#cbd5e1",
+          fontSize: 12,
+        }}
+      >
+        <strong style={{ color: "#67e8f9" }}>Competência dos relatórios:</strong> vendas de Internet e TV instaladas usam a data de finalização para apuração diária e mensal.
+      </div>
 
       <div
         className="panel-surface"
@@ -118,11 +99,11 @@ export default function ReportsTab({
       >
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
           <div>
-            <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 22, color: "#f1f5f9", marginBottom: 4 }}>Relatorio Mensal</div>
-            <div style={{ fontSize: 13, color: "#94a3b8" }}>Selecione um mes para ver o consolidado e exportar em Excel.</div>
+            <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 22, color: "#f1f5f9", marginBottom: 4 }}>Relatório mensal</div>
+            <div style={{ fontSize: 13, color: "#94a3b8" }}>Selecione um mês para ver o consolidado e exportar em Excel.</div>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            <input type="month" value={monthlyReportMonth} onChange={(event) => setMonthlyReportMonth(event.target.value)} style={{ ...inputStyle, width: 180 }} />
+            <input aria-label="Selecionar mês do relatório mensal" type="month" value={monthlyReportMonth} onChange={(event) => setMonthlyReportMonth(event.target.value)} style={{ ...inputStyle, width: 180 }} />
             <button onClick={onExportMonthlyReport} disabled={!monthlyReportMonth || monthlyReportVendas.length === 0} style={{ ...btnPrimary, opacity: !monthlyReportMonth || monthlyReportVendas.length === 0 ? 0.5 : 1 }}>
               Exportar Excel
             </button>
@@ -131,15 +112,15 @@ export default function ReportsTab({
 
         <div className="rel-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
           <div style={{ background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.15)", borderRadius: 12, padding: 14 }}>
-            <div style={{ color: "#64748b", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Mes</div>
+            <div style={{ color: "#64748b", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Mês</div>
             <div style={{ color: "#f1f5f9", fontSize: 20, fontWeight: 700 }}>{monthlyReportMonth ? fmtMonth(monthlyReportMonth) : "Selecione"}</div>
           </div>
           <div style={{ background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.15)", borderRadius: 12, padding: 14 }}>
-            <div style={{ color: "#64748b", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Vendas do mes</div>
+            <div style={{ color: "#64748b", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Vendas do mês</div>
             <div style={{ color: "#f1f5f9", fontSize: 20, fontWeight: 700 }}>{monthlyReportVendas.length}</div>
           </div>
           <div style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 12, padding: 14 }}>
-            <div style={{ color: "#64748b", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Total do mes</div>
+            <div style={{ color: "#64748b", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Total do mês</div>
             <div style={{ color: "#10b981", fontSize: 20, fontWeight: 700 }}>{fmtBRL(monthlyReportTotal)}</div>
           </div>
         </div>
@@ -206,7 +187,7 @@ export default function ReportsTab({
                           <span>{fmtDate(venda.data)}</span>
                           <span>{venda.cliente}</span>
                           <span>{fmtBRL(venda.valor)}</span>
-                          <span>{venda.vendedor || "—"}</span>
+                          <span>{venda.vendedor ? String(venda.vendedor).toUpperCase() : "—"}</span>
                         </div>
                       ))}
                 </div>
@@ -227,11 +208,11 @@ export default function ReportsTab({
       >
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
           <div>
-            <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 22, color: "#f1f5f9", marginBottom: 4 }}>Relatorio Diario</div>
+            <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 22, color: "#f1f5f9", marginBottom: 4 }}>Relatório diário</div>
             <div style={{ fontSize: 13, color: "#94a3b8" }}>Selecione um dia para ver as vendas e exportar em Excel.</div>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            <input type="date" value={dailyReportDate} onChange={(event) => setDailyReportDate(event.target.value)} style={{ ...inputStyle, width: 180 }} />
+            <input aria-label="Selecionar data do relatório diário" type="date" value={dailyReportDate} onChange={(event) => setDailyReportDate(event.target.value)} style={{ ...inputStyle, width: 180 }} />
             <button onClick={onExportDailyReport} disabled={!dailyReportDate || dailyReportVendas.length === 0} style={{ ...btnPrimary, opacity: !dailyReportDate || dailyReportVendas.length === 0 ? 0.5 : 1 }}>
               Exportar Excel
             </button>
@@ -297,10 +278,10 @@ export default function ReportsTab({
                           fontSize: 13,
                         }}
                       >
-                        <span>{fmtDate(venda.data)}</span>
+                        <span>{fmtDate(venda.dataCompetencia || venda.data)}</span>
                         <span>{venda.cliente}</span>
                         <span>{fmtBRL(venda.valor)}</span>
-                        <span>{venda.vendedor || "—"}</span>
+                        <span>{venda.vendedor ? String(venda.vendedor).toUpperCase() : "—"}</span>
                       </div>
                     ))}
               </div>
@@ -311,8 +292,8 @@ export default function ReportsTab({
 
       <div className="rel-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 18 }}>
         <div className="panel-surface" style={{ borderRadius: 14, padding: 24 }}>
-          <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 18, color: "#f1f5f9", marginBottom: 2 }}>Receita por Mes</div>
-          <div style={{ fontSize: 12, color: "#475569", marginBottom: 18 }}>Colunas separadas por servico em cada mes + linha de total mensal.</div>
+          <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 18, color: "#f1f5f9", marginBottom: 2 }}>Receita por mês</div>
+          <div style={{ fontSize: 12, color: "#475569", marginBottom: 18 }}>Colunas por serviço em cada mês + linha de total mensal.</div>
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={monthDataWithTotal} barSize={36} barGap={1} barCategoryGap="2%" margin={{ top: 10, right: 6, left: -8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="4 4" stroke="rgba(51,65,85,0.65)" vertical={false} />
@@ -342,8 +323,8 @@ export default function ReportsTab({
         </div>
 
         <div className="panel-surface" style={{ borderRadius: 14, padding: 24 }}>
-          <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 18, color: "#f1f5f9", marginBottom: 2 }}>Por Produto</div>
-          <div style={{ fontSize: 12, color: "#475569", marginBottom: 10 }}>Distribuicao de receita</div>
+          <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 18, color: "#f1f5f9", marginBottom: 2 }}>Por produto</div>
+          <div style={{ fontSize: 12, color: "#475569", marginBottom: 10 }}>Distribuição de receita</div>
           <ResponsiveContainer width="100%" height={160}>
             <PieChart>
               <Pie data={planoData} cx="50%" cy="50%" innerRadius={44} outerRadius={72} dataKey="value" paddingAngle={3}>

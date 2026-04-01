@@ -18,7 +18,7 @@ export default function PasswordForm({ onSave, onClose }) {
     }
 
     if (form.newSenha !== form.confirmSenha) {
-      setError("A confirmacao nao confere.");
+      setError("A confirmação não confere.");
       return;
     }
 
@@ -50,7 +50,7 @@ export default function PasswordForm({ onSave, onClose }) {
           value={form.newSenha}
           onChange={(e) => setForm((current) => ({ ...current, newSenha: e.target.value }))}
           style={inputStyle}
-          placeholder="Minimo de 6 caracteres"
+          placeholder="Mínimo de 6 caracteres"
         />
       </Field>
       <Field label="Confirmar nova senha">

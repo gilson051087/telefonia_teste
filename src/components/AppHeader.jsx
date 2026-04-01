@@ -4,7 +4,7 @@ export default function AppHeader({ currentUser, tab, onTabChange, onOpenSellerM
   const tabs = [
     ["vendas", "📋 Vendas"],
     ["pendencias", "⏱ Pendências"],
-    ["relatorios", "📊 Relatorios"],
+    ["relatorios", "📊 Relatórios"],
     ...(currentUser.role === "admin" ? [["vendedores", "👥 Vendedores"]] : []),
   ];
 
@@ -79,7 +79,7 @@ export default function AppHeader({ currentUser, tab, onTabChange, onOpenSellerM
 
         <div className="app-user-actions" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
           <div className="app-user-meta" style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{currentUser.nome}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{String(currentUser.nome || "").toUpperCase()}</div>
             <div style={{ fontSize: 11, color: "#64748b" }}>{currentUser.role === "admin" ? "Administrador" : "Vendedor"}</div>
           </div>
           {currentUser.role === "admin" && (

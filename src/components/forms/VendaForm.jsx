@@ -3,7 +3,7 @@ import { COMANDA_COMMON_FIELDS, PLANOS, PLANO_COLORS, PLANO_EXTRAS, PLANO_ICONS,
 import { isValidCPF, maskCEP, maskCPF, maskICCID, maskPhone, normalizePlanoName } from "../../utils/sales";
 import { Field, btnPrimary, btnSecondary, inputStyle, labelStyle } from "../ui";
 
-export default function VendaForm({ initial, onSave, onClose, currentUser, sellers }) {
+export default function VendaForm({ initial, onSave, onClose, currentUser, sellers, onFeedback }) {
   const installationPlanos = ["Internet Residencial", "TV"];
   const mobilePlanos = ["Plano Controle", "Plano Pós-Pago", "Internet Movel Mais", "Seguro Movel Celular"];
   const seguroOptions = REMUNERATION_OPTIONS_BY_PLANO["Seguro Movel Celular"] || [];
@@ -53,6 +53,46 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
     comandaAcessoriosQuantidade: "",
     comandaAcessoriosValor: "",
     posPagoDependentes: [],
+    controleAdicionais: [],
+  };
+
+  const maskBirthDate = (value = "") => {
+    const digits = String(value).replace(/\D/g, "").slice(0, 8);
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+    return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+  };
+
+  const formatBirthDateForInput = (value = "") => {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(value))) {
+      const [year, month, day] = String(value).split("-");
+      return `${day}/${month}/${year}`;
+    }
+    return maskBirthDate(value);
+  };
+
+  const maskDateBR = (value = "") => {
+    const digits = String(value).replace(/\D/g, "").slice(0, 8);
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+    return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+  };
+
+  const isoToBR = (value = "") => {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(value))) {
+      const [year, month, day] = String(value).split("-");
+      return `${day}/${month}/${year}`;
+    }
+    return maskDateBR(value);
+  };
+
+  const brToIso = (value = "") => {
+    const cleaned = maskDateBR(value);
+    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(cleaned)) return null;
+    const [dd, mm, yyyy] = cleaned.split("/").map(Number);
+    const date = new Date(yyyy, mm - 1, dd);
+    if (date.getFullYear() !== yyyy || date.getMonth() !== mm - 1 || date.getDate() !== dd) return null;
+    return `${String(yyyy).padStart(4, "0")}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
   };
 
   const [form, setForm] = useState(() => {
@@ -71,6 +111,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
   });
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
+  const [dateDrafts, setDateDrafts] = useState({});
   const currentPlano = normalizePlanoName(form.plano) || "Plano Controle";
   const extras = PLANO_EXTRAS[currentPlano] || [];
   const remunerationOptions = useMemo(() => REMUNERATION_OPTIONS_BY_PLANO[currentPlano] || [], [currentPlano]);
@@ -99,13 +140,24 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
   const isCurrentAparelho = currentPlano === "Aparelho Celular";
   const isCurrentAcessorios = currentPlano === "Acessorios";
   const isCurrentPosPago = currentPlano === "Plano Pós-Pago";
+  const isCurrentControle = currentPlano === "Plano Controle";
+  const highlightedFieldKeys = ["tipoPlano", "numero", "portabilidade", "iccid", "linhas"];
+  const shouldShowPortabilidadeField = !usesPortabilitySelector || form.tipoNumeroPortado === "portabilidade";
+  const highlightedExtraFields = extras.filter(
+    (fieldConfig) => highlightedFieldKeys.includes(fieldConfig.key) && (fieldConfig.key !== "portabilidade" || shouldShowPortabilidadeField)
+  );
+  const remainingExtraFields = extras.filter(
+    (fieldConfig) => !highlightedFieldKeys.includes(fieldConfig.key) && (fieldConfig.key !== "portabilidade" || shouldShowPortabilidadeField)
+  );
   const dependenteContaValue = getRemunerationValue("Plano Pós-Pago", "Dependente Conta") || 0;
   const dependenteBandaLargaValue = getRemunerationValue("Plano Pós-Pago", "Dependente Banda Larga") || 0;
   const dependentesList = Array.isArray(form.posPagoDependentes) ? form.posPagoDependentes : [];
   const dependentesContaQtd = dependentesList.filter((item) => item?.tipo === "Dependente Conta").length;
   const dependentesBandaLargaQtd = dependentesList.filter((item) => item?.tipo === "Dependente Banda Larga").length;
+  const dependentesGratisQtd = dependentesList.filter((item) => item?.tipo === "Dependente Gratis").length;
   const dependentesAdicionaisTotal = dependentesContaQtd * dependenteContaValue + dependentesBandaLargaQtd * dependenteBandaLargaValue;
   const canAddPosPagoDependentes = isCurrentPosPago && !!form.tipoPlano && !String(form.tipoPlano).startsWith("Dependente");
+  const controleAdicionaisList = Array.isArray(form.controleAdicionais) ? form.controleAdicionais : [];
   const comandaServiceToggles = [
     { key: "comandaMovelAtiva", label: "Móvel" },
     { key: "comandaInternetAtiva", label: "Internet" },
@@ -169,6 +221,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
         tipoSeguro: normalizedPlano === "Aparelho Celular" ? current.tipoSeguro : "",
         tipoNumeroPortado: mobilePlanos.includes(normalizedPlano) ? current.tipoNumeroPortado || "numero-cliente" : current.tipoNumeroPortado,
         posPagoDependentes: normalizedPlano === "Plano Pós-Pago" ? current.posPagoDependentes || [] : [],
+        controleAdicionais: normalizedPlano === "Plano Controle" ? current.controleAdicionais || [] : [],
       }));
       return;
     }
@@ -226,18 +279,60 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
     });
   }
 
+  function addControleAdicional() {
+    const firstControleOption = (REMUNERATION_OPTIONS_BY_PLANO["Plano Controle"] || [])[0]?.label || "";
+    setForm((current) => {
+      const currentList = Array.isArray(current.controleAdicionais) ? current.controleAdicionais : [];
+      return {
+        ...current,
+        controleAdicionais: [...currentList, { tipoPlano: firstControleOption, numero: "", tipoNumeroPortado: "numero-cliente", portabilidade: "", iccid: "" }],
+      };
+    });
+  }
+
+  function removeControleAdicional(index) {
+    setForm((current) => {
+      const currentList = Array.isArray(current.controleAdicionais) ? current.controleAdicionais : [];
+      return {
+        ...current,
+        controleAdicionais: currentList.filter((_, itemIndex) => itemIndex !== index),
+      };
+    });
+  }
+
+  function handleControleAdicionalFieldChange(index, field, value) {
+    setForm((current) => {
+      const currentList = Array.isArray(current.controleAdicionais) ? current.controleAdicionais : [];
+      const nextList = [...currentList];
+      const currentItem = nextList[index] || { tipoPlano: "", numero: "", tipoNumeroPortado: "numero-cliente", portabilidade: "", iccid: "" };
+      let nextValue = value;
+      if (field === "numero" || field === "portabilidade") nextValue = maskPhone(value);
+      if (field === "iccid") nextValue = maskICCID(value);
+      const nextItem = { ...currentItem, [field]: nextValue };
+      if (field === "tipoNumeroPortado" && nextValue !== "portabilidade") {
+        nextItem.portabilidade = nextItem.numero || "";
+      }
+      nextList[index] = nextItem;
+      return { ...current, controleAdicionais: nextList };
+    });
+  }
+
   function validate() {
     const next = {};
-    if (!form.cliente.trim()) next.cliente = "Obrigatorio";
-    if (form.cpf && !isValidCPF(form.cpf)) next.cpf = "CPF invalido";
-    if (!form.plano) next.plano = "Obrigatorio";
-    if (remunerationOptions.length > 0 && !form.tipoPlano) next.tipoPlano = "Obrigatorio";
-    if (usesInstallationStatus && !form.statusInstalacao) next.statusInstalacao = "Obrigatorio";
-    if (!usesInstallationStatus && form.dataInstalacao && !form.statusInstalacao) next.statusInstalacao = "Obrigatorio";
+    if (!form.cliente.trim()) next.cliente = "Obrigatório";
+    if (form.cpf && !isValidCPF(form.cpf)) next.cpf = "CPF inválido";
+    if (!form.plano) next.plano = "Obrigatório";
+    if (remunerationOptions.length > 0 && !form.tipoPlano) next.tipoPlano = "Obrigatório";
+    if (usesInstallationStatus && !form.statusInstalacao) next.statusInstalacao = "Obrigatório";
+    if (!usesInstallationStatus && form.dataInstalacao && !form.statusInstalacao) next.statusInstalacao = "Obrigatório";
     if (!initial && currentPlano === "Aparelho Celular" && form.adicionarSeguro && !form.tipoSeguro) next.tipoSeguro = "Selecione o seguro";
-    if (!form.valor || Number.isNaN(+form.valor) || +form.valor <= 0) next.valor = "Valor invalido";
-    if (!form.data) next.data = "Obrigatorio";
+    if (!form.valor || Number.isNaN(+form.valor) || +form.valor <= 0) next.valor = "Valor inválido";
+    if (!form.data) next.data = "Obrigatório";
     if (!form.vendedorId && currentUser.role === "admin") next.vendedor = "Selecione um vendedor";
+    if (!initial && isCurrentControle) {
+      const hasInvalidControleAdicional = controleAdicionaisList.some((item) => !item?.tipoPlano);
+      if (hasInvalidControleAdicional) next.controleAdicionais = "Preencha o tipo de plano em todas as linhas adicionais";
+    }
     return next;
   }
 
@@ -267,11 +362,12 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
             : form.portabilidade || "",
         autoSeguro: !initial && currentPlano === "Aparelho Celular" && form.adicionarSeguro ? { tipoPlano: form.tipoSeguro } : null,
         posPagoDependentes: !initial && isCurrentPosPago ? dependentesList : [],
+        controleAdicionais: !initial && isCurrentControle ? controleAdicionaisList : [],
         status:
           usesInstallationStatus
             ? form.statusInstalacao === "Instalado"
               ? "Ativa"
-              : form.statusInstalacao === "Nao instalado"
+              : (form.statusInstalacao === "Nao instalado" || form.statusInstalacao === "Não instalado")
                 ? "Cancelada"
                 : "Pendente"
             : "Ativa",
@@ -280,7 +376,8 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
         vendedorId: currentUser.role === "seller" ? currentUser.id : form.vendedorId,
       });
     } catch (err) {
-      window.alert(err.message || "Erro ao salvar venda.");
+      if (onFeedback) onFeedback(err.message || "Erro ao salvar venda.", "error");
+      else window.alert(err.message || "Erro ao salvar venda.");
     } finally {
       setIsSaving(false);
     }
@@ -295,6 +392,39 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
       style={{ ...inputStyle, borderColor: errors[key] ? "#ef4444" : "#334155" }}
     />
   );
+
+  const renderMaskedIsoDateInput = (key, error, placeholder = "DD/MM/AAAA") => {
+    const draft = dateDrafts[key];
+    const displayValue = draft !== undefined ? draft : isoToBR(form[key] || "");
+
+    return (
+      <input
+        type="text"
+        inputMode="numeric"
+        maxLength={10}
+        value={displayValue}
+        placeholder={placeholder}
+        onChange={(e) => {
+          const masked = maskDateBR(e.target.value);
+          setDateDrafts((current) => ({ ...current, [key]: masked }));
+          if (!masked) {
+            setField(key, "");
+            return;
+          }
+          const iso = brToIso(masked);
+          if (iso) setField(key, iso);
+        }}
+        onBlur={() => {
+          setDateDrafts((current) => {
+            const next = { ...current };
+            delete next[key];
+            return next;
+          });
+        }}
+        style={{ ...inputStyle, borderColor: error ? "#ef4444" : "#334155" }}
+      />
+    );
+  };
 
   function renderConfiguredField(config) {
     const valueMaskByField = {
@@ -336,6 +466,18 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
               </option>
             ))}
           </select>
+        ) : config.key === "dataNascimento" ? (
+          <input
+            type="text"
+            inputMode="numeric"
+            maxLength={10}
+            value={formatBirthDateForInput(form[config.key] || "")}
+            placeholder="DD/MM/AAAA"
+            onChange={(e) => setField(config.key, maskBirthDate(e.target.value))}
+            style={{ ...inputStyle, borderColor: errors[config.key] ? "#ef4444" : "#334155" }}
+          />
+        ) : config.type === "date" ? (
+          renderMaskedIsoDateInput(config.key, errors[config.key])
         ) : (
           <input
             type={config.type}
@@ -375,6 +517,8 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
               </option>
             ))}
           </select>
+        ) : type === "date" ? (
+          renderMaskedIsoDateInput(key, false)
         ) : (
           <input
             type={type}
@@ -479,20 +623,44 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
               <option value="">Selecione</option>
               {sellers.map((seller) => (
                 <option key={seller.id} value={seller.id}>
-                  {seller.nome}
+                  {String(seller.nome || "").toUpperCase()}
                 </option>
               ))}
             </select>
           </Field>
         ) : (
           <Field label="Vendedor">
-            <input value={currentUser.nome} disabled style={{ ...inputStyle, opacity: 0.8, cursor: "not-allowed" }} />
+            <input value={String(currentUser.nome || "").toUpperCase()} disabled style={{ ...inputStyle, opacity: 0.8, cursor: "not-allowed" }} />
           </Field>
         )}
 
         <div style={{ gridColumn: "1/-1" }}>
-          <Field label="Descricao / observacao">{inp("descricao", "text", "Detalhes da venda...")}</Field>
+          <Field label="Descrição / observação">{inp("descricao", "text", "Detalhes da venda...")}</Field>
         </div>
+        {(usesPortabilitySelector || highlightedExtraFields.length > 0) && (
+          <div style={{ gridColumn: "1/-1", border: "1px solid #1e293b", borderRadius: 12, padding: 12, background: "rgba(15,23,42,0.35)" }}>
+            <div style={{ color: "#67e8f9", fontSize: 12, fontWeight: 700, marginBottom: 10 }}>Campos principais do plano</div>
+            {usesPortabilitySelector && (
+              <div style={{ marginBottom: 12 }}>
+                <Field label="Numero portado">
+                  <select
+                    value={form.tipoNumeroPortado || "numero-cliente"}
+                    onChange={(e) => setField("tipoNumeroPortado", e.target.value)}
+                    style={{ ...inputStyle, appearance: "none", borderColor: "#334155", maxWidth: 320 }}
+                  >
+                    <option value="numero-cliente">Habilitação Nova</option>
+                    <option value="portabilidade">Portabilidade</option>
+                  </select>
+                </Field>
+              </div>
+            )}
+            {highlightedExtraFields.length > 0 && (
+              <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+                {highlightedExtraFields.map((fieldConfig) => renderConfiguredField(fieldConfig))}
+              </div>
+            )}
+          </div>
+        )}
 
         <Field label="Valor (R$)" error={errors.valor}>
           <div>
@@ -505,11 +673,11 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
               step="0.01"
               readOnly={isRemunerationLocked}
             />
-            {isRemunerationLocked && <div style={{ marginTop: 6, fontSize: 11, color: "#67e8f9" }}>Valor preenchido automaticamente para remuneracao.</div>}
+            {isRemunerationLocked && <div style={{ marginTop: 6, fontSize: 11, color: "#67e8f9" }}>Valor preenchido automaticamente para remuneração.</div>}
           </div>
         </Field>
         <Field label="Data da venda" error={errors.data}>
-          {inp("data", "date")}
+          {renderMaskedIsoDateInput("data", errors.data)}
         </Field>
       </div>
 
@@ -532,25 +700,11 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
             </span>
             Dados do {PLANO_LABELS[currentPlano]}
           </div>
-          {usesPortabilitySelector && (
-            <div style={{ marginBottom: 12 }}>
-              <Field label="Numero portado">
-                <select
-                  value={form.tipoNumeroPortado || "numero-cliente"}
-                  onChange={(e) => setField("tipoNumeroPortado", e.target.value)}
-                  style={{ ...inputStyle, appearance: "none", borderColor: "#334155", maxWidth: 320 }}
-                >
-                  <option value="numero-cliente">Habilitação Nova</option>
-                  <option value="portabilidade">Portabilidade</option>
-                </select>
-              </Field>
+          {remainingExtraFields.length > 0 && (
+            <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+              {remainingExtraFields.map((fieldConfig) => renderConfiguredField(fieldConfig))}
             </div>
           )}
-          <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-            {extras
-              .filter((fieldConfig) => !(usesPortabilitySelector && fieldConfig.key === "portabilidade" && form.tipoNumeroPortado !== "portabilidade"))
-              .map((fieldConfig) => renderConfiguredField(fieldConfig))}
-          </div>
           {!initial && canAddPosPagoDependentes && (
             <div style={{ marginTop: 12, borderTop: "1px dashed #334155", paddingTop: 12 }}>
               <div style={{ color: "#67e8f9", fontSize: 12, fontWeight: 700, marginBottom: 8 }}>Dependentes do pós-pago</div>
@@ -569,6 +723,13 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
                 >
                   + Dependente Banda Larga
                 </button>
+                <button
+                  type="button"
+                  onClick={() => addDependente("Dependente Gratis")}
+                  style={{ ...btnSecondary, padding: "8px 12px", fontSize: 12 }}
+                >
+                  + Dependente Gratis
+                </button>
               </div>
               {dependentesList.length > 0 && (
                 <div style={{ display: "grid", gap: 10 }}>
@@ -584,17 +745,22 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
                           Remover
                         </button>
                       </div>
+                      <div style={{ marginBottom: 8 }}>
+                        <span
+                          style={{
+                            display: "inline-block",
+                            border: "1px solid #334155",
+                            borderRadius: 999,
+                            padding: "4px 10px",
+                            fontSize: 12,
+                            color: "#cbd5e1",
+                            background: "rgba(15,23,42,0.7)",
+                          }}
+                        >
+                          {dependente?.tipo || "Dependente Conta"}
+                        </span>
+                      </div>
                       <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-                        <Field label="Tipo">
-                          <select
-                            value={dependente?.tipo || "Dependente Conta"}
-                            onChange={(e) => handleDependenteFieldChange(index, "tipo", e.target.value)}
-                            style={{ ...inputStyle, appearance: "none", borderColor: "#334155" }}
-                          >
-                            <option value="Dependente Conta">Dependente Conta</option>
-                            <option value="Dependente Banda Larga">Dependente Banda Larga</option>
-                          </select>
-                        </Field>
                         <Field label="Telefone">
                           <input
                             type="text"
@@ -628,8 +794,90 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
                 </div>
               )}
               <div style={{ marginTop: 6, fontSize: 12, color: "#93c5fd" }}>
-                Dependentes adicionais: {dependentesList.length} | Conta: {dependentesContaQtd} | Banda Larga: {dependentesBandaLargaQtd} | Valor adicional: R$ {dependentesAdicionaisTotal.toFixed(2)}
+                Dependentes adicionais: {dependentesList.length} | Conta: {dependentesContaQtd} | Banda Larga: {dependentesBandaLargaQtd} | Gratis: {dependentesGratisQtd} | Valor adicional: R$ {dependentesAdicionaisTotal.toFixed(2)}
               </div>
+            </div>
+          )}
+          {!initial && isCurrentControle && (
+            <div style={{ marginTop: 12, borderTop: "1px dashed #334155", paddingTop: 12 }}>
+              <div style={{ color: "#67e8f9", fontSize: 12, fontWeight: 700, marginBottom: 8 }}>Linhas extras de Controle no mesmo lançamento</div>
+              <button
+                type="button"
+                onClick={addControleAdicional}
+                style={{ ...btnSecondary, padding: "8px 12px", fontSize: 12, marginBottom: 10 }}
+              >
+                + Adicionar linha de Controle
+              </button>
+              {errors.controleAdicionais && <div style={{ color: "#ef4444", fontSize: 12, marginBottom: 8 }}>{errors.controleAdicionais}</div>}
+              {controleAdicionaisList.length > 0 && (
+                <div style={{ display: "grid", gap: 10 }}>
+                  {controleAdicionaisList.map((item, index) => (
+                    <div key={`controle-extra-${index}`} style={{ border: "1px solid #334155", borderRadius: 10, padding: 10, background: "rgba(15,23,42,0.5)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 8, alignItems: "center" }}>
+                        <div style={{ color: "#cbd5e1", fontSize: 12, fontWeight: 700 }}>Linha extra {index + 1}</div>
+                        <button type="button" onClick={() => removeControleAdicional(index)} style={{ ...btnSecondary, padding: "6px 10px", fontSize: 11 }}>
+                          Remover
+                        </button>
+                      </div>
+                      <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+                        <Field label="Tipo de Plano">
+                          <select
+                            value={item?.tipoPlano || ""}
+                            onChange={(e) => handleControleAdicionalFieldChange(index, "tipoPlano", e.target.value)}
+                            style={{ ...inputStyle, appearance: "none", borderColor: "#334155" }}
+                          >
+                            <option value="">Selecione</option>
+                            {(REMUNERATION_OPTIONS_BY_PLANO["Plano Controle"] || []).map((option) => (
+                              <option key={option.label} value={option.label}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </Field>
+                        <Field label="Numero do cliente">
+                          <input
+                            type="text"
+                            value={item?.numero || ""}
+                            placeholder="Ex: (41) 99999-0000"
+                            onChange={(e) => handleControleAdicionalFieldChange(index, "numero", e.target.value)}
+                            style={{ ...inputStyle, borderColor: "#334155" }}
+                          />
+                        </Field>
+                        <Field label="Numero portado">
+                          <select
+                            value={item?.tipoNumeroPortado || "numero-cliente"}
+                            onChange={(e) => handleControleAdicionalFieldChange(index, "tipoNumeroPortado", e.target.value)}
+                            style={{ ...inputStyle, appearance: "none", borderColor: "#334155" }}
+                          >
+                            <option value="numero-cliente">Habilitação Nova</option>
+                            <option value="portabilidade">Portabilidade</option>
+                          </select>
+                        </Field>
+                        <Field label="Numero da portabilidade">
+                          <input
+                            type="text"
+                            value={item?.portabilidade || ""}
+                            placeholder="Ex: (41) 98888-7777"
+                            onChange={(e) => handleControleAdicionalFieldChange(index, "portabilidade", e.target.value)}
+                            style={{ ...inputStyle, borderColor: "#334155", opacity: item?.tipoNumeroPortado === "portabilidade" ? 1 : 0.7 }}
+                            disabled={item?.tipoNumeroPortado !== "portabilidade"}
+                          />
+                        </Field>
+                        <Field label="ICCID">
+                          <input
+                            type="text"
+                            value={item?.iccid || ""}
+                            placeholder="Ex: 8955..."
+                            onChange={(e) => handleControleAdicionalFieldChange(index, "iccid", e.target.value)}
+                            style={{ ...inputStyle, borderColor: "#334155" }}
+                          />
+                        </Field>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ marginTop: 6, fontSize: 12, color: "#93c5fd" }}>Linhas adicionais de Controle: {controleAdicionaisList.length}</div>
             </div>
           )}
         </div>
@@ -774,7 +1022,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
       {!initial && currentPlano === "Aparelho Celular" && (
         <div style={{ borderTop: "1px solid #1e293b", margin: "6px 0 16px", paddingTop: 16 }}>
           <div style={{ fontSize: 11, color: "#10b981", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 12 }}>
-            🛡️ Seguro automatico
+            🛡️ Seguro automático
           </div>
           <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
             <Field label="Incluir seguro junto com o celular">
@@ -817,7 +1065,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
           Cancelar
         </button>
         <button className="touch-btn lift-hover" style={{ ...btnPrimary, opacity: isSaving ? 0.7 : 1 }} onClick={handleSave} disabled={isSaving}>
-          {isSaving ? "Salvando..." : initial ? "Salvar alteracoes" : "Registrar venda"}
+          {isSaving ? "Salvando..." : initial ? "Salvar alterações" : "Registrar venda"}
         </button>
       </div>
     </div>

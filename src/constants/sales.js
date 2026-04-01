@@ -19,12 +19,12 @@ export const PLANOS = [
 
 export const PLANO_LABELS = {
   "Plano Controle": "Controle",
-  "Plano Pós-Pago": "Pos-pago",
+  "Plano Pós-Pago": "Pós-pago",
   "Internet Residencial": "Internet",
-  "Internet Movel Mais": "Internet Movel Mais",
+  "Internet Movel Mais": "Internet Móvel Mais",
   TV: "TV",
   "Aparelho Celular": "Aparelho",
-  Acessorios: "Acessorios",
+  Acessorios: "Acessórios",
   "Seguro Movel Celular": "Seguro",
 };
 
@@ -72,7 +72,6 @@ export const REMUNERATION_OPTIONS_BY_PLANO = {
     { label: "Claro Pós ON 300GB Combo", value: 309.9 },
   ],
   "Internet Residencial": [
-    { label: "Ilimitado Brasil", value: 35.0 },
     { label: "VIRTUA 350 MB", value: 99.9 },
     { label: "VIRTUA 600 MB", value: 119.9 },
     { label: "VIRTUA 400 PME", value: 79.0 },
@@ -112,7 +111,7 @@ export function getRemunerationValue(plano, tipoPlano) {
   return found ? found.value : null;
 }
 
-export const INSTALLATION_STATUS_OPTIONS = ["Pendente", "Instalado", "Nao instalado"];
+export const INSTALLATION_STATUS_OPTIONS = ["Pendente", "Instalado", "Não instalado"];
 
 export const COMANDA_COMMON_FIELDS = [
   { key: "ordemVenda", label: "Ordem de venda", type: "text", placeholder: "Ex: 129342591" },
@@ -129,8 +128,8 @@ export const PLANO_EXTRAS = {
       placeholderSelect: "Selecione o tipo do plano",
       options: REMUNERATION_OPTIONS_BY_PLANO["Plano Controle"].map((item) => item.label),
     },
-    { key: "numero", label: "Numero do Cliente", type: "text", placeholder: "Ex: (41) 99999-0000" },
-    { key: "portabilidade", label: "Numero da Portabilidade", type: "text", placeholder: "Ex: (41) 98765-1234" },
+    { key: "numero", label: "Número do Cliente", type: "text", placeholder: "Ex: (41) 99999-0000" },
+    { key: "portabilidade", label: "Número da Portabilidade", type: "text", placeholder: "Ex: (41) 98765-1234" },
     { key: "iccid", label: "ICCID", type: "text", placeholder: "Ex: 8955053165000***" },
   ],
   "Plano Pós-Pago": [
@@ -141,8 +140,8 @@ export const PLANO_EXTRAS = {
       placeholderSelect: "Selecione o tipo do plano",
       options: REMUNERATION_OPTIONS_BY_PLANO["Plano Pós-Pago"].map((item) => item.label),
     },
-    { key: "numero", label: "Numero do Cliente", type: "text", placeholder: "Ex: (41) 99999-0000" },
-    { key: "portabilidade", label: "Numero da Portabilidade", type: "text", placeholder: "Ex: (41) 98888-7777" },
+    { key: "numero", label: "Número do Cliente", type: "text", placeholder: "Ex: (41) 99999-0000" },
+    { key: "portabilidade", label: "Número da Portabilidade", type: "text", placeholder: "Ex: (41) 98888-7777" },
     { key: "iccid", label: "ICCID", type: "text", placeholder: "Ex: 8955..." },
     { key: "linhas", label: "Qtd. Linhas", type: "number", placeholder: "1" },
   ],
@@ -154,8 +153,8 @@ export const PLANO_EXTRAS = {
       placeholderSelect: "Selecione o tipo do plano",
       options: REMUNERATION_OPTIONS_BY_PLANO["Internet Residencial"].map((item) => item.label),
     },
-    { key: "dataInstalacao", label: "Data de Instalacao", type: "date" },
-    { key: "statusInstalacao", label: "Status da Instalacao", type: "select", placeholderSelect: "Selecione o status", options: INSTALLATION_STATUS_OPTIONS },
+    { key: "dataInstalacao", label: "Data de Instalação", type: "date" },
+    { key: "statusInstalacao", label: "Status da Instalação", type: "select", placeholderSelect: "Selecione o status", options: INSTALLATION_STATUS_OPTIONS },
     { key: "contrato", label: "Contrato", type: "text", placeholder: "Ex: 884/12345678-9", numericOnly: true },
   ],
   "Internet Movel Mais": [
@@ -166,8 +165,8 @@ export const PLANO_EXTRAS = {
       placeholderSelect: "Selecione o tipo do plano",
       options: REMUNERATION_OPTIONS_BY_PLANO["Internet Movel Mais"].map((item) => item.label),
     },
-    { key: "numero", label: "Numero do Cliente", type: "text", placeholder: "Ex: (41) 99999-0000" },
-    { key: "portabilidade", label: "Numero da Portabilidade", type: "text", placeholder: "Ex: (41) 98888-7777" },
+    { key: "numero", label: "Número do Cliente", type: "text", placeholder: "Ex: (41) 99999-0000" },
+    { key: "portabilidade", label: "Número da Portabilidade", type: "text", placeholder: "Ex: (41) 98888-7777" },
     { key: "iccid", label: "ICCID", type: "text", placeholder: "Ex: 8955..." },
   ],
   TV: [
@@ -178,8 +177,8 @@ export const PLANO_EXTRAS = {
       placeholderSelect: "Selecione o tipo do plano",
       options: REMUNERATION_OPTIONS_BY_PLANO.TV.map((item) => item.label),
     },
-    { key: "dataInstalacao", label: "Data de Instalacao", type: "date" },
-    { key: "statusInstalacao", label: "Status da Instalacao", type: "select", placeholderSelect: "Selecione o status", options: INSTALLATION_STATUS_OPTIONS },
+    { key: "dataInstalacao", label: "Data de Instalação", type: "date" },
+    { key: "statusInstalacao", label: "Status da Instalação", type: "select", placeholderSelect: "Selecione o status", options: INSTALLATION_STATUS_OPTIONS },
     { key: "pacote", label: "Streaming", type: "text", placeholder: "Ex: Box 4K" },
     { key: "contrato", label: "Contrato", type: "text", placeholder: "Ex: 884/12345678-9", numericOnly: true },
   ],
@@ -187,7 +186,7 @@ export const PLANO_EXTRAS = {
     { key: "modelo", label: "Modelo", type: "text", placeholder: "Ex: iPhone 15" },
     { key: "imei", label: "IMEI", type: "text", placeholder: "15 digitos" },
     { key: "cor", label: "Cor", type: "text", placeholder: "Ex: Preto" },
-    { key: "memoria", label: "Memoria", type: "text", placeholder: "Ex: 128GB" },
+    { key: "memoria", label: "Memória", type: "text", placeholder: "Ex: 128GB" },
   ],
   Acessorios: [
     { key: "modelo", label: "Produto / Modelo", type: "text", placeholder: "Ex: Capinha, Fone..." },
@@ -201,8 +200,8 @@ export const PLANO_EXTRAS = {
       placeholderSelect: "Selecione o tipo do plano",
       options: REMUNERATION_OPTIONS_BY_PLANO["Seguro Movel Celular"].map((item) => item.label),
     },
-    { key: "numero", label: "Numero do Cliente", type: "text", placeholder: "Ex: (41) 99999-0000" },
-    { key: "portabilidade", label: "Numero da Portabilidade", type: "text", placeholder: "Ex: (41) 98888-7777" },
+    { key: "numero", label: "Número do Cliente", type: "text", placeholder: "Ex: (41) 99999-0000" },
+    { key: "portabilidade", label: "Número da Portabilidade", type: "text", placeholder: "Ex: (41) 98888-7777" },
     { key: "iccid", label: "ICCID", type: "text", placeholder: "Ex: 8955..." },
   ],
 };
@@ -217,6 +216,6 @@ const INSTALLATION_PLANOS = ["Internet Residencial", "TV"];
 export function getVendaStatusLabel(status, plano) {
   if (!INSTALLATION_PLANOS.includes(plano)) return status;
   if (status === "Ativa") return "Instalado";
-  if (status === "Pendente") return "Pendente de instalacao";
+  if (status === "Pendente") return "Pendente de instalação";
   return "Cancelada";
 }

@@ -189,3 +189,65 @@ export function Field({ label, error, children }) {
     </div>
   );
 }
+
+export function ToastStack({ items = [], onDismiss }) {
+  if (!items.length) return null;
+
+  const palette = {
+    success: { bg: "rgba(16,185,129,0.16)", border: "rgba(16,185,129,0.45)", title: "Sucesso", icon: "✓" },
+    error: { bg: "rgba(239,68,68,0.16)", border: "rgba(239,68,68,0.45)", title: "Erro", icon: "!" },
+    info: { bg: "rgba(14,165,233,0.16)", border: "rgba(14,165,233,0.45)", title: "Aviso", icon: "i" },
+  };
+
+  return (
+    <div
+      aria-live="polite"
+      aria-atomic="false"
+      style={{
+        position: "fixed",
+        top: 16,
+        right: 16,
+        zIndex: 1300,
+        display: "grid",
+        gap: 10,
+        width: "min(360px, calc(100vw - 24px))",
+      }}
+    >
+      {items.map((toast) => {
+        const color = palette[toast.type] || palette.info;
+        return (
+          <div
+            key={toast.id}
+            role={toast.type === "error" ? "alert" : "status"}
+            style={{
+              borderRadius: 12,
+              border: `1px solid ${color.border}`,
+              background: `linear-gradient(180deg, ${color.bg}, rgba(15,23,42,0.96))`,
+              boxShadow: "0 12px 28px rgba(2,6,23,0.4)",
+              padding: "10px 12px",
+              display: "grid",
+              gap: 6,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#e2e8f0", fontSize: 12, fontWeight: 700 }}>
+                <span style={{ width: 18, height: 18, borderRadius: 999, display: "grid", placeItems: "center", background: "rgba(15,23,42,0.8)", border: "1px solid rgba(148,163,184,0.35)" }}>
+                  {color.icon}
+                </span>
+                <span>{color.title}</span>
+              </div>
+              <button
+                onClick={() => onDismiss?.(toast.id)}
+                aria-label="Fechar notificação"
+                style={{ border: "none", background: "transparent", color: "#94a3b8", cursor: "pointer", fontSize: 16, lineHeight: 1 }}
+              >
+                ×
+              </button>
+            </div>
+            <div style={{ color: "#cbd5e1", fontSize: 13, lineHeight: 1.35 }}>{toast.message}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { PLANOS, PLANO_COLORS, PLANO_ICONS, PLANO_LABELS } from "../../constants/sales";
-import { fmtBRL, fmtDate, fmtMonth } from "../../utils/sales";
+import { fmtBRL, fmtDate } from "../../utils/sales";
 import { Badge, btnPrimary, btnSecondary, inputStyle } from "../ui";
 
 function SortArrow({ col, sortBy, sortDir }) {
@@ -33,7 +33,6 @@ export default function VendasTab({
   pendingInstallationCount,
 }) {
   const [openGroups, setOpenGroups] = useState({});
-  const activeFilters = [fPlano !== "Todos", fMes, fDia, currentUser.role === "admin" && fVendedor !== "Todos", search.trim()].filter(Boolean).length;
 
   const grouped = PLANOS.map((plano) => ({
     plano,
@@ -66,7 +65,7 @@ export default function VendasTab({
         }}
       >
         <div>
-          <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 28, color: "#f1f5f9", marginBottom: 4 }}>Lancamentos de vendas</div>
+          <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 28, color: "#f1f5f9", marginBottom: 4 }}>Lançamentos de vendas</div>
           <div style={{ color: "#94a3b8", fontSize: 14 }}>Agora as vendas ficam separadas por categoria de plano.</div>
         </div>
         <button
@@ -83,15 +82,15 @@ export default function VendasTab({
           }}
         >
           <span style={{ fontSize: 20, lineHeight: 1 }}>➕</span>
-          <span>Nova venda rapida</span>
+          <span>Nova venda rápida</span>
         </button>
       </div>
 
       <button
         onClick={onOpenNew}
         className="touch-btn lift-hover"
-        aria-label="Nova venda rapida"
-        title="Nova venda rapida"
+        aria-label="Nova venda rápida"
+        title="Nova venda rápida"
         style={{
           ...btnPrimary,
           position: "fixed",
@@ -123,7 +122,7 @@ export default function VendasTab({
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
-            <div style={{ color: "#fef3c7", fontWeight: 700, fontSize: 14 }}>Lembretes de instalacao (Internet e TV)</div>
+            <div style={{ color: "#fef3c7", fontWeight: 700, fontSize: 14 }}>Lembretes de instalação (Internet e TV)</div>
             <Badge color={pendingInstallationCount > 0 ? "#f59e0b" : "#10b981"}>
               {pendingInstallationCount > 0 ? `${pendingInstallationCount} pendente${pendingInstallationCount > 1 ? "s" : ""}` : "Tudo instalado"}
             </Badge>
@@ -148,8 +147,8 @@ export default function VendasTab({
                   <strong style={{ color: "#f8fafc" }}>{item.cliente}</strong> · {PLANO_LABELS[item.plano] || item.plano} · {item.tipoPlano}
                   <span style={{ color: "#94a3b8" }}> · Inst.: {fmtDate(item.dataInstalacao)}</span>
                 </div>
-                <Badge color={item.statusInstalacao === "Instalado" ? "#10b981" : item.statusInstalacao === "Nao instalado" ? "#ef4444" : "#f59e0b"}>
-                  {item.statusInstalacao}
+                <Badge color={item.statusInstalacao === "Instalado" ? "#10b981" : (item.statusInstalacao === "Nao instalado" || item.statusInstalacao === "Não instalado") ? "#ef4444" : "#f59e0b"}>
+                  {item.statusInstalacao === "Nao instalado" ? "Não instalado" : item.statusInstalacao}
                 </Badge>
               </div>
             ))}
@@ -187,7 +186,8 @@ export default function VendasTab({
             🔍
           </span>
           <input
-            placeholder="Buscar por cliente ou plano..."
+            placeholder="Buscar cliente ou plano (ex.: maria internet)"
+            aria-label="Buscar vendas por cliente, plano ou descrição"
             value={search}
             onChange={(event) => {
               setSearch(event.target.value);
@@ -197,6 +197,7 @@ export default function VendasTab({
           />
         </div>
         <select
+          aria-label="Filtrar por plano"
           value={fPlano}
           onChange={(event) => {
             setFPlano(event.target.value);
@@ -213,10 +214,11 @@ export default function VendasTab({
         </select>
         <input
           type="month"
+          aria-label="Mês do ciclo automático"
           value={fMes}
           onChange={() => {}}
           disabled
-          title="Ciclo mensal ativo"
+          title="Ciclo mensal automático"
           style={{ ...inputStyle, width: 170, opacity: 0.75, cursor: "not-allowed" }}
         />
         <div style={{ position: "relative", width: 170 }}>
@@ -235,6 +237,7 @@ export default function VendasTab({
           </span>
           <input
             type="date"
+            aria-label="Filtrar por dia"
             value={fDia}
             onChange={(event) => {
               setFDia(event.target.value);
@@ -245,6 +248,7 @@ export default function VendasTab({
         </div>
         {currentUser.role === "admin" && (
           <select
+            aria-label="Filtrar por vendedor"
             value={fVendedor}
             onChange={(event) => {
               setFVendedor(event.target.value);
@@ -255,7 +259,7 @@ export default function VendasTab({
             <option value="Todos">Todos vendedores</option>
             {sellers.map((seller) => (
               <option key={seller.id} value={seller.id}>
-                {seller.nome}
+                {String(seller.nome || "").toUpperCase()}
               </option>
             ))}
           </select>
@@ -266,16 +270,24 @@ export default function VendasTab({
         <div style={{ marginLeft: "auto", fontSize: 13, color: "#64748b", fontWeight: 600 }}>{filtered.length} registro{filtered.length !== 1 ? "s" : ""}</div>
       </div>
 
-      {(fMes || fDia || activeFilters > 0) && (
-        <div style={{ marginBottom: 14, color: "#94a3b8", fontSize: 13 }}>
-          {fDia ? `Separando vendas do dia ${fmtDate(fDia)}.` : fMes ? `Separando vendas do mes ${fmtMonth(fMes)}.` : "Usando filtros personalizados."}
-        </div>
-      )}
+      <div
+        style={{
+          marginBottom: 14,
+          border: "1px solid rgba(14,165,233,0.35)",
+          borderRadius: 12,
+          background: "linear-gradient(135deg, rgba(14,165,233,0.12), rgba(15,23,42,0.72))",
+          padding: "10px 12px",
+          color: "#cbd5e1",
+          fontSize: 12,
+        }}
+      >
+        <strong style={{ color: "#67e8f9" }}>Regra de competência:</strong> para <strong>Internet</strong> e <strong>TV</strong>, quando a instalação é finalizada, a venda entra no mês vigente da finalização.
+      </div>
 
       {filtered.length === 0 ? (
         <div style={{ textAlign: "center", padding: "80px 0", color: "#475569" }}>
           <div style={{ fontSize: 52, marginBottom: 12 }}>📡</div>
-          <p style={{ fontFamily: "'Crimson Pro',serif", fontSize: 18, color: "#94a3b8", marginBottom: 6 }}>Nenhum lancamento encontrado</p>
+          <p style={{ fontFamily: "'Crimson Pro',serif", fontSize: 18, color: "#94a3b8", marginBottom: 6 }}>Nenhum lançamento encontrado</p>
           <button onClick={onOpenNew} className="touch-btn lift-hover" style={{ ...btnPrimary, marginTop: 12 }}>
             + Nova venda
           </button>
@@ -376,7 +388,7 @@ export default function VendasTab({
                               whiteSpace: "nowrap",
                             }}
                           >
-                            {col === "cliente" ? "Cliente" : col === "descricao" ? "Descricao" : col === "valor" ? "Valor" : col === "data" ? "Data" : "Vendedor"}
+                            {col === "cliente" ? "Cliente" : col === "descricao" ? "Descrição" : col === "valor" ? "Valor" : col === "data" ? "Data" : "Vendedor"}
                             <SortArrow col={col} sortBy={sortBy} sortDir={sortDir} />
                           </th>
                         ))}
@@ -390,7 +402,7 @@ export default function VendasTab({
                           <td style={{ padding: "11px 12px", color: "#94a3b8", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{venda.descricao || "-"}</td>
                           <td style={{ padding: "11px 12px", fontWeight: 700, color: "#34d399", fontFamily: "'Crimson Pro',serif", fontSize: 16 }}>{fmtBRL(venda.valor)}</td>
                           <td style={{ padding: "11px 12px", color: "#94a3b8" }}>{fmtDate(venda.data)}</td>
-                          <td style={{ padding: "11px 12px", color: "#cbd5e1" }}>{venda.vendedor || "-"}</td>
+                          <td style={{ padding: "11px 12px", color: "#cbd5e1" }}>{venda.vendedor ? String(venda.vendedor).toUpperCase() : "-"}</td>
                           <td style={{ padding: "11px 12px" }}>
                             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                               <button title="Ver detalhes" onClick={() => onView(venda)} className="action-pill action-pill-info">
@@ -428,11 +440,11 @@ export default function VendasTab({
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13 }}>
                           <span style={{ color: "#64748b" }}>Vendedor</span>
-                          <span style={{ color: "#e2e8f0" }}>{venda.vendedor || "-"}</span>
+                          <span style={{ color: "#e2e8f0" }}>{venda.vendedor ? String(venda.vendedor).toUpperCase() : "-"}</span>
                         </div>
                         {venda.descricao ? (
                           <div style={{ fontSize: 13 }}>
-                            <div style={{ color: "#64748b", marginBottom: 4 }}>Descricao</div>
+                            <div style={{ color: "#64748b", marginBottom: 4 }}>Descrição</div>
                             <div style={{ color: "#94a3b8", lineHeight: 1.5 }}>{venda.descricao}</div>
                           </div>
                         ) : null}

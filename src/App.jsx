@@ -24,7 +24,7 @@ import ReportsTab from "./components/sections/ReportsTab";
 import SellersTab from "./components/sections/SellersTab";
 import VendasTab from "./components/sections/VendasTab";
 import PendenciasTab from "./components/sections/PendenciasTab";
-import { Modal, Panel, StatCard, btnDanger, btnPrimary, btnSecondary } from "./components/ui";
+import { Modal, Panel, StatCard, ToastStack, btnDanger, btnPrimary, btnSecondary } from "./components/ui";
 import { COMANDA_COMMON_FIELDS, PLANOS, PLANO_COLORS, PLANO_EXTRAS, PLANO_ICONS, PLANO_LABELS, STORAGE_KEYS, MONTH_NAMES, getRemunerationValue } from "./constants/sales";
 import { exportExcelReport, exportVendaComanda, fmtBRL, fmtDate, fmtMonth, loadUsers, loadVendas, normalizeLegacyVenda, slugify } from "./utils/sales";
 import { appendHistory, buildPendingQueue, getInstallationStatus } from "./utils/workflow";
@@ -32,6 +32,13 @@ import "./App.css";
 
 const getTodayDate = () => new Date().toISOString().split("T")[0];
 const getTodayMonth = () => new Date().toISOString().slice(0, 7);
+const INSTALLATION_COMPETENCE_PLANOS = new Set(["Internet Residencial", "TV"]);
+const normalizeSearchText = (value = "") =>
+  String(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 const APP_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=DM+Sans:wght@400;500;600&display=swap');
   :root{
@@ -317,7 +324,6 @@ export default function App() {
   const [fVendedor, setFVendedor] = useState("Todos");
   const [fMes, setFMes] = useState(storedCycleMonth);
   const [fDia, setFDia] = useState("");
-  const [reportSeller, setReportSeller] = useState("Todos");
   const [monthlyReportMonth, setMonthlyReportMonth] = useState(storedCycleMonth);
   const [dailyReportDate, setDailyReportDate] = useState(getTodayDate);
   const [cycleDate, setCycleDate] = useState(getTodayDate);
@@ -325,7 +331,20 @@ export default function App() {
   const [sortBy, setSortBy] = useState("data");
   const [sortDir, setSortDir] = useState("desc");
   const [page, setPage] = useState(1);
+  const [toasts, setToasts] = useState([]);
   const PER_PAGE = 8;
+
+  const pushToast = useCallback((message, type = "info") => {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setToasts((current) => [...current, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((current) => current.filter((item) => item.id !== id));
+    }, 4500);
+  }, []);
+
+  const dismissToast = useCallback((id) => {
+    setToasts((current) => current.filter((item) => item.id !== id));
+  }, []);
 
   const sellers = users.filter((user) => user.role === "seller");
 
@@ -406,14 +425,42 @@ export default function App() {
     if (currentUser.role === "admin") return true;
     return venda.vendedorId === currentUser.id || venda.vendedor === currentUser.nome;
   });
-  const cycleScopedVendas = scopedVendas.filter((venda) => venda.data?.slice(0, 7) === currentCycleMonth);
 
-  const filtered = cycleScopedVendas
+  const getVendaCompetenceMonth = (venda) => {
+    if (!venda?.data) return "";
+    if (!INSTALLATION_COMPETENCE_PLANOS.has(venda.plano)) return venda.data.slice(0, 7);
+
+    const statusInstalacao = getInstallationStatus(venda);
+    const finalizacao = venda.dataFinalizacao || "";
+    if (statusInstalacao === "Instalado" && finalizacao) return finalizacao.slice(0, 7);
+
+    return venda.data.slice(0, 7);
+  };
+  const getVendaCompetenceDate = (venda) => {
+    if (!venda?.data) return "";
+    if (!INSTALLATION_COMPETENCE_PLANOS.has(venda.plano)) return venda.data;
+
+    const statusInstalacao = getInstallationStatus(venda);
+    if (statusInstalacao === "Instalado" && venda.dataFinalizacao) return venda.dataFinalizacao;
+
+    return venda.data;
+  };
+  const cycleScopedVendas = scopedVendas.filter((venda) => getVendaCompetenceMonth(venda) === currentCycleMonth);
+  const searchTerms = normalizeSearchText(search).split(/\s+/).filter(Boolean);
+
+  const filtered = scopedVendas
     .filter((venda) => {
-      const haystack = `${venda.cliente} ${venda.plano} ${venda.tipoPlano || ""} ${venda.descricao || ""} ${venda.vendedor || ""}`.toLowerCase();
-      if (search && !haystack.includes(search.toLowerCase())) return false;
+      const vendaCompetenceDate = getVendaCompetenceDate(venda);
+      if (searchTerms.length > 0) {
+        const haystack = normalizeSearchText(`${venda.cliente} ${PLANO_LABELS[venda.plano] || venda.plano} ${venda.tipoPlano || ""}`);
+        if (!searchTerms.every((term) => haystack.includes(term))) return false;
+      }
       if (fPlano !== "Todos" && venda.plano !== fPlano) return false;
-      if (fDia && venda.data !== fDia) return false;
+      if (fDia) {
+        if (vendaCompetenceDate !== fDia) return false;
+      } else if (getVendaCompetenceMonth(venda) !== currentCycleMonth) {
+        return false;
+      }
       if (currentUser?.role === "admin" && fVendedor !== "Todos" && venda.vendedorId !== fVendedor) return false;
       return true;
     })
@@ -473,19 +520,21 @@ export default function App() {
   const pendingQueue = buildPendingQueue(cycleScopedVendas, cycleDate);
 
   const byMonth = {};
+  const ensureMonthBucket = (month) => {
+    if (!month) return;
+    if (byMonth[month]) return;
+    byMonth[month] = { total: 0 };
+    PLANOS.forEach((plano) => {
+      byMonth[month][plano] = 0;
+    });
+  };
   let hasOtherPlanoInMonth = false;
+  ensureMonthBucket(currentCycleMonth);
   scopedVendas.forEach((venda) => {
     if (venda.status !== "Ativa") return;
-    const month = venda.data?.slice(0, 7);
+    const month = getVendaCompetenceMonth(venda);
     if (!month) return;
-    if (!byMonth[month]) {
-      byMonth[month] = {
-        total: 0,
-      };
-      PLANOS.forEach((plano) => {
-        byMonth[month][plano] = 0;
-      });
-    }
+    ensureMonthBucket(month);
 
     if (PLANOS.includes(venda.plano)) {
       byMonth[month][venda.plano] += venda.valor;
@@ -511,26 +560,19 @@ export default function App() {
   });
   const planoData = Object.entries(byPlano).map(([name, value]) => ({ name, value }));
 
-  const reportScopedVendas = scopedVendas.filter((venda) => {
-    if (currentUser?.role !== "admin") return true;
-    if (reportSeller === "Todos") return true;
-    return venda.vendedorId === reportSeller;
-  });
+  const reportScopedVendas = scopedVendas;
 
   const dailyReportVendas = reportScopedVendas
-    .filter((venda) => !dailyReportDate || venda.data === dailyReportDate)
-    .sort((a, b) => a.data.localeCompare(b.data) || a.cliente.localeCompare(b.cliente));
+    .map((venda) => ({ ...venda, dataCompetencia: getVendaCompetenceDate(venda) }))
+    .filter((venda) => !dailyReportDate || venda.dataCompetencia === dailyReportDate)
+    .sort((a, b) => a.dataCompetencia.localeCompare(b.dataCompetencia) || a.cliente.localeCompare(b.cliente));
   const dailyReportTotal = dailyReportVendas.filter((venda) => venda.status === "Ativa").reduce((sum, venda) => sum + venda.valor, 0);
   const monthlyReportVendas = reportScopedVendas
-    .filter((venda) => !monthlyReportMonth || venda.data?.slice(0, 7) === monthlyReportMonth)
+    .filter((venda) => !monthlyReportMonth || getVendaCompetenceMonth(venda) === monthlyReportMonth)
     .sort((a, b) => a.data.localeCompare(b.data) || a.cliente.localeCompare(b.cliente));
   const monthlyReportTotal = monthlyReportVendas.filter((venda) => venda.status === "Ativa").reduce((sum, venda) => sum + venda.valor, 0);
 
-  const reportSellerName = currentUser
-    ? currentUser.role === "admin"
-      ? sellers.find((seller) => seller.id === reportSeller)?.nome || "Todos vendedores"
-      : currentUser.nome
-    : "Todos vendedores";
+  const reportSellerName = currentUser?.role === "seller" ? String(currentUser.nome || "").toUpperCase() : "Todos vendedores";
 
   const sellerSummaries = sellers
     .map((seller) => {
@@ -561,13 +603,14 @@ export default function App() {
       const nextStatus =
         nextStatusInstalacao === "Instalado"
           ? "Ativa"
-          : nextStatusInstalacao === "Nao instalado"
+          : (nextStatusInstalacao === "Nao instalado" || nextStatusInstalacao === "Não instalado")
             ? "Cancelada"
             : "Pendente";
       const withHistory = {
         ...current,
         statusInstalacao: nextStatusInstalacao,
         status: nextStatus,
+        dataFinalizacao: nextStatusInstalacao === "Instalado" ? getTodayDate() : current.dataFinalizacao || "",
         historico: appendHistory(current, {
           action: "status-instalacao",
           from: getInstallationStatus(current),
@@ -578,33 +621,31 @@ export default function App() {
       };
       const updated = await updateVenda(vendaId, withHistory);
       setVendas((currentList) => currentList.map((item) => (item.id === vendaId ? normalizeLegacyVenda(updated) : item)));
-    },
-    [vendas, currentUser]
-  );
-
-  const handlePendingInstallationDelete = useCallback(
-    async (vendaId) => {
-      const current = vendas.find((item) => item.id === vendaId);
-      if (!current) return;
-
-      const shouldDelete = window.confirm(
-        `Excluir a venda de ${current.cliente || "cliente"} ao marcar como nao instalado? Esta acao nao pode ser desfeita.`
-      );
-      if (!shouldDelete) return;
-
-      try {
-        await deleteVenda(vendaId);
-        setVendas((currentList) => currentList.filter((item) => item.id !== vendaId));
-      } catch (err) {
-        window.alert(err.message || "Erro ao excluir venda.");
+      if (nextStatusInstalacao === "Instalado") {
+        pushToast("Instalação concluída e venda atualizada para o mês vigente.", "success");
+      } else {
+      pushToast("Status da instalação atualizado.", "success");
       }
     },
-    [vendas]
+    [vendas, currentUser, pushToast]
   );
+
+  const handleNotInstalledDelete = useCallback(async (vendaId) => {
+    const confirmed = window.confirm("Essa venda será excluída. Deseja continuar?");
+    if (!confirmed) return;
+
+    try {
+      await deleteVenda(vendaId);
+      setVendas((currentList) => currentList.filter((item) => item.id !== vendaId));
+      pushToast("Venda excluída com sucesso.", "success");
+    } catch (err) {
+      pushToast(err.message || "Erro ao excluir venda.", "error");
+    }
+  }, [pushToast]);
 
   const saveVenda = useCallback(
     async (data) => {
-      const { autoSeguro, adicionarSeguro, tipoSeguro, ...baseData } = data || {};
+      const { autoSeguro, adicionarSeguro, tipoSeguro, controleAdicionais, ...baseData } = data || {};
       if (modal?.edit) {
         const current = vendas.find((item) => item.id === modal.edit.id) || {};
         const updatedPayload = {
@@ -648,7 +689,7 @@ export default function App() {
           ordemVenda: baseData.ordemVenda,
           cep: baseData.cep,
           dataNascimento: baseData.dataNascimento,
-          descricao: baseData.descricao ? `${baseData.descricao} | Lancamento conjunto` : "Lancamento conjunto",
+          descricao: baseData.descricao ? `${baseData.descricao} | Lançamento conjunto` : "Lançamento conjunto",
           status: "Ativa",
         };
 
@@ -657,6 +698,7 @@ export default function App() {
         const hasTvExtra = Boolean(baseData.comandaTvAtiva || baseData.comandaTvPlano);
         const hasAparelhoExtra = Boolean(baseData.comandaAparelhoAtiva || baseData.comandaAparelhoValor);
         const hasAcessoriosExtra = Boolean(baseData.comandaAcessoriosAtiva || baseData.comandaAcessoriosValor);
+        const controleExtrasList = Array.isArray(controleAdicionais) ? controleAdicionais : [];
 
         const movelPlano = baseData.comandaMovelPlano || "Plano Controle";
         if (hasMovelExtra && baseData.plano !== movelPlano && baseData.comandaMovelServico) {
@@ -720,12 +762,32 @@ export default function App() {
             addAdditional({
               ...additionalBase,
               plano: "Acessorios",
-              tipoPlano: baseData.comandaAcessoriosDescricao || "Acessorio adicional",
+              tipoPlano: baseData.comandaAcessoriosDescricao || "Acessório adicional",
               valor: acessoriosValor,
               modelo: baseData.comandaAcessoriosDescricao || "",
               qty: baseData.comandaAcessoriosQuantidade || "",
             });
           }
+        }
+
+        if (baseData.plano === "Plano Controle" && controleExtrasList.length > 0) {
+          controleExtrasList.forEach((item, index) => {
+            if (!item?.tipoPlano) return;
+            const valorControleExtra = getRemunerationValue("Plano Controle", item.tipoPlano) || 0;
+            if (valorControleExtra <= 0) return;
+            addAdditional({
+              ...additionalBase,
+              plano: "Plano Controle",
+              tipoPlano: item.tipoPlano,
+              valor: valorControleExtra,
+              numero: item.numero || "",
+              portabilidade: item.tipoNumeroPortado === "portabilidade" ? item.portabilidade || "" : item.numero || "",
+              iccid: item.iccid || "",
+              descricao: additionalBase.descricao
+                ? `${additionalBase.descricao} | Linha Controle adicional ${index + 1}`
+                : `Linha Controle adicional ${index + 1}`,
+            });
+          });
         }
 
         if (additionalSales.length > 0) {
@@ -742,7 +804,7 @@ export default function App() {
               tipoPlano: autoSeguro.tipoPlano,
               valor: valorSeguro,
               status: "Ativa",
-              descricao: baseData.descricao ? `${baseData.descricao} | Seguro incluso` : "Seguro incluso no lancamento de aparelho",
+              descricao: baseData.descricao ? `${baseData.descricao} | Seguro incluso` : "Seguro incluso no lançamento de aparelho",
             });
             createdItems.unshift(normalizeLegacyVenda(createdSeguro));
           }
@@ -750,14 +812,16 @@ export default function App() {
 
         setVendas((current) => [...createdItems, ...current]);
 
+        pushToast("Venda registrada com sucesso.", "success");
         const shouldExportComanda = window.confirm("Venda registrada com sucesso. Deseja gerar a planilha de comanda desta venda?");
         if (shouldExportComanda) {
           handleDownloadComanda(createdVenda);
+          pushToast("Comanda gerada para download.", "success");
         }
       }
       setModal(null);
     },
-    [handleDownloadComanda, modal, vendas, currentUser]
+    [handleDownloadComanda, modal, vendas, currentUser, pushToast]
   );
 
   const confirmDelete = useCallback(async () => {
@@ -765,20 +829,22 @@ export default function App() {
       await deleteVenda(deleteId);
       setVendas((current) => current.filter((item) => item.id !== deleteId));
       setDeleteId(null);
+      pushToast("Venda excluída com sucesso.", "success");
     } catch (err) {
-      window.alert(err.message || "Erro ao excluir venda.");
+      pushToast(err.message || "Erro ao excluir venda.", "error");
     }
-  }, [deleteId]);
+  }, [deleteId, pushToast]);
 
   const confirmSellerDelete = useCallback(async () => {
     try {
       await deleteSeller(sellerDeleteId);
       setUsers((current) => current.filter((item) => item.id !== sellerDeleteId));
       setSellerDeleteId(null);
+      pushToast("Vendedor excluído com sucesso.", "success");
     } catch (err) {
-      window.alert(err.message || "Erro ao excluir vendedor.");
+      pushToast(err.message || "Erro ao excluir vendedor.", "error");
     }
-  }, [sellerDeleteId]);
+  }, [sellerDeleteId, pushToast]);
 
   function toggleSort(col) {
     if (sortBy === col) setSortDir((value) => (value === "asc" ? "desc" : "asc"));
@@ -806,7 +872,7 @@ export default function App() {
   async function handlePasswordChange(currentSenha, newSenha) {
     await apiChangePassword(currentSenha, newSenha);
     setModal(null);
-    window.alert("Senha alterada com sucesso.");
+    pushToast("Senha alterada com sucesso.", "success");
   }
 
   async function handleLogout() {
@@ -824,30 +890,30 @@ export default function App() {
 
   function handleExportDailyReport() {
     if (!dailyReportDate || dailyReportVendas.length === 0) {
-      window.alert("Selecione um dia com vendas para exportar.");
+      pushToast("Selecione um dia com vendas para exportar.", "info");
       return;
     }
 
     const rows = dailyReportVendas.map((venda) => [
-        fmtDate(venda.data),
+        fmtDate(venda.dataCompetencia || venda.data),
         venda.cliente,
         venda.cpf || "",
         PLANO_LABELS[venda.plano] || venda.plano,
         venda.tipoPlano || "",
         venda.valor,
-        venda.vendedor || "",
+        venda.vendedor ? String(venda.vendedor).toUpperCase() : "",
         venda.descricao || "",
       ]);
 
     exportExcelReport(`relatorio-vendas-${dailyReportDate}.xls`, {
-      sheetName: "Relatorio Diario",
-      title: "Relatorio Diario de Vendas",
+      sheetName: "Relatório Diário",
+      title: "Relatório Diário de Vendas",
       meta: [
         ["Data", fmtDate(dailyReportDate)],
         ["Vendedor", reportSellerName],
         ["Quantidade de vendas", dailyReportVendas.length],
       ],
-      headers: ["Data", "Cliente", "CPF", "Plano", "Tipo Plano", "Valor", "Vendedor", "Descricao"],
+      headers: ["Data", "Cliente", "CPF", "Plano", "Tipo de Plano", "Valor", "Vendedor", "Descrição"],
       rows,
       totalLabel: "Total do dia",
       totalValue: dailyReportTotal,
@@ -857,7 +923,7 @@ export default function App() {
 
   function handleExportMonthlyReport() {
     if (!monthlyReportMonth || monthlyReportVendas.length === 0) {
-      window.alert("Selecione um mes com vendas para exportar.");
+      pushToast("Selecione um mês com vendas para exportar.", "info");
       return;
     }
 
@@ -868,21 +934,21 @@ export default function App() {
         PLANO_LABELS[venda.plano] || venda.plano,
         venda.tipoPlano || "",
         venda.valor,
-        venda.vendedor || "",
+        venda.vendedor ? String(venda.vendedor).toUpperCase() : "",
         venda.descricao || "",
       ]);
 
     exportExcelReport(`relatorio-mensal-${monthlyReportMonth}.xls`, {
-      sheetName: "Relatorio Mensal",
-      title: "Relatorio Mensal de Vendas",
+      sheetName: "Relatório Mensal",
+      title: "Relatório Mensal de Vendas",
       meta: [
-        ["Mes", fmtMonth(monthlyReportMonth)],
+        ["Mês", fmtMonth(monthlyReportMonth)],
         ["Vendedor", reportSellerName],
         ["Quantidade de vendas", monthlyReportVendas.length],
       ],
-      headers: ["Data", "Cliente", "CPF", "Plano", "Tipo Plano", "Valor", "Vendedor", "Descricao"],
+      headers: ["Data", "Cliente", "CPF", "Plano", "Tipo de Plano", "Valor", "Vendedor", "Descrição"],
       rows,
-      totalLabel: "Total do mes",
+      totalLabel: "Total do mês",
       totalValue: monthlyReportTotal,
       columnWidths: [80, 180, 100, 140, 210, 90, 120, 220],
     });
@@ -952,10 +1018,10 @@ export default function App() {
           <div className="kpi-grid">
             <StatCard icon="💰" label="Receita Total" value={fmtBRL(totalVal)} sub={`${ativas.length} vendas ativas`} color="#22c55e" featured />
             <StatCard icon="📲" label="Ticket Celular (5%)" value={fmtBRL(ticketCelular)} sub={`${ticketCelularVendas.length} vendas`} color="#10b981" />
-            <StatCard icon="🎧" label="Ticket Acessorios (15%)" value={fmtBRL(ticketAcessorios)} sub={`${ticketAcessoriosVendas.length} vendas`} color="#ec4899" />
-            <StatCard icon="📊" label="Controle + Pos + TV + Internet" value={fmtBRL(ticketPlanosPrincipaisTotal)} sub={`${ticketPlanosPrincipaisVendas.length} vendas`} color="#0ea5e9" />
-            <StatCard icon="📱" label="Planos Moveis" value={scopedVendas.filter((venda) => ["Plano Controle", "Plano Pós-Pago"].includes(venda.plano)).length} color="#10b981" />
-            <StatCard icon="🌐" label="Internet + TV" value={scopedVendas.filter((venda) => ["Internet Residencial", "Internet Movel Mais", "TV"].includes(venda.plano) && venda.status === "Ativa").length} color="#f59e0b" />
+            <StatCard icon="🎧" label="Ticket Acessórios (15%)" value={fmtBRL(ticketAcessorios)} sub={`${ticketAcessoriosVendas.length} vendas`} color="#ec4899" />
+            <StatCard icon="📊" label="Controle + Pós + TV + Internet" value={fmtBRL(ticketPlanosPrincipaisTotal)} sub={`${ticketPlanosPrincipaisVendas.length} vendas`} color="#0ea5e9" />
+            <StatCard icon="📱" label="Planos Móveis" value={cycleScopedVendas.filter((venda) => ["Plano Controle", "Plano Pós-Pago"].includes(venda.plano)).length} color="#10b981" />
+            <StatCard icon="🌐" label="Internet + TV" value={cycleScopedVendas.filter((venda) => ["Internet Residencial", "Internet Movel Mais", "TV"].includes(venda.plano) && venda.status === "Ativa").length} color="#f59e0b" />
           </div>
 
           {tab === "vendas" && (
@@ -995,21 +1061,16 @@ export default function App() {
               installationOverdue={pendingQueue.installationOverdue}
               installationUpcoming={pendingQueue.installationUpcoming}
               onMarkInstalled={(vendaId) => handleInstallationStatusUpdate(vendaId, "Instalado")}
-              onMarkNotInstalled={handlePendingInstallationDelete}
+              onMarkNotInstalled={handleNotInstalledDelete}
             />
           )}
 
           {tab === "relatorios" && (
             <ReportsTab
-              currentUser={currentUser}
-              sellers={sellers}
-              scopedVendas={scopedVendas}
               reportScopedVendas={reportScopedVendas}
               monthData={monthData}
               monthPlanSeries={monthPlanSeries}
               planoData={planoData}
-              reportSeller={reportSeller}
-              setReportSeller={setReportSeller}
               dailyReportDate={dailyReportDate}
               setDailyReportDate={setDailyReportDate}
               dailyReportVendas={dailyReportVendas}
@@ -1036,14 +1097,16 @@ export default function App() {
               padding: "10px 6px 6px",
             }}
           >
-            © 2026 Painel de Vendas • Desenvolvido por Gilson Elias • Produto idealizado por Caio Cardoso
+            © 2026 Painel de Vendas • Desenvolvido por GILSON ELIAS • Produto idealizado por CAIO CARDOSO
           </footer>
         </div>
       </div>
 
+      <ToastStack items={toasts} onDismiss={dismissToast} />
+
       {(modal === "new" || modal?.edit) && (
-        <Modal title={modal?.edit ? "Editar Lancamento" : "Novo Lancamento"} onClose={() => setModal(null)} wide>
-          <VendaForm initial={modal?.edit} onSave={saveVenda} onClose={() => setModal(null)} currentUser={currentUser} sellers={sellers} />
+        <Modal title={modal?.edit ? "Editar Lançamento" : "Novo Lançamento"} onClose={() => setModal(null)} wide>
+          <VendaForm initial={modal?.edit} onSave={saveVenda} onClose={() => setModal(null)} currentUser={currentUser} sellers={sellers} onFeedback={pushToast} />
         </Modal>
       )}
 
@@ -1076,9 +1139,9 @@ export default function App() {
             <div style={{ fontSize: 42, marginBottom: 14 }}>👤</div>
             <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 20, color: "#f1f5f9", marginBottom: 8 }}>Excluir vendedor?</div>
             <div style={{ color: "#94a3b8", fontSize: 14, marginBottom: 10 }}>
-              {sellerToDelete?.nome ? `${sellerToDelete.nome} perdera o acesso ao sistema.` : "Este vendedor perdera o acesso ao sistema."}
+              {sellerToDelete?.nome ? `${sellerToDelete.nome} perderá o acesso ao sistema.` : "Este vendedor perderá o acesso ao sistema."}
             </div>
-            <div style={{ color: "#64748b", fontSize: 13, marginBottom: 24 }}>As vendas ja registradas serao mantidas no historico.</div>
+            <div style={{ color: "#64748b", fontSize: 13, marginBottom: 24 }}>As vendas já registradas serão mantidas no histórico.</div>
             <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
               <button style={btnSecondary} onClick={() => setSellerDeleteId(null)}>
                 Cancelar
@@ -1092,7 +1155,7 @@ export default function App() {
       )}
 
       {viewItem && (
-        <Modal title="Detalhes do Lancamento" onClose={() => setViewItem(null)}>
+        <Modal title="Detalhes do Lançamento" onClose={() => setViewItem(null)}>
           <div style={{ display: "grid", gap: 12 }}>
             <div
               style={{
@@ -1122,7 +1185,7 @@ export default function App() {
               </span>
               <div>
                 <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 20, color: "#f1f5f9", fontWeight: 700 }}>{PLANO_LABELS[viewItem.plano] || viewItem.plano}</div>
-                <div style={{ color: "#94a3b8", fontSize: 13 }}>{viewItem.descricao || "Sem descricao"}</div>
+                <div style={{ color: "#94a3b8", fontSize: 13 }}>{viewItem.descricao || "Sem descrição"}</div>
               </div>
               <div style={{ marginLeft: "auto" }}>
               </div>
@@ -1131,7 +1194,7 @@ export default function App() {
             {[
               ["Cliente", viewItem.cliente],
               ["CPF", viewItem.cpf || "—"],
-              ["Vendedor", viewItem.vendedor || "—"],
+              ["Vendedor", viewItem.vendedor ? String(viewItem.vendedor).toUpperCase() : "—"],
               ["Valor", fmtBRL(viewItem.valor)],
               ["Data", fmtDate(viewItem.data)],
               ["Status", viewItem.status || "—"],
@@ -1151,7 +1214,7 @@ export default function App() {
                 <div style={{ display: "grid", gap: 6 }}>
                   {viewItem.historico.slice().reverse().slice(0, 8).map((event, index) => (
                     <div key={`${event.at || "evt"}-${index}`} style={{ fontSize: 12, color: "#cbd5e1" }}>
-                      {fmtDate(event.at || "")} · {event.action || "alteracao"} · {event.userName || "sistema"}
+                      {fmtDate(event.at || "")} · {event.action || "alteração"} · {event.userName || "sistema"}
                     </div>
                   ))}
                 </div>
@@ -1197,8 +1260,8 @@ export default function App() {
         >
           <Panel style={{ maxWidth: 380, width: "90%", textAlign: "center", padding: 28 }}>
             <div style={{ fontSize: 42, marginBottom: 14 }}>🗑️</div>
-            <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 20, color: "#f1f5f9", marginBottom: 8 }}>Excluir lancamento?</div>
-            <div style={{ color: "#64748b", fontSize: 14, marginBottom: 24 }}>Esta acao nao pode ser desfeita.</div>
+            <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 20, color: "#f1f5f9", marginBottom: 8 }}>Excluir lançamento?</div>
+            <div style={{ color: "#64748b", fontSize: 14, marginBottom: 24 }}>Esta ação não pode ser desfeita.</div>
             <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
               <button style={btnSecondary} onClick={() => setDeleteId(null)}>
                 Cancelar

@@ -1,9 +1,10 @@
 export function getInstallationStatus(venda = {}) {
   if (!["Internet Residencial", "TV"].includes(venda.plano)) return null;
+  if (venda.statusInstalacao === "Nao instalado") return "Não instalado";
   if (venda.statusInstalacao) return venda.statusInstalacao;
   if (venda.dataInstalacao) return "Pendente";
   if (venda.status === "Ativa") return "Instalado";
-  if (venda.status === "Cancelada") return "Nao instalado";
+  if (venda.status === "Cancelada") return "Não instalado";
   return "Pendente";
 }
 

@@ -403,7 +403,7 @@ const server = http.createServer(async (req, res) => {
       if (!admin) return;
 
       const body = await readBody(req);
-      const nome = String(body.nome || "").trim();
+      const nome = String(body.nome || "").trim().toUpperCase();
       const username = String(body.username || "").trim().toLowerCase();
       const senha = String(body.senha || "");
 
