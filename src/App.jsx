@@ -327,7 +327,7 @@ export default function App() {
   const [monthlyReportMonth, setMonthlyReportMonth] = useState(storedCycleMonth);
   const [dailyReportDate, setDailyReportDate] = useState(getTodayDate);
   const [cycleDate, setCycleDate] = useState(getTodayDate);
-  const [currentCycleMonth, setCurrentCycleMonth] = useState(storedCycleMonth);
+  const [currentCycleMonth] = useState(storedCycleMonth);
   const [sortBy, setSortBy] = useState("data");
   const [sortDir, setSortDir] = useState("desc");
   const [page, setPage] = useState(1);
