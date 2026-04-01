@@ -5,6 +5,7 @@ Este projeto roda bem em Ubuntu com:
 - `nginx` servindo o frontend buildado
 - backend Node ouvindo em `127.0.0.1:4000`
 - `systemd` mantendo o backend ativo
+- variaveis sensiveis fora do arquivo `.service`
 
 ## 1. Instalar pacotes
 
@@ -61,10 +62,22 @@ Copie o arquivo `deploy/systemd/telefonia-teste-backend.service` para:
 sudo cp /var/www/telefonia_teste/current/deploy/systemd/telefonia-teste-backend.service /etc/systemd/system/
 ```
 
-Edite a chave JWT:
+Crie a pasta do arquivo de ambiente:
 
 ```bash
-sudo nano /etc/systemd/system/telefonia-teste-backend.service
+sudo mkdir -p /etc/telefonia-teste
+```
+
+Copie o template de ambiente:
+
+```bash
+sudo cp /var/www/telefonia_teste/current/deploy/systemd/telefonia-teste-backend.env.example /etc/telefonia-teste/backend.env
+```
+
+Edite a porta e a chave JWT:
+
+```bash
+sudo nano /etc/telefonia-teste/backend.env
 ```
 
 Depois ative:
@@ -103,10 +116,12 @@ cd /var/www/telefonia_teste/current
 node --experimental-sqlite api/reset-admin.js
 ```
 
-Login padrao:
+Credenciais iniciais do utilitario local:
 
 - usuario: `admin`
 - senha: `123456`
+
+Em producao, altere a senha imediatamente apos a primeira autenticacao.
 
 ## 10. Logs uteis
 

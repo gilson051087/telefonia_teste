@@ -216,7 +216,7 @@ export default function VendasTab({
           value={fMes}
           onChange={() => {}}
           disabled
-          title="Ciclo mensal automatico"
+          title="Ciclo mensal ativo"
           style={{ ...inputStyle, width: 170, opacity: 0.75, cursor: "not-allowed" }}
         />
         <div style={{ position: "relative", width: 170 }}>

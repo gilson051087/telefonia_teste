@@ -32,7 +32,6 @@ import "./App.css";
 
 const getTodayDate = () => new Date().toISOString().split("T")[0];
 const getTodayMonth = () => new Date().toISOString().slice(0, 7);
-
 const APP_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=DM+Sans:wght@400;500;600&display=swap');
   :root{
@@ -297,6 +296,13 @@ const APP_STYLES = `
 `;
 
 export default function App() {
+  const storedCycleMonth = (() => {
+    try {
+      return localStorage.getItem(STORAGE_KEYS.currentCycleMonth) || getTodayMonth();
+    } catch {
+      return getTodayMonth();
+    }
+  })();
   const [vendas, setVendas] = useState([]);
   const [users, setUsers] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
@@ -309,17 +315,17 @@ export default function App() {
   const [search, setSearch] = useState("");
   const [fPlano, setFPlano] = useState("Todos");
   const [fVendedor, setFVendedor] = useState("Todos");
-  const [fMes, setFMes] = useState(getTodayMonth);
+  const [fMes, setFMes] = useState(storedCycleMonth);
   const [fDia, setFDia] = useState("");
   const [reportSeller, setReportSeller] = useState("Todos");
-  const [monthlyReportMonth, setMonthlyReportMonth] = useState(getTodayMonth);
+  const [monthlyReportMonth, setMonthlyReportMonth] = useState(storedCycleMonth);
   const [dailyReportDate, setDailyReportDate] = useState(getTodayDate);
   const [cycleDate, setCycleDate] = useState(getTodayDate);
+  const [currentCycleMonth, setCurrentCycleMonth] = useState(storedCycleMonth);
   const [sortBy, setSortBy] = useState("data");
   const [sortDir, setSortDir] = useState("desc");
   const [page, setPage] = useState(1);
   const PER_PAGE = 8;
-  const BACKUP_DAILY_PREFIX = "telefonia_backup_daily_";
 
   const sellers = users.filter((user) => user.role === "seller");
 
@@ -377,9 +383,7 @@ export default function App() {
       if (nowDate === cycleDate) return;
 
       setCycleDate(nowDate);
-      setFMes(getTodayMonth());
       setFDia("");
-      setMonthlyReportMonth(getTodayMonth());
       setDailyReportDate(nowDate);
       setPage(1);
     }, 60000);
@@ -387,20 +391,28 @@ export default function App() {
     return () => clearInterval(timer);
   }, [cycleDate]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.currentCycleMonth, currentCycleMonth);
+    } catch {}
+    setFMes(currentCycleMonth);
+    setMonthlyReportMonth(currentCycleMonth);
+    setFDia("");
+    setPage(1);
+  }, [currentCycleMonth]);
+
   const scopedVendas = vendas.filter((venda) => {
     if (!currentUser) return false;
     if (currentUser.role === "admin") return true;
     return venda.vendedorId === currentUser.id || venda.vendedor === currentUser.nome;
   });
+  const cycleScopedVendas = scopedVendas.filter((venda) => venda.data?.slice(0, 7) === currentCycleMonth);
 
-  const currentCycleMonth = cycleDate.slice(0, 7);
-
-  const filtered = scopedVendas
+  const filtered = cycleScopedVendas
     .filter((venda) => {
       const haystack = `${venda.cliente} ${venda.plano} ${venda.tipoPlano || ""} ${venda.descricao || ""} ${venda.vendedor || ""}`.toLowerCase();
       if (search && !haystack.includes(search.toLowerCase())) return false;
       if (fPlano !== "Todos" && venda.plano !== fPlano) return false;
-      if (venda.data?.slice(0, 7) !== currentCycleMonth) return false;
       if (fDia && venda.data !== fDia) return false;
       if (currentUser?.role === "admin" && fVendedor !== "Todos" && venda.vendedorId !== fVendedor) return false;
       return true;
@@ -418,7 +430,7 @@ export default function App() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
-  const vendasComValor = scopedVendas.filter((venda) => venda.status === "Ativa");
+  const vendasComValor = cycleScopedVendas.filter((venda) => venda.status === "Ativa");
   const ativas = vendasComValor;
   const totalVal = vendasComValor.reduce((sum, venda) => {
     if (["Plano Controle", "Plano Pós-Pago", "TV", "Internet Residencial", "Internet Movel Mais", "Seguro Movel Celular"].includes(venda.plano)) {
@@ -440,7 +452,7 @@ export default function App() {
     const remuneracaoTabela = getRemunerationValue(venda.plano, venda.tipoPlano);
     return sum + (remuneracaoTabela ?? venda.valor);
   }, 0);
-  const installationReminders = scopedVendas
+  const installationReminders = cycleScopedVendas
     .filter((venda) => ["Internet Residencial", "TV"].includes(venda.plano) && venda.status !== "Cancelada" && venda.dataInstalacao)
     .filter((venda) => venda.dataInstalacao <= cycleDate)
     .map((venda) => {
@@ -458,7 +470,7 @@ export default function App() {
     .filter((item) => item.statusInstalacao === "Pendente")
     .sort((a, b) => a.dataInstalacao.localeCompare(b.dataInstalacao));
   const pendingInstallationCount = installationReminders.length;
-  const pendingQueue = buildPendingQueue(scopedVendas, cycleDate);
+  const pendingQueue = buildPendingQueue(cycleScopedVendas, cycleDate);
 
   const byMonth = {};
   let hasOtherPlanoInMonth = false;
@@ -494,7 +506,7 @@ export default function App() {
     }));
 
   const byPlano = {};
-  scopedVendas.forEach((venda) => {
+  cycleScopedVendas.forEach((venda) => {
     if (venda.status === "Ativa") byPlano[venda.plano] = (byPlano[venda.plano] || 0) + venda.valor;
   });
   const planoData = Object.entries(byPlano).map(([name, value]) => ({ name, value }));
@@ -522,7 +534,7 @@ export default function App() {
 
   const sellerSummaries = sellers
     .map((seller) => {
-      const sellerVendas = vendas.filter((venda) => venda.vendedorId === seller.id || venda.vendedor === seller.nome);
+      const sellerVendas = cycleScopedVendas.filter((venda) => venda.vendedorId === seller.id || venda.vendedor === seller.nome);
       const activeRevenue = sellerVendas.filter((venda) => venda.status === "Ativa").reduce((sum, venda) => sum + venda.valor, 0);
 
       return {
@@ -541,22 +553,6 @@ export default function App() {
     const safeClient = slugify(venda.cliente || "cliente").slice(0, 50) || "cliente";
     exportVendaComanda(`comanda-venda-${baseDate}-${safeClient}.xls`, venda);
   }, []);
-
-  useEffect(() => {
-    if (!currentUser || currentUser.role !== "admin") return;
-    const backupKey = `${BACKUP_DAILY_PREFIX}${getTodayDate()}`;
-    if (localStorage.getItem(backupKey)) return;
-    try {
-      localStorage.setItem(
-        backupKey,
-        JSON.stringify({
-          createdAt: new Date().toISOString(),
-          users: users.filter((user) => user.role === "seller"),
-          vendas,
-        })
-      );
-    } catch {}
-  }, [currentUser, users, vendas]);
 
   const handleInstallationStatusUpdate = useCallback(
     async (vendaId, nextStatusInstalacao) => {
@@ -586,39 +582,25 @@ export default function App() {
     [vendas, currentUser]
   );
 
-  const handleBackupExport = useCallback(() => {
-    const payload = {
-      createdAt: new Date().toISOString(),
-      users: users.filter((user) => user.role === "seller"),
-      vendas,
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `backup-telefonia-${getTodayDate()}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  }, [users, vendas]);
+  const handlePendingInstallationDelete = useCallback(
+    async (vendaId) => {
+      const current = vendas.find((item) => item.id === vendaId);
+      if (!current) return;
 
-  const handleBackupImport = useCallback(async (file) => {
-    if (!file) return;
-    const text = await file.text();
-    const parsed = JSON.parse(text || "{}");
-    const backupUsers = Array.isArray(parsed.users) ? parsed.users : [];
-    const backupVendas = Array.isArray(parsed.vendas) ? parsed.vendas : [];
-    if (!backupUsers.length && !backupVendas.length) {
-      window.alert("Backup vazio ou inválido.");
-      return;
-    }
-    await migrateLegacyData({ users: backupUsers, vendas: backupVendas });
-    const [loadedUsers, loadedVendas] = await Promise.all([listUsers(), listVendas()]);
-    setUsers(loadedUsers);
-    setVendas(loadedVendas.map(normalizeLegacyVenda));
-    window.alert("Backup importado com sucesso.");
-  }, []);
+      const shouldDelete = window.confirm(
+        `Excluir a venda de ${current.cliente || "cliente"} ao marcar como nao instalado? Esta acao nao pode ser desfeita.`
+      );
+      if (!shouldDelete) return;
+
+      try {
+        await deleteVenda(vendaId);
+        setVendas((currentList) => currentList.filter((item) => item.id !== vendaId));
+      } catch (err) {
+        window.alert(err.message || "Erro ao excluir venda.");
+      }
+    },
+    [vendas]
+  );
 
   const saveVenda = useCallback(
     async (data) => {
@@ -910,7 +892,7 @@ export default function App() {
     setSearch("");
     setFPlano("Todos");
     setFVendedor("Todos");
-    setFMes(getTodayMonth());
+    setFMes(currentCycleMonth);
     setFDia("");
     setPage(1);
   }
@@ -1013,7 +995,7 @@ export default function App() {
               installationOverdue={pendingQueue.installationOverdue}
               installationUpcoming={pendingQueue.installationUpcoming}
               onMarkInstalled={(vendaId) => handleInstallationStatusUpdate(vendaId, "Instalado")}
-              onMarkNotInstalled={(vendaId) => handleInstallationStatusUpdate(vendaId, "Nao instalado")}
+              onMarkNotInstalled={handlePendingInstallationDelete}
             />
           )}
 
@@ -1038,8 +1020,6 @@ export default function App() {
               monthlyReportVendas={monthlyReportVendas}
               monthlyReportTotal={monthlyReportTotal}
               onExportMonthlyReport={handleExportMonthlyReport}
-              onExportBackup={handleBackupExport}
-              onImportBackup={handleBackupImport}
             />
           )}
 

@@ -42,7 +42,7 @@ if (existing) {
     "admin",
     existing.id
   );
-  console.log("Senha do admin redefinida para .");
+  console.log("Senha do admin redefinida para 123456.");
 } else {
   db.prepare(
     "INSERT INTO users (id, nome, username, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, ?)"

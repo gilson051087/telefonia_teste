@@ -7,12 +7,17 @@ Type=simple
 User=www-data
 Group=www-data
 WorkingDirectory=/var/www/telefonia_teste/current
+EnvironmentFile=-/etc/telefonia-teste/backend.env
 Environment=NODE_ENV=production
 Environment=PORT=4000
-Environment=JWT_SECRET=troque-esta-chave-por-uma-bem-grande
 ExecStart=/usr/bin/node --experimental-sqlite api/server.js
 Restart=always
 RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/www/telefonia_teste/current/api/data
 
 [Install]
 WantedBy=multi-user.target

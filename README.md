@@ -1,70 +1,81 @@
-# Getting Started with Create React App
+# Telefonia Teste
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Painel comercial para operacao de vendas, acompanhamento de pendencias e visualizacao de indicadores.
 
-## Available Scripts
+## Visao geral
 
-In the project directory, you can run:
+- Frontend em React
+- Persistencia principal via Supabase
+- Backend Node opcional para operacao local com SQLite
+- Deploy de referencia com `nginx` + `systemd`
 
-### `npm start`
+## Estrutura
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- `src/`: aplicacao React
+- `api/`: backend Node e utilitarios administrativos
+- `deploy/`: configuracoes de deploy para Ubuntu
+- `supabase/`: schema e notas de configuracao
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Requisitos
 
-### `npm test`
+- Node.js 22.x
+- npm 10+
+- Projeto Supabase configurado para o frontend
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Configuracao local
 
-### `npm run build`
+1. Instale as dependencias:
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+```bash
+npm install
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+2. Crie o arquivo `.env` a partir do exemplo:
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```bash
+cp .env.example .env
+```
 
-### `npm run eject`
+3. Preencha as variaveis:
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+```env
+REACT_APP_SUPABASE_URL=https://seu-projeto.supabase.co
+REACT_APP_SUPABASE_ANON_KEY=sua-chave-anon-aqui
+```
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## Scripts
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+- `npm start`: inicia o frontend em desenvolvimento
+- `npm run build`: gera o build de producao
+- `npm test -- --watchAll=false`: executa os testes
+- `npm run backend`: inicia o backend local com SQLite
+- `npm run reset-admin`: recria ou redefine o usuario administrador local
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## Fluxo de desenvolvimento
 
-## Learn More
+1. Suba o frontend com `npm start`
+2. Se precisar do backend local, rode `npm run backend`
+3. Valide alteracoes com `npm test -- --watchAll=false`
+4. Gere o build com `npm run build`
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## Deploy
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+O guia de referencia para Ubuntu esta em [deploy/README-ubuntu.md](/Users/gilson/Documents/sistema%20de%20vendas/telefonia_teste/deploy/README-ubuntu.md).
 
-### Code Splitting
+O serviço `systemd` le variaveis sensiveis de `/etc/telefonia-teste/backend.env`, evitando segredos inline no arquivo da unidade.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## Seguranca e configuracao
 
-### Analyzing the Bundle Size
+- Nao versione o arquivo `.env`
+- Troque a senha padrao do administrador imediatamente em ambientes reais
+- Defina um `JWT_SECRET` longo e aleatorio no ambiente do backend
+- Restrinja acesso ao banco e aos logs de producao
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## Estado atual do projeto
 
-### Making a Progressive Web App
+Este repositorio pode conter ajustes locais nao commitados durante desenvolvimento. Antes de publicar, revise:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- arquivos de ambiente
+- credenciais e chaves
+- textos padrao
+- configuracoes de deploy
