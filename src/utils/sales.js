@@ -328,7 +328,7 @@ export function exportVendaComanda(filename, venda = {}) {
   );
 
   const dataVenda = formatDateBr(venda.data);
-  const cliente = venda.cliente || "";
+  const cliente = (venda.cliente || "").toUpperCase();
   const cpf = venda.cpf || "";
   const observacao = venda.descricao || "";
   const vendedor = venda.vendedor || "";

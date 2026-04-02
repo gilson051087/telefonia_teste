@@ -5,6 +5,7 @@ export default function AppHeader({ currentUser, tab, onTabChange, onOpenSellerM
     ["vendas", "📋 Vendas"],
     ["pendencias", "⏱ Pendências"],
     ["relatorios", "📊 Relatórios"],
+    ["metas", "🎯 Metas"],
     ...(currentUser.role === "admin" ? [["vendedores", "👥 Vendedores"]] : []),
   ];
 
@@ -12,10 +13,10 @@ export default function AppHeader({ currentUser, tab, onTabChange, onOpenSellerM
     <div
       className="app-header"
       style={{
-        background: "linear-gradient(180deg,rgba(10,21,36,0.98),rgba(7,14,28,0.98))",
-        borderBottom: "1px solid rgba(51,65,85,0.65)",
-        boxShadow: "0 10px 24px rgba(2,6,23,0.35)",
-        padding: "12px 20px",
+        background: "linear-gradient(180deg,rgba(15,23,42,0.96),rgba(11,18,32,0.96))",
+        borderBottom: "1px solid rgba(148,163,184,0.18)",
+        boxShadow: "0 6px 16px rgba(2,6,23,0.22)",
+        padding: "10px 18px",
       }}
     >
       <div
@@ -46,12 +47,11 @@ export default function AppHeader({ currentUser, tab, onTabChange, onOpenSellerM
           className="app-nav"
           style={{
             display: "flex",
-            gap: 8,
-            padding: 6,
-            borderRadius: 14,
-            background: "rgba(15,23,42,0.75)",
-            border: "1px solid rgba(51,65,85,0.7)",
-            boxShadow: "inset 0 0 0 1px rgba(15,23,42,0.45)",
+            gap: 6,
+            padding: 5,
+            borderRadius: 12,
+            background: "rgba(15,23,42,0.62)",
+            border: "1px solid rgba(148,163,184,0.2)",
           }}
         >
           {tabs.map(([key, label]) => (
@@ -59,16 +59,16 @@ export default function AppHeader({ currentUser, tab, onTabChange, onOpenSellerM
               key={key}
               onClick={() => onTabChange(key)}
               style={{
-                background: tab === key ? "linear-gradient(135deg, rgba(8,145,178,0.26), rgba(14,116,144,0.22))" : "transparent",
-                color: tab === key ? "#67e8f9" : "#94a3b8",
-                border: tab === key ? "1px solid rgba(34,211,238,0.45)" : "1px solid transparent",
-                borderRadius: 10,
-                padding: "8px 18px",
+                background: tab === key ? "rgba(56,189,248,0.16)" : "transparent",
+                color: tab === key ? "#e2e8f0" : "#9fb0c9",
+                border: tab === key ? "1px solid rgba(125,211,252,0.38)" : "1px solid transparent",
+                borderRadius: 9,
+                padding: "8px 14px",
                 fontFamily: "'DM Sans',sans-serif",
                 fontWeight: 700,
-                fontSize: 13,
+                fontSize: 12,
                 cursor: "pointer",
-                boxShadow: tab === key ? "0 8px 16px rgba(6,182,212,0.2)" : "none",
+                boxShadow: tab === key ? "0 6px 14px rgba(14,116,144,0.2)" : "none",
                 transition: "all .16s ease",
               }}
             >

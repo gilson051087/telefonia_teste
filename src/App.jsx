@@ -24,6 +24,7 @@ import ReportsTab from "./components/sections/ReportsTab";
 import SellersTab from "./components/sections/SellersTab";
 import VendasTab from "./components/sections/VendasTab";
 import PendenciasTab from "./components/sections/PendenciasTab";
+import GoalsTab from "./components/sections/GoalsTab";
 import { Modal, Panel, StatCard, ToastStack, btnDanger, btnPrimary, btnSecondary } from "./components/ui";
 import { COMANDA_COMMON_FIELDS, PLANOS, PLANO_COLORS, PLANO_EXTRAS, PLANO_ICONS, PLANO_LABELS, STORAGE_KEYS, MONTH_NAMES, getRemunerationValue } from "./constants/sales";
 import { exportExcelReport, exportVendaComanda, fmtBRL, fmtDate, fmtMonth, loadUsers, loadVendas, normalizeLegacyVenda, slugify } from "./utils/sales";
@@ -33,6 +34,16 @@ import "./App.css";
 const getTodayDate = () => new Date().toISOString().split("T")[0];
 const getTodayMonth = () => new Date().toISOString().slice(0, 7);
 const INSTALLATION_COMPETENCE_PLANOS = new Set(["Internet Residencial", "TV"]);
+const GOAL_FIELDS = [
+  { key: "bandaLarga", label: "Banda Larga", type: "count", icon: "📶" },
+  { key: "grossTotal", label: "Gross Total", type: "count", icon: "📦" },
+  { key: "posPagoTitular", label: "Pos pago titular", type: "count", icon: "📱" },
+  { key: "residencial", label: "Residencial", type: "count", icon: "🏠" },
+  { key: "receita", label: "Receita", type: "currency", icon: "💰" },
+  { key: "tv", label: "Tv", type: "count", icon: "📺" },
+];
+const DEFAULT_GOAL_VALUES = GOAL_FIELDS.reduce((acc, field) => ({ ...acc, [field.key]: 0 }), {});
+
 const normalizeSearchText = (value = "") =>
   String(value)
     .normalize("NFD")
@@ -42,21 +53,18 @@ const normalizeSearchText = (value = "") =>
 const APP_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=DM+Sans:wght@400;500;600&display=swap');
   :root{
-    --bg:#060b18;
-    --bg-soft:#0b1427;
-    --panel:#0f1a2f;
-    --panel-strong:#0d172b;
-    --line:rgba(71,85,105,0.55);
-    --text:#e2e8f0;
-    --muted:#94a3b8;
-    --brand:#22d3ee;
+    --bg:#0b1220;
+    --bg-soft:#101a2d;
+    --panel:#131f34;
+    --panel-strong:#111b2f;
+    --line:rgba(148,163,184,0.24);
+    --text:#e6edf7;
+    --muted:#9fb0c9;
+    --brand:#38bdf8;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   body{
-    background:
-      radial-gradient(circle at 15% 10%, rgba(14,165,233,0.12), transparent 30%),
-      radial-gradient(circle at 88% 14%, rgba(34,211,238,0.08), transparent 28%),
-      linear-gradient(180deg, var(--bg-soft), var(--bg));
+    background:linear-gradient(180deg, var(--bg-soft), var(--bg));
     color:var(--text);
   }
   @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
@@ -69,12 +77,12 @@ const APP_STYLES = `
   }
   .touch-btn:hover{transform:translateY(-1px);}
   .touch-btn:active{transform:translateY(0);}
-  .lift-hover:hover{transform:translateY(-2px) scale(1.01);}
+  .lift-hover:hover{transform:translateY(-1px);}
   .panel-surface{
     background:linear-gradient(180deg,var(--panel),var(--panel-strong));
     border:1px solid var(--line);
-    border-radius:16px;
-    box-shadow:0 12px 26px rgba(2,6,23,0.32);
+    border-radius:14px;
+    box-shadow:0 10px 24px rgba(2,6,23,0.22);
   }
   .stat-card{
     transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease;
@@ -92,9 +100,9 @@ const APP_STYLES = `
     animation:fadeUp .3s ease both;
   }
   .sales-group-card:hover{
-    transform:translateY(-2px);
-    border-color:rgba(56,189,248,0.5) !important;
-    box-shadow:0 14px 28px rgba(14,165,233,0.18) !important;
+    transform:translateY(-1px);
+    border-color:rgba(125,211,252,0.42) !important;
+    box-shadow:0 12px 22px rgba(8,47,73,0.22) !important;
   }
   .skeleton{
     background:linear-gradient(90deg, rgba(51,65,85,0.3) 25%, rgba(100,116,139,0.45) 50%, rgba(51,65,85,0.3) 75%);
@@ -110,7 +118,7 @@ const APP_STYLES = `
   }
   .action-pill{
     border:none;
-    border-radius:11px;
+    border-radius:10px;
     padding:7px 10px;
     cursor:pointer;
     font-size:12px;
@@ -118,10 +126,10 @@ const APP_STYLES = `
     min-height:36px;
     transition:all .15s ease;
   }
-  .action-pill:hover{filter:brightness(1.08);}
-  .action-pill-info{background:rgba(6,182,212,0.16);color:#67e8f9;border:1px solid rgba(6,182,212,0.25);}
-  .action-pill-edit{background:rgba(14,165,233,0.16);color:#bae6fd;border:1px solid rgba(14,165,233,0.26);}
-  .action-pill-delete{background:rgba(239,68,68,0.16);color:#fca5a5;border:1px solid rgba(239,68,68,0.26);}
+  .action-pill:hover{filter:brightness(1.04);}
+  .action-pill-info{background:rgba(56,189,248,0.14);color:#bae6fd;border:1px solid rgba(56,189,248,0.3);}
+  .action-pill-edit{background:rgba(34,197,94,0.12);color:#bbf7d0;border:1px solid rgba(34,197,94,0.28);}
+  .action-pill-delete{background:rgba(239,68,68,0.14);color:#fecaca;border:1px solid rgba(239,68,68,0.3);}
   .quick-filter-btn:hover{border-color:#22d3ee!important;color:#67e8f9!important;}
   input[type="date"],
   input[type="month"]{
@@ -158,9 +166,9 @@ const APP_STYLES = `
   }
   .app-nav button:hover{
     transform:translateY(-1px);
-    border-color:rgba(34,211,238,0.28)!important;
-    color:#e0f2fe!important;
-    background:rgba(30,41,59,0.68)!important;
+    border-color:rgba(56,189,248,0.35)!important;
+    color:#dbeafe!important;
+    background:rgba(30,41,59,0.78)!important;
   }
   .app-nav button:focus-visible{
     outline:2px solid #22d3ee;
@@ -176,28 +184,52 @@ const APP_STYLES = `
   ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px;}
   select option{background:#1e293b;}
   input[type=number]::-webkit-inner-spin-button{opacity:0;}
-  tr:hover td{background:rgba(99,102,241,0.05)!important;}
+  tr:hover td{background:rgba(56,189,248,0.05)!important;}
   .app-shell{
-    padding:28px 24px;
+    padding:24px 20px;
     width:100%;
   }
   .app-content{
-    max-width:1240px;
+    max-width:1280px;
     margin:0 auto;
     display:grid;
-    gap:20px;
+    gap:16px;
+  }
+  .vendas-screen{
+    height:calc(100vh - 220px);
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
   }
   .kpi-grid{
     display:grid;
-    grid-template-columns:repeat(auto-fit, minmax(190px, 220px));
-    justify-content:center;
-    gap:12px;
+    gap:10px;
+    width:100%;
+  }
+  .kpi-featured{
+    width:100%;
+  }
+  .kpi-row{
+    display:flex;
+    gap:10px;
+    width:100%;
     align-items:stretch;
   }
+  .kpi-row > *{
+    flex:1 1 0;
+    min-width:0;
+  }
   @media (max-width: 900px){
-    .kpi-grid{
-      grid-template-columns:repeat(2, minmax(0, 1fr));
-      justify-content:stretch;
+    .kpi-row{
+      overflow-x:auto;
+      padding-bottom:4px;
+      scroll-snap-type:x proximity;
+    }
+    .kpi-row > *{
+      flex:0 0 250px;
+      min-width:250px;
+      scroll-snap-align:start;
     }
   }
   @media (max-width: 768px){
@@ -207,9 +239,11 @@ const APP_STYLES = `
     .app-content{
       gap:16px;
     }
-    .kpi-grid{
-      grid-template-columns:1fr !important;
-      justify-content:stretch;
+    .vendas-screen{
+      height:auto;
+    }
+    .kpi-row{
+      overflow-x:auto;
     }
     .action-pill{
       min-height:40px;
@@ -285,11 +319,12 @@ const APP_STYLES = `
     }
   }
   @media (max-width: 560px){
-    .kpi-grid{
-      grid-template-columns:1fr;
+    .kpi-row > *{
+      flex:0 0 220px;
+      min-width:220px;
     }
   }
-    @media (max-width: 480px){
+  @media (max-width: 480px){
     .plan-grid{
       grid-template-columns:1fr !important;
     }
@@ -308,6 +343,14 @@ export default function App() {
       return localStorage.getItem(STORAGE_KEYS.currentCycleMonth) || getTodayMonth();
     } catch {
       return getTodayMonth();
+    }
+  })();
+  const storedGoalsByMonth = (() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.goalsByMonth);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
     }
   })();
   const [vendas, setVendas] = useState([]);
@@ -332,6 +375,7 @@ export default function App() {
   const [sortDir, setSortDir] = useState("desc");
   const [page, setPage] = useState(1);
   const [toasts, setToasts] = useState([]);
+  const [goalsByMonth, setGoalsByMonth] = useState(storedGoalsByMonth);
   const PER_PAGE = 8;
 
   const pushToast = useCallback((message, type = "info") => {
@@ -420,6 +464,12 @@ export default function App() {
     setPage(1);
   }, [currentCycleMonth]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.goalsByMonth, JSON.stringify(goalsByMonth));
+    } catch {}
+  }, [goalsByMonth]);
+
   const scopedVendas = vendas.filter((venda) => {
     if (!currentUser) return false;
     if (currentUser.role === "admin") return true;
@@ -446,6 +496,13 @@ export default function App() {
     return venda.data;
   };
   const cycleScopedVendas = scopedVendas.filter((venda) => getVendaCompetenceMonth(venda) === currentCycleMonth);
+  const installationCycleScopedVendas = scopedVendas.filter(
+    (venda) =>
+      ["Internet Residencial", "TV"].includes(venda.plano) &&
+      venda.status !== "Cancelada" &&
+      venda.dataInstalacao &&
+      venda.dataInstalacao.slice(0, 7) === currentCycleMonth
+  );
   const searchTerms = normalizeSearchText(search).split(/\s+/).filter(Boolean);
 
   const filtered = scopedVendas
@@ -499,8 +556,36 @@ export default function App() {
     const remuneracaoTabela = getRemunerationValue(venda.plano, venda.tipoPlano);
     return sum + (remuneracaoTabela ?? venda.valor);
   }, 0);
-  const installationReminders = cycleScopedVendas
-    .filter((venda) => ["Internet Residencial", "TV"].includes(venda.plano) && venda.status !== "Cancelada" && venda.dataInstalacao)
+  const computeGoalProgress = (vendasList = [], receitaTotal = 0) => {
+    const activeVendas = (vendasList || []).filter((venda) => venda.status !== "Cancelada");
+    const bandaLarga = activeVendas.reduce((sum, venda) => {
+      const isDependenteVenda =
+        venda.plano === "Plano Pós-Pago" &&
+        String(venda.tipoPlano || "")
+          .toLowerCase()
+          .includes("dependente banda larga");
+      const dependentes = Array.isArray(venda.posPagoDependentes) ? venda.posPagoDependentes : [];
+      const dependentesBandaLarga = dependentes.filter((item) => String(item?.tipo || "").toLowerCase().includes("dependente banda larga")).length;
+      const internetResidencial = venda.plano === "Internet Residencial" ? 1 : 0;
+      return sum + (isDependenteVenda ? 1 : 0) + dependentesBandaLarga + internetResidencial;
+    }, 0);
+
+    return {
+      bandaLarga,
+      grossTotal: activeVendas.filter((venda) => ["Plano Controle", "Plano Pós-Pago"].includes(venda.plano)).length,
+      posPagoTitular: activeVendas.filter(
+        (venda) =>
+          venda.plano === "Plano Pós-Pago" &&
+          !String(venda.tipoPlano || "")
+            .toLowerCase()
+            .startsWith("dependente")
+      ).length,
+      residencial: activeVendas.filter((venda) => ["Internet Residencial", "TV"].includes(venda.plano)).length,
+      receita: receitaTotal,
+      tv: activeVendas.filter((venda) => venda.plano === "TV").length,
+    };
+  };
+  const installationReminders = installationCycleScopedVendas
     .filter((venda) => venda.dataInstalacao <= cycleDate)
     .map((venda) => {
       const statusInstalacao = getInstallationStatus(venda);
@@ -517,7 +602,72 @@ export default function App() {
     .filter((item) => item.statusInstalacao === "Pendente")
     .sort((a, b) => a.dataInstalacao.localeCompare(b.dataInstalacao));
   const pendingInstallationCount = installationReminders.length;
-  const pendingQueue = buildPendingQueue(cycleScopedVendas, cycleDate);
+  const pendingQueue = buildPendingQueue(scopedVendas, cycleDate, currentCycleMonth);
+  const currentUserGoalsByMonth = currentUser?.id ? (goalsByMonth[currentUser.id] || {}) : {};
+  const currentGoalTargets = { ...DEFAULT_GOAL_VALUES, ...(currentUserGoalsByMonth[currentCycleMonth] || {}) };
+  const goalProgress = computeGoalProgress(cycleScopedVendas, totalVal);
+  const [goalYear, goalMonth] = currentCycleMonth.split("-").map(Number);
+  const daysInGoalMonth = Number.isFinite(goalYear) && Number.isFinite(goalMonth)
+    ? new Date(goalYear, goalMonth, 0).getDate()
+    : 30;
+  const isCurrentMonthCycle = currentCycleMonth === getTodayMonth();
+  const elapsedDays = isCurrentMonthCycle ? Math.max(1, Math.min(daysInGoalMonth, Number(cycleDate.slice(8, 10)) || 1)) : daysInGoalMonth;
+  const projectedGoalProgress = GOAL_FIELDS.reduce((acc, field) => {
+    const done = Number(goalProgress[field.key]) || 0;
+    const projected = elapsedDays > 0 ? (done / elapsedDays) * daysInGoalMonth : done;
+    acc[field.key] = field.type === "currency" ? projected : Math.round(projected);
+    return acc;
+  }, {});
+  const goalItems = GOAL_FIELDS.map((field) => {
+    const target = Number(currentGoalTargets[field.key]) || 0;
+    const done = Number(goalProgress[field.key]) || 0;
+    return {
+      ...field,
+      target,
+      done,
+      remaining: target - done,
+    };
+  });
+
+  const handleGoalTargetChange = useCallback((goalKey, nextValue) => {
+    if (!currentUser?.id) return;
+    const goalType = GOAL_FIELDS.find((field) => field.key === goalKey)?.type || "count";
+    const rawValue = String(nextValue ?? "").trim();
+    if (rawValue === "") {
+      setGoalsByMonth((current) => {
+        const currentUserMonthMap = current[currentUser.id] || {};
+        const monthGoals = { ...DEFAULT_GOAL_VALUES, ...(currentUserMonthMap[currentCycleMonth] || {}) };
+        return {
+          ...current,
+          [currentUser.id]: {
+            ...currentUserMonthMap,
+            [currentCycleMonth]: {
+              ...monthGoals,
+              [goalKey]: "",
+            },
+          },
+        };
+      });
+      return;
+    }
+    const normalized = Number(String(nextValue || "").replace(",", "."));
+    const numericValue = Number.isFinite(normalized) ? Math.max(0, normalized) : 0;
+    const safeValue = goalType === "currency" ? numericValue : Math.round(numericValue);
+    setGoalsByMonth((current) => {
+      const currentUserMonthMap = current[currentUser.id] || {};
+      const monthGoals = { ...DEFAULT_GOAL_VALUES, ...(currentUserMonthMap[currentCycleMonth] || {}) };
+      return {
+        ...current,
+        [currentUser.id]: {
+          ...currentUserMonthMap,
+          [currentCycleMonth]: {
+            ...monthGoals,
+            [goalKey]: safeValue,
+          },
+        },
+      };
+    });
+  }, [currentCycleMonth, currentUser?.id]);
 
   const byMonth = {};
   const ensureMonthBucket = (month) => {
@@ -967,7 +1117,7 @@ export default function App() {
     return (
       <div style={{ minHeight: "100vh", background: "#070e1c", color: "#e2e8f0", fontFamily: "'DM Sans',sans-serif" }}>
         <style>{APP_STYLES}</style>
-        <div className="app-shell">
+        <div className="app-shell" style={{ paddingBottom: 46 }}>
           <div className="app-content">
             <div className="panel-surface" style={{ padding: 18, display: "grid", gap: 12 }}>
               <div className="skeleton" style={{ height: 24, width: 260 }} />
@@ -1015,14 +1165,20 @@ export default function App() {
 
         <div className="app-shell">
           <div className="app-content">
-          <div className="kpi-grid">
-            <StatCard icon="💰" label="Receita Total" value={fmtBRL(totalVal)} sub={`${ativas.length} vendas ativas`} color="#22c55e" featured />
-            <StatCard icon="📲" label="Ticket Celular (5%)" value={fmtBRL(ticketCelular)} sub={`${ticketCelularVendas.length} vendas`} color="#10b981" />
-            <StatCard icon="🎧" label="Ticket Acessórios (15%)" value={fmtBRL(ticketAcessorios)} sub={`${ticketAcessoriosVendas.length} vendas`} color="#ec4899" />
-            <StatCard icon="📊" label="Controle + Pós + TV + Internet" value={fmtBRL(ticketPlanosPrincipaisTotal)} sub={`${ticketPlanosPrincipaisVendas.length} vendas`} color="#0ea5e9" />
-            <StatCard icon="📱" label="Planos Móveis" value={cycleScopedVendas.filter((venda) => ["Plano Controle", "Plano Pós-Pago"].includes(venda.plano)).length} color="#10b981" />
-            <StatCard icon="🌐" label="Internet + TV" value={cycleScopedVendas.filter((venda) => ["Internet Residencial", "Internet Movel Mais", "TV"].includes(venda.plano) && venda.status === "Ativa").length} color="#f59e0b" />
-          </div>
+          {tab === "vendas" && (
+            <div className="kpi-grid">
+              <div className="kpi-featured">
+                <StatCard icon="💰" label="Receita Total" value={fmtBRL(totalVal)} sub={`${ativas.length} vendas ativas`} color="#22c55e" featured />
+              </div>
+              <div className="kpi-row">
+                <StatCard icon="📲" label="Ticket Celular (5%)" value={fmtBRL(ticketCelular)} sub={`${ticketCelularVendas.length} vendas`} color="#10b981" />
+                <StatCard icon="🎧" label="Ticket Acessórios (15%)" value={fmtBRL(ticketAcessorios)} sub={`${ticketAcessoriosVendas.length} vendas`} color="#ec4899" />
+                <StatCard icon="📊" label="Controle + Pós + TV + Internet" value={fmtBRL(ticketPlanosPrincipaisTotal)} sub={`${ticketPlanosPrincipaisVendas.length} vendas`} color="#0ea5e9" />
+                <StatCard icon="📱" label="Planos Móveis" value={cycleScopedVendas.filter((venda) => ["Plano Controle", "Plano Pós-Pago"].includes(venda.plano)).length} color="#10b981" />
+                <StatCard icon="🌐" label="Internet + TV" value={cycleScopedVendas.filter((venda) => ["Internet Residencial", "Internet Movel Mais", "TV"].includes(venda.plano) && venda.status === "Ativa").length} color="#f59e0b" />
+              </div>
+            </div>
+          )}
 
           {tab === "vendas" && (
             <VendasTab
@@ -1084,17 +1240,33 @@ export default function App() {
             />
           )}
 
+          {tab === "metas" && (
+            <GoalsTab
+              goalItems={goalItems}
+              onGoalTargetChange={handleGoalTargetChange}
+              projectedGoalProgress={projectedGoalProgress}
+              elapsedDays={elapsedDays}
+              ownerName={currentUser?.nome || ""}
+            />
+          )}
+
           {tab === "vendedores" && currentUser.role === "admin" && (
             <SellersTab sellerSummaries={sellerSummaries} currentCycleMonth={currentCycleMonth} onOpenSellerModal={() => setModal("seller")} onDeleteSeller={setSellerDeleteId} />
           )}
           </div>
           <footer
             style={{
-              marginTop: 20,
+              position: "fixed",
+              left: 0,
+              right: 0,
+              bottom: 0,
               textAlign: "center",
               color: "#64748b",
               fontSize: 12,
-              padding: "10px 6px 6px",
+              padding: "10px 6px 8px",
+              background: "rgba(11,18,32,0.96)",
+              borderTop: "1px solid rgba(148,163,184,0.16)",
+              zIndex: 40,
             }}
           >
             © 2026 Painel de Vendas • Desenvolvido por GILSON ELIAS • Produto idealizado por CAIO CARDOSO

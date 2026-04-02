@@ -24,6 +24,19 @@ describe("workflow utils", () => {
     expect(queue.installationUpcoming.map((item) => item.id)).toEqual(["3"]);
   });
 
+  test("buildPendingQueue pode filtrar por mês de instalação", () => {
+    const vendas = [
+      { id: "1", plano: "TV", cliente: "Ana", dataInstalacao: "2026-03-31", status: "Pendente" },
+      { id: "2", plano: "TV", cliente: "Bruno", dataInstalacao: "2026-04-02", status: "Pendente" },
+      { id: "3", plano: "Internet Residencial", cliente: "Carla", dataInstalacao: "2026-04-15", statusInstalacao: "Pendente" },
+    ];
+
+    const queue = buildPendingQueue(vendas, "2026-04-10", "2026-04");
+    expect(queue.installationPending.map((item) => item.id)).toEqual(["2", "3"]);
+    expect(queue.installationOverdue.map((item) => item.id)).toEqual(["2"]);
+    expect(queue.installationUpcoming.map((item) => item.id)).toEqual(["3"]);
+  });
+
   test("appendHistory anexa evento com timestamp", () => {
     const next = appendHistory({ historico: [{ action: "criacao", at: "2026-03-26T10:00:00.000Z" }] }, { action: "edicao", userName: "Tester" });
     expect(next).toHaveLength(2);

@@ -4,6 +4,7 @@ export const STORAGE_KEYS = {
   legacyVendas: "telefonia_vendas_v1",
   backendMigration: "telefonia_backend_migration_v1",
   currentCycleMonth: "telefonia_current_cycle_month_v1",
+  goalsByMonth: "telefonia_goals_by_month_v1",
 };
 
 export const PLANOS = [

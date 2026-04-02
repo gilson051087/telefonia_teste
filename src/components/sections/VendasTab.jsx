@@ -45,11 +45,11 @@ export default function VendasTab({
   }
 
   function toggleGroup(groupKey) {
-    setOpenGroups((current) => ({ ...current, [groupKey]: !current[groupKey] }));
+    setOpenGroups((current) => (current[groupKey] ? {} : { [groupKey]: true }));
   }
 
   return (
-    <>
+    <div className="vendas-screen">
       <div
         style={{
           display: "flex",
@@ -285,7 +285,7 @@ export default function VendasTab({
       </div>
 
       {filtered.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "80px 0", color: "#475569" }}>
+        <div style={{ textAlign: "center", padding: "80px 0", color: "#475569", flex: 1, overflow: "auto" }}>
           <div style={{ fontSize: 52, marginBottom: 12 }}>📡</div>
           <p style={{ fontFamily: "'Crimson Pro',serif", fontSize: 18, color: "#94a3b8", marginBottom: 6 }}>Nenhum lançamento encontrado</p>
           <button onClick={onOpenNew} className="touch-btn lift-hover" style={{ ...btnPrimary, marginTop: 12 }}>
@@ -293,7 +293,7 @@ export default function VendasTab({
           </button>
         </div>
       ) : (
-        <div style={{ display: "grid", gap: 14 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, minHeight: 0, overflowY: "auto", paddingRight: 2, alignItems: "stretch" }}>
           {grouped.map((group) => {
             const color = PLANO_COLORS[group.plano] || "#22d3ee";
             const icon = PLANO_ICONS[group.plano] || "📦";
@@ -306,6 +306,8 @@ export default function VendasTab({
                 key={group.plano}
                 className="sales-group-card"
                 style={{
+                  width: "100%",
+                  height: "auto",
                   background: "linear-gradient(180deg, rgba(13,21,38,1), rgba(10,16,29,1))",
                   border: "1px solid rgba(51,65,85,0.55)",
                   borderRadius: 16,
@@ -358,15 +360,8 @@ export default function VendasTab({
                   <Badge color={color}>{group.items.length} venda{group.items.length !== 1 ? "s" : ""}</Badge>
                 </button>
 
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateRows: isOpen ? "1fr" : "0fr",
-                    transition: "grid-template-rows 260ms ease, opacity 220ms ease",
-                    opacity: isOpen ? 1 : 0,
-                  }}
-                >
-                  <div style={{ overflow: "hidden" }}>
+                {isOpen && (
+                  <div>
                 <div className="desktop-table" style={{ overflowX: "auto", padding: "4px 10px 10px" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 920 }}>
                     <thead>
@@ -465,12 +460,12 @@ export default function VendasTab({
                   ))}
                 </div>
                   </div>
-                </div>
+                )}
               </div>
             );
           })}
         </div>
       )}
-    </>
+    </div>
   );
 }

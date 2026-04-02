@@ -112,6 +112,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [dateDrafts, setDateDrafts] = useState({});
+  const [wizardPage, setWizardPage] = useState(initial ? 3 : 1);
   const currentPlano = normalizePlanoName(form.plano) || "Plano Controle";
   const extras = PLANO_EXTRAS[currentPlano] || [];
   const remunerationOptions = useMemo(() => REMUNERATION_OPTIONS_BY_PLANO[currentPlano] || [], [currentPlano]);
@@ -336,6 +337,37 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
     return next;
   }
 
+  function validateStep(step) {
+    const next = {};
+
+    if (step === 1) {
+      if (!form.plano) next.plano = "Obrigatório";
+      if (remunerationOptions.length > 0 && !form.tipoPlano) next.tipoPlano = "Obrigatório";
+      if (usesInstallationStatus && !form.statusInstalacao) next.statusInstalacao = "Obrigatório";
+      if (!usesInstallationStatus && form.dataInstalacao && !form.statusInstalacao) next.statusInstalacao = "Obrigatório";
+      return next;
+    }
+
+    if (step === 2) {
+      if (!form.cliente.trim()) next.cliente = "Obrigatório";
+      if (form.cpf && !isValidCPF(form.cpf)) next.cpf = "CPF inválido";
+      if (!form.vendedorId && currentUser.role === "admin") next.vendedor = "Selecione um vendedor";
+      return next;
+    }
+
+    return validate();
+  }
+
+  function goNextStep() {
+    const nextErrors = validateStep(wizardPage);
+    if (Object.keys(nextErrors).length) {
+      setErrors((current) => ({ ...current, ...nextErrors }));
+      return;
+    }
+    setErrors({});
+    setWizardPage((current) => Math.min(3, current + 1));
+  }
+
   async function handleSave() {
     const nextErrors = validate();
     if (Object.keys(nextErrors).length) {
@@ -539,18 +571,54 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
           border: "1px solid #164e63",
           background: "linear-gradient(135deg, rgba(8,145,178,0.2), rgba(22,78,99,0.2))",
           borderRadius: 14,
-          padding: "12px 14px",
-          marginBottom: 16,
+          padding: "9px 12px",
+          marginBottom: 12,
           color: "#a5f3fc",
-          fontSize: 13,
-          lineHeight: 1.5,
+          fontSize: 12,
+          lineHeight: 1.35,
         }}
       >
-        Preenchimento guiado: escolha o plano, complete os dados e toque em <strong style={{ color: "#ecfeff" }}>Registrar venda</strong>.
+        Escolha plano e cliente para continuar.
       </div>
 
-      <div style={{ marginBottom: 20 }}>
-        <label style={labelStyle}>Passo 1: Escolha o plano</label>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
+        {[
+          ["1", "Escolha do Plano"],
+          ["2", "Dados do cliente"],
+          ["3", "Dados da venda"],
+        ].map(([idx, label]) => {
+          const step = Number(idx);
+          const isActive = wizardPage === step;
+          const isDone = wizardPage > step;
+          return (
+          <div key={idx} style={{ display: "grid", gap: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 999,
+                  display: "grid",
+                  placeItems: "center",
+                  background: isActive || isDone ? "#1e3a8a" : "rgba(30,41,59,0.8)",
+                  border: isActive || isDone ? "1px solid #3b82f6" : "1px solid #334155",
+                  color: isActive || isDone ? "#dbeafe" : "#94a3b8",
+                  fontSize: 11,
+                  fontWeight: 800,
+                }}
+              >
+                {idx}
+              </span>
+              <div style={{ height: 2, flex: 1, background: isDone ? "rgba(59,130,246,0.55)" : "rgba(59,130,246,0.2)", borderRadius: 999 }} />
+            </div>
+            <div style={{ color: isActive || isDone ? "#cbd5e1" : "#64748b", fontSize: 12, fontWeight: 700 }}>{label}</div>
+          </div>
+        )})}
+      </div>
+
+      {wizardPage === 1 && (
+      <div style={{ marginBottom: 12 }}>
+        <label style={labelStyle}>Escolha do plano</label>
         <div className="plan-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
           {PLANOS.map((plano) => (
             <button
@@ -561,23 +629,23 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
                 background: currentPlano === plano ? `${PLANO_COLORS[plano]}22` : "#1e293b",
                 border: `1.5px solid ${currentPlano === plano ? PLANO_COLORS[plano] : "#334155"}`,
                 borderRadius: 12,
-                padding: "12px 8px",
+                padding: "10px 8px",
                 cursor: "pointer",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                gap: 6,
+                gap: 5,
                 transition: "all 0.18s",
               }}
             >
               <span
                 style={{
-                  width: 36,
-                  height: 36,
+                  width: 30,
+                  height: 30,
                   borderRadius: 999,
                   display: "grid",
                   placeItems: "center",
-                  fontSize: 18,
+                  fontSize: 15,
                   background: `radial-gradient(circle at 30% 30%, ${PLANO_COLORS[plano]}66, ${PLANO_COLORS[plano]}22)`,
                   border: `1px solid ${PLANO_COLORS[plano]}66`,
                   boxShadow: `0 8px 14px ${PLANO_COLORS[plano]}33`,
@@ -585,25 +653,51 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
               >
                 {PLANO_ICONS[plano]}
               </span>
-              <span style={{ fontSize: 12, color: currentPlano === plano ? PLANO_COLORS[plano] : "#94a3b8", fontWeight: 700, textAlign: "center", lineHeight: 1.2 }}>
+              <span style={{ fontSize: 11, color: currentPlano === plano ? PLANO_COLORS[plano] : "#94a3b8", fontWeight: 700, textAlign: "center", lineHeight: 1.15 }}>
                 {PLANO_LABELS[plano]}
               </span>
             </button>
           ))}
         </div>
+        {(usesPortabilitySelector || highlightedExtraFields.length > 0) && (
+          <div style={{ marginTop: 12, border: "1px solid #1e293b", borderRadius: 12, padding: 12, background: "rgba(15,23,42,0.35)" }}>
+            <div style={{ color: "#67e8f9", fontSize: 12, fontWeight: 700, marginBottom: 10 }}>Campos principais do plano</div>
+            {usesPortabilitySelector && (
+              <div style={{ marginBottom: 12 }}>
+                <Field label="Numero portado">
+                  <select
+                    value={form.tipoNumeroPortado || "numero-cliente"}
+                    onChange={(e) => setField("tipoNumeroPortado", e.target.value)}
+                    style={{ ...inputStyle, appearance: "none", borderColor: "#334155", maxWidth: 320 }}
+                  >
+                    <option value="numero-cliente">Habilitação Nova</option>
+                    <option value="portabilidade">Portabilidade</option>
+                  </select>
+                </Field>
+              </div>
+            )}
+            {highlightedExtraFields.length > 0 && (
+              <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+                {highlightedExtraFields.map((fieldConfig) => renderConfiguredField(fieldConfig))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
+      )}
 
+      {wizardPage === 2 && (
       <div
         className="form-grid"
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
-          gap: 16,
+          gap: 12,
         }}
       >
         <div style={{ gridColumn: "1/-1" }}>
-          <Field label="Passo 2: Nome do cliente" error={errors.cliente}>
-            {inp("cliente", "text", "Nome completo")}
+          <Field label="Dados do cliente" error={errors.cliente}>
+            {inp("cliente", "text", "Digite o nome do cliente")}
           </Field>
         </div>
 
@@ -633,34 +727,21 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
             <input value={String(currentUser.nome || "").toUpperCase()} disabled style={{ ...inputStyle, opacity: 0.8, cursor: "not-allowed" }} />
           </Field>
         )}
+      </div>
+      )}
 
+      {wizardPage === 3 && (
+      <div
+        className="form-grid"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
+          gap: 12,
+        }}
+      >
         <div style={{ gridColumn: "1/-1" }}>
           <Field label="Descrição / observação">{inp("descricao", "text", "Detalhes da venda...")}</Field>
         </div>
-        {(usesPortabilitySelector || highlightedExtraFields.length > 0) && (
-          <div style={{ gridColumn: "1/-1", border: "1px solid #1e293b", borderRadius: 12, padding: 12, background: "rgba(15,23,42,0.35)" }}>
-            <div style={{ color: "#67e8f9", fontSize: 12, fontWeight: 700, marginBottom: 10 }}>Campos principais do plano</div>
-            {usesPortabilitySelector && (
-              <div style={{ marginBottom: 12 }}>
-                <Field label="Numero portado">
-                  <select
-                    value={form.tipoNumeroPortado || "numero-cliente"}
-                    onChange={(e) => setField("tipoNumeroPortado", e.target.value)}
-                    style={{ ...inputStyle, appearance: "none", borderColor: "#334155", maxWidth: 320 }}
-                  >
-                    <option value="numero-cliente">Habilitação Nova</option>
-                    <option value="portabilidade">Portabilidade</option>
-                  </select>
-                </Field>
-              </div>
-            )}
-            {highlightedExtraFields.length > 0 && (
-              <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-                {highlightedExtraFields.map((fieldConfig) => renderConfiguredField(fieldConfig))}
-              </div>
-            )}
-          </div>
-        )}
 
         <Field label="Valor (R$)" error={errors.valor}>
           <div>
@@ -680,8 +761,9 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
           {renderMaskedIsoDateInput("data", errors.data)}
         </Field>
       </div>
+      )}
 
-      {extras.length > 0 && (
+      {wizardPage === 3 && extras.length > 0 && (
         <div style={{ borderTop: "1px solid #1e293b", margin: "6px 0 16px", paddingTop: 16 }}>
           <div style={{ fontSize: 11, color: PLANO_COLORS[currentPlano], fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
             <span
@@ -883,6 +965,8 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
         </div>
       )}
 
+      {wizardPage === 3 && (
+      <>
       <div style={{ borderTop: "1px solid #1e293b", margin: "10px 0 16px", paddingTop: 16 }}>
         <div style={{ fontSize: 11, color: "#67e8f9", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 12 }}>
           Dados da comanda
@@ -939,7 +1023,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
         </div>
 
         {!isCurrentMovel && form.comandaMovelAtiva && (
-          <div style={{ marginBottom: 12 }}>
+          <div style={{ marginBottom: 12, borderTop: "1px solid #1e293b", paddingTop: 12 }}>
             <div style={{ color: "#67e8f9", fontSize: 12, fontWeight: 700, marginBottom: 8 }}>Móvel</div>
             <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
               <Field label="Plano móvel">
@@ -972,7 +1056,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
         )}
 
         {!isCurrentInternet && form.comandaInternetAtiva && (
-          <div style={{ marginBottom: 12 }}>
+          <div style={{ marginBottom: 12, borderTop: "1px solid #1e293b", paddingTop: 12 }}>
             <div style={{ color: "#67e8f9", fontSize: 12, fontWeight: 700, marginBottom: 8 }}>Internet</div>
             <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
               {renderComandaInput("comandaInternetPlano", "Plano de internet", "text", "Selecione", internetPlanOptions)}
@@ -985,7 +1069,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
         )}
 
         {!isCurrentTv && form.comandaTvAtiva && (
-          <div style={{ marginBottom: 12 }}>
+          <div style={{ marginBottom: 12, borderTop: "1px solid #1e293b", paddingTop: 12 }}>
             <div style={{ color: "#67e8f9", fontSize: 12, fontWeight: 700, marginBottom: 8 }}>TV</div>
             <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
               {renderComandaInput("comandaTvPlano", "Plano de TV", "text", "Selecione", tvPlanOptions)}
@@ -997,7 +1081,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
         )}
 
         {!isCurrentAparelho && form.comandaAparelhoAtiva && (
-          <div style={{ marginBottom: 12 }}>
+          <div style={{ marginBottom: 12, borderTop: "1px solid #1e293b", paddingTop: 12 }}>
             <div style={{ color: "#67e8f9", fontSize: 12, fontWeight: 700, marginBottom: 8 }}>Aparelho</div>
             <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
               {renderComandaInput("comandaAparelhoModelo", "Modelo", "text", "Ex: MOTOROLA G35")}
@@ -1008,7 +1092,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
         )}
 
         {!isCurrentAcessorios && form.comandaAcessoriosAtiva && (
-          <div style={{ marginBottom: 4 }}>
+          <div style={{ marginBottom: 4, borderTop: "1px solid #1e293b", paddingTop: 12 }}>
             <div style={{ color: "#67e8f9", fontSize: 12, fontWeight: 700, marginBottom: 8 }}>Acessórios</div>
             <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
               {renderComandaInput("comandaAcessoriosDescricao", "Descrição", "text", "Ex: Fone + capa")}
@@ -1018,8 +1102,10 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
           </div>
         )}
       </div>
+      </>
+      )}
 
-      {!initial && currentPlano === "Aparelho Celular" && (
+      {wizardPage === 3 && !initial && currentPlano === "Aparelho Celular" && (
         <div style={{ borderTop: "1px solid #1e293b", margin: "6px 0 16px", paddingTop: 16 }}>
           <div style={{ fontSize: 11, color: "#10b981", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 12 }}>
             🛡️ Seguro automático
@@ -1060,14 +1146,37 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
         </div>
       )}
 
-      <div className="modal-actions" style={{ display: "flex", gap: 12, justifyContent: "flex-end", marginTop: 8 }}>
-        <button className="touch-btn" style={btnSecondary} onClick={onClose}>
-          Cancelar
-        </button>
-        <button className="touch-btn lift-hover" style={{ ...btnPrimary, opacity: isSaving ? 0.7 : 1 }} onClick={handleSave} disabled={isSaving}>
-          {isSaving ? "Salvando..." : initial ? "Salvar alterações" : "Registrar venda"}
-        </button>
-      </div>
+      {wizardPage < 3 ? (
+        <div className="modal-actions" style={{ display: "flex", gap: 12, justifyContent: "space-between", marginTop: 10 }}>
+          <div style={{ display: "flex", gap: 12 }}>
+            {wizardPage > 1 && (
+              <button className="touch-btn" style={btnSecondary} onClick={() => setWizardPage((current) => Math.max(1, current - 1))}>
+                Voltar
+              </button>
+            )}
+            <button className="touch-btn" style={btnSecondary} onClick={onClose}>
+              Cancelar
+            </button>
+          </div>
+          <button className="touch-btn lift-hover" style={{ ...btnPrimary, minWidth: 180 }} onClick={goNextStep}>
+            Continuar
+          </button>
+        </div>
+      ) : (
+        <div className="modal-actions" style={{ display: "flex", gap: 12, justifyContent: "space-between", marginTop: 8 }}>
+          <div style={{ display: "flex", gap: 12 }}>
+            <button className="touch-btn" style={btnSecondary} onClick={() => setWizardPage(2)}>
+              Voltar
+            </button>
+            <button className="touch-btn" style={btnSecondary} onClick={onClose}>
+              Cancelar
+            </button>
+          </div>
+          <button className="touch-btn lift-hover" style={{ ...btnPrimary, opacity: isSaving ? 0.7 : 1 }} onClick={handleSave} disabled={isSaving}>
+            {isSaving ? "Salvando..." : initial ? "Salvar alterações" : "Registrar venda"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

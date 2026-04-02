@@ -13,13 +13,14 @@ export function appendHistory(venda = {}, entry = {}) {
   return [...previous, { at: new Date().toISOString(), ...entry }];
 }
 
-export function buildPendingQueue(vendas = [], cycleDate = "") {
+export function buildPendingQueue(vendas = [], cycleDate = "", cycleMonth = "") {
   const installationPending = (vendas || [])
     .filter(
       (venda) =>
         ["Internet Residencial", "TV"].includes(venda.plano) &&
         venda.dataInstalacao
     )
+    .filter((venda) => !cycleMonth || venda.dataInstalacao.slice(0, 7) === cycleMonth)
     .filter((venda) => getInstallationStatus(venda) !== "Instalado")
     .sort((a, b) => a.dataInstalacao.localeCompare(b.dataInstalacao))
     .map((venda) => ({
