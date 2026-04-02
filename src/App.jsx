@@ -392,6 +392,30 @@ export default function App() {
 
   const sellers = users.filter((user) => user.role === "seller");
 
+
+  const fetchLatestVendas = useCallback(async () => {
+    const loaded = await listVendas();
+    setVendas(loaded.map(normalizeLegacyVenda));
+  }, []);
+
+  const broadcastVendaSync = useCallback(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.vendasSync, String(Date.now()));
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event) => {
+      if (event.key !== STORAGE_KEYS.vendasSync) return;
+      if (currentUser?.role !== "admin") return;
+      if (!event.newValue) return;
+      fetchLatestVendas().catch(() => {});
+    };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, [currentUser?.role, fetchLatestVendas]);
+
   useEffect(() => {
     async function bootstrap() {
       if (!hasApiToken()) {
@@ -808,6 +832,7 @@ export default function App() {
         };
         const updated = await updateVenda(modal.edit.id, updatedPayload);
         setVendas((current) => current.map((item) => (item.id === modal.edit.id ? normalizeLegacyVenda(updated) : item)));
+        broadcastVendaSync();
       } else {
         const created = await createVenda({
           ...baseData,
@@ -961,6 +986,7 @@ export default function App() {
         }
 
         setVendas((current) => [...createdItems, ...current]);
+        broadcastVendaSync();
 
         pushToast("Venda registrada com sucesso.", "success");
         const shouldExportComanda = window.confirm("Venda registrada com sucesso. Deseja gerar a planilha de comanda desta venda?");
@@ -971,7 +997,7 @@ export default function App() {
       }
       setModal(null);
     },
-    [handleDownloadComanda, modal, vendas, currentUser, pushToast]
+    [handleDownloadComanda, modal, vendas, currentUser, pushToast, broadcastVendaSync]
   );
 
   const confirmDelete = useCallback(async () => {
