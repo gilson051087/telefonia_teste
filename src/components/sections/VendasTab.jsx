@@ -165,13 +165,9 @@ export default function VendasTab({
           borderRadius: 16,
           padding: "14px 18px",
           marginBottom: 14,
-          display: "flex",
-          gap: 10,
-          alignItems: "center",
-          flexWrap: "wrap",
         }}
       >
-        <div style={{ position: "relative", width: 280 }}>
+        <div className="filter-field filter-search-top" style={{ position: "relative" }}>
           <span
             style={{
               position: "absolute",
@@ -196,32 +192,36 @@ export default function VendasTab({
             style={{ ...inputStyle, width: "100%", paddingLeft: 34 }}
           />
         </div>
-        <select
-          aria-label="Filtrar por plano"
-          value={fPlano}
-          onChange={(event) => {
-            setFPlano(event.target.value);
-            setPage(1);
-          }}
-          style={{ ...inputStyle, width: 190, appearance: "none" }}
-        >
-          <option>Todos</option>
-          {PLANOS.map((plano) => (
-            <option key={plano} value={plano}>
-              {PLANO_LABELS[plano]}
-            </option>
-          ))}
-        </select>
-        <input
-          type="month"
-          aria-label="Mês do ciclo automático"
-          value={fMes}
-          onChange={() => {}}
-          disabled
-          title="Ciclo mensal automático"
-          style={{ ...inputStyle, width: 170, opacity: 0.75, cursor: "not-allowed" }}
-        />
-        <div style={{ position: "relative", width: 170 }}>
+        <div className="filter-field">
+          <select
+            aria-label="Filtrar por plano"
+            value={fPlano}
+            onChange={(event) => {
+              setFPlano(event.target.value);
+              setPage(1);
+            }}
+            style={{ ...inputStyle, appearance: "none" }}
+          >
+            <option>Todos</option>
+            {PLANOS.map((plano) => (
+              <option key={plano} value={plano}>
+                {PLANO_LABELS[plano]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="filter-field">
+          <input
+            type="month"
+            aria-label="Mês do ciclo automático"
+            value={fMes}
+            onChange={() => {}}
+            disabled
+            title="Ciclo mensal automático"
+            style={{ ...inputStyle, opacity: 0.75, cursor: "not-allowed" }}
+          />
+        </div>
+        <div className="filter-field" style={{ position: "relative" }}>
           <span
             style={{
               position: "absolute",
@@ -247,41 +247,31 @@ export default function VendasTab({
           />
         </div>
         {currentUser.role === "admin" && (
-          <select
-            aria-label="Filtrar por vendedor"
-            value={fVendedor}
-            onChange={(event) => {
-              setFVendedor(event.target.value);
-              setPage(1);
-            }}
-            style={{ ...inputStyle, width: 200, appearance: "none" }}
-          >
-            <option value="Todos">Todos vendedores</option>
-            {sellers.map((seller) => (
-              <option key={seller.id} value={seller.id}>
-                {String(seller.nome || "").toUpperCase()}
-              </option>
-            ))}
-          </select>
+          <div className="filter-field">
+            <select
+              aria-label="Filtrar por vendedor"
+              value={fVendedor}
+              onChange={(event) => {
+                setFVendedor(event.target.value);
+                setPage(1);
+              }}
+              style={{ ...inputStyle, appearance: "none" }}
+            >
+              <option value="Todos">Todos vendedores</option>
+              {sellers.map((seller) => (
+                <option key={seller.id} value={seller.id}>
+                  {String(seller.nome || "").toUpperCase()}
+                </option>
+              ))}
+            </select>
+          </div>
         )}
-        <button onClick={onClearFilters} className="touch-btn" style={{ ...btnSecondary, padding: "11px 14px", background: "#0f172a", borderColor: "#334155" }}>
-          Limpar filtros
-        </button>
-        <div style={{ marginLeft: "auto", fontSize: 13, color: "#64748b", fontWeight: 600 }}>{filtered.length} registro{filtered.length !== 1 ? "s" : ""}</div>
-      </div>
-
-      <div
-        style={{
-          marginBottom: 14,
-          border: "1px solid rgba(14,165,233,0.35)",
-          borderRadius: 12,
-          background: "linear-gradient(135deg, rgba(14,165,233,0.12), rgba(15,23,42,0.72))",
-          padding: "10px 12px",
-          color: "#cbd5e1",
-          fontSize: 12,
-        }}
-      >
-        <strong style={{ color: "#67e8f9" }}>Regra de competência:</strong> para <strong>Internet</strong> e <strong>TV</strong>, quando a instalação é finalizada, a venda entra no mês vigente da finalização.
+        <div className="filters-actions">
+          <button onClick={onClearFilters} className="touch-btn" style={{ ...btnSecondary, padding: "11px 14px", background: "#0f172a", borderColor: "#334155" }}>
+            Limpar filtros
+          </button>
+          <div className="filter-count">{filtered.length} registro{filtered.length !== 1 ? "s" : ""}</div>
+        </div>
       </div>
 
       {filtered.length === 0 ? (

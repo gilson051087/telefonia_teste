@@ -79,13 +79,19 @@ export function Badge({ color, children }) {
 
 export function StatCard({ icon, label, value, sub, color = PLANO_COLORS["Plano Controle"], featured = false }) {
   const featuredGlow = `${color}33`;
+  const isCompactCard = !featured;
   return (
     <div
       className="panel-surface stat-card lift-hover"
       style={{
-        padding: featured ? "clamp(14px, 1.8vw, 24px) clamp(14px, 2vw, 28px)" : "clamp(10px, 1.4vw, 20px) clamp(10px, 1.5vw, 22px)",
+        padding: featured ? "clamp(14px, 1.8vw, 24px) clamp(14px, 2vw, 28px)" : "clamp(4px, 0.55vw, 8px) clamp(8px, 0.9vw, 12px)",
         position: "relative",
         overflow: "hidden",
+        display: isCompactCard ? "grid" : "block",
+        alignContent: isCompactCard ? "center" : "normal",
+        justifyItems: isCompactCard ? "center" : "start",
+        gap: isCompactCard ? 2 : 0,
+        textAlign: isCompactCard ? "center" : "left",
         borderColor: featured ? `${color}66` : undefined,
         boxShadow: featured ? `0 14px 30px ${featuredGlow}` : undefined,
         background: featured
@@ -111,15 +117,26 @@ export function StatCard({ icon, label, value, sub, color = PLANO_COLORS["Plano 
           fontSize: featured ? "clamp(16px, 1.4vw, 22px)" : "clamp(12px, 1vw, 15px)",
           lineHeight: 1,
           marginBottom: featured ? 6 : 4,
-          transform: "scaleX(0.72)",
-          transformOrigin: "left center",
+          transform: featured ? "scaleX(0.72)" : "none",
+          transformOrigin: featured ? "left center" : "center center",
           display: "inline-block",
           filter: "drop-shadow(0 4px 10px rgba(2,6,23,0.4))",
         }}
       >
         {icon}
       </div>
-      <div style={{ fontSize: featured ? "clamp(14px, 1.2vw, 18px)" : "clamp(9px, 0.8vw, 11px)", color: featured ? "#d1fae5" : "#cbd5e1", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: featured ? 6 : 4 }}>
+      <div
+        style={{
+          fontSize: featured ? "clamp(14px, 1.2vw, 18px)" : "clamp(9px, 0.8vw, 11px)",
+          color: featured ? "#d1fae5" : "#cbd5e1",
+          fontWeight: 700,
+          textTransform: "uppercase",
+          letterSpacing: "0.06em",
+          marginBottom: featured ? 6 : 4,
+          maxWidth: isCompactCard ? 140 : "none",
+          lineHeight: 1.25,
+        }}
+      >
         {label}
       </div>
       <div style={{ fontSize: featured ? "clamp(34px, 4.8vw, 52px)" : "clamp(16px, 2vw, 24px)", fontFamily: "'Crimson Pro',Georgia,serif", color: "#f1f5f9", fontWeight: 700 }}>

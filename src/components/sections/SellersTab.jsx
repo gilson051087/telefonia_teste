@@ -74,7 +74,7 @@ export default function SellersTab({ sellerSummaries, currentCycleMonth, onOpenS
                 </div>
               </div>
 
-              <div className="rel-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12 }}>
+              <div className="rel-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
                 <div style={{ background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.15)", borderRadius: 12, padding: 14 }}>
                   <div style={{ color: "#64748b", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Total</div>
                   <div style={{ color: "#f1f5f9", fontSize: 22, fontWeight: 700 }}>{seller.vendas}</div>

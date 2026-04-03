@@ -76,10 +76,9 @@ export default function GoalsTab({ goalItems, onGoalTargetChange, projectedGoalP
         onChange={(event) => {
           const sanitized = sanitizeDraft(item, event.target.value);
           setDraftTargets((current) => ({ ...current, [item.key]: sanitized }));
+          onGoalTargetChange(item.key, sanitized);
         }}
         onBlur={() => {
-          const finalValue = draftTargets[item.key] ?? "";
-          onGoalTargetChange(item.key, finalValue);
           setEditingKey((current) => (current === item.key ? "" : current));
         }}
         onKeyDown={(event) => {
