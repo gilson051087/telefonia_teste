@@ -51,7 +51,7 @@ export default function SellersTab({ sellerSummaries, currentCycleMonth, onOpenS
           {sellerSummaries.map((seller) => (
             <div
               key={seller.id}
-              className="panel-surface"
+              className="panel-surface seller-summary-card"
               style={{
                 borderRadius: 16,
                 padding: 18,

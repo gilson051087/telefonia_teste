@@ -18,7 +18,7 @@ const btn = (extra = {}) => ({
 });
 
 export const btnPrimary = btn({
-  background: "linear-gradient(135deg,#0ea5e9,#0284c7 55%,#0369a1)",
+  background: "linear-gradient(135deg,var(--brand,#38bdf8),#0284c7 55%,#0369a1)",
   color: "#fff",
   boxShadow: "0 10px 24px rgba(14,165,233,0.34)",
 });
@@ -30,13 +30,13 @@ export const btnSecondary = btn({
 });
 
 export const btnDanger = btn({
-  background: "linear-gradient(135deg,#ef4444,#dc2626)",
+  background: "linear-gradient(135deg,var(--accent-danger,#ef4444),#dc2626)",
   color: "#fff",
 });
 
 export const inputStyle = {
   background: "linear-gradient(180deg,rgba(30,41,59,0.95),rgba(22,30,45,0.95))",
-  border: "1px solid rgba(71,85,105,0.9)",
+  border: "1px solid var(--line, rgba(71,85,105,0.9))",
   borderRadius: 12,
   color: "#f1f5f9",
   padding: "12px 14px",
@@ -52,7 +52,7 @@ export const labelStyle = {
   display: "block",
   fontSize: 11,
   fontWeight: 700,
-  color: "#64748b",
+  color: "var(--muted, #64748b)",
   textTransform: "uppercase",
   letterSpacing: "0.07em",
   marginBottom: 5,
@@ -80,6 +80,22 @@ export function Badge({ color, children }) {
 export function StatCard({ icon, label, value, sub, color = PLANO_COLORS["Plano Controle"], featured = false }) {
   const featuredGlow = `${color}33`;
   const isCompactCard = !featured;
+  const valueStyle = featured
+    ? {
+        fontSize: "clamp(34px, 4.8vw, 52px)",
+        fontFamily: "'Crimson Pro',Georgia,serif",
+        color: "#ffffff",
+        fontWeight: 700,
+        lineHeight: 1,
+        letterSpacing: "0.01em",
+        textShadow: "0 2px 0 rgba(2,6,23,0.55), 0 12px 28px rgba(34,211,238,0.26)",
+      }
+    : {
+        fontSize: "clamp(16px, 2vw, 24px)",
+        fontFamily: "'Crimson Pro',Georgia,serif",
+        color: "#f1f5f9",
+        fontWeight: 700,
+      };
   return (
     <div
       className="panel-surface stat-card lift-hover"
@@ -139,7 +155,7 @@ export function StatCard({ icon, label, value, sub, color = PLANO_COLORS["Plano 
       >
         {label}
       </div>
-      <div style={{ fontSize: featured ? "clamp(34px, 4.8vw, 52px)" : "clamp(16px, 2vw, 24px)", fontFamily: "'Crimson Pro',Georgia,serif", color: "#f1f5f9", fontWeight: 700 }}>
+      <div style={valueStyle}>
         {value}
       </div>
       {sub && <div style={{ fontSize: featured ? "clamp(11px, 0.95vw, 13px)" : "clamp(9px, 0.8vw, 11px)", color: featured ? "#cbd5e1" : "#94a3b8", marginTop: featured ? 6 : 3 }}>{sub}</div>}

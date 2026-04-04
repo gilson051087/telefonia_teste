@@ -186,7 +186,7 @@ export default function ReportsTab({
                         >
                           <span>{fmtDate(venda.data)}</span>
                           <span>{venda.cliente}</span>
-                          <span>{fmtBRL(venda.valor)}</span>
+                          <span>{fmtBRL(venda.receita ?? venda.valor)}</span>
                           <span>{venda.vendedor ? String(venda.vendedor).toUpperCase() : "—"}</span>
                         </div>
                       ))}
@@ -280,7 +280,7 @@ export default function ReportsTab({
                       >
                         <span>{fmtDate(venda.dataCompetencia || venda.data)}</span>
                         <span>{venda.cliente}</span>
-                        <span>{fmtBRL(venda.valor)}</span>
+                        <span>{fmtBRL(venda.receita ?? venda.valor)}</span>
                         <span>{venda.vendedor ? String(venda.vendedor).toUpperCase() : "—"}</span>
                       </div>
                     ))}

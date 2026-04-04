@@ -122,6 +122,28 @@ export function isValidCPF(value) {
   return first === Number(digits[9]) && second === Number(digits[10]);
 }
 
+function parseNumericValue(value, fallback = 0) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : fallback;
+  const raw = String(value ?? "").trim();
+  if (!raw) return fallback;
+  const compact = raw.replace(/\s/g, "");
+  const hasComma = compact.includes(",");
+  const hasDot = compact.includes(".");
+  let normalized = compact;
+
+  if (hasComma && hasDot) {
+    normalized =
+      compact.lastIndexOf(",") > compact.lastIndexOf(".")
+        ? compact.replace(/\./g, "").replace(",", ".")
+        : compact.replace(/,/g, "");
+  } else if (hasComma) {
+    normalized = compact.replace(",", ".");
+  }
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 function escapeXml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -363,7 +385,7 @@ export function exportVendaComanda(filename, venda = {}) {
   }).join("");
   const modelo = isPlanoAparelho ? venda.modelo || "" : hasComandaAparelhoExtra ? venda.comandaAparelhoModelo || "" : "";
   const imei = isPlanoAparelho ? venda.imei || "" : hasComandaAparelhoExtra ? venda.comandaAparelhoImei || "" : "";
-  const valorPre = isPlanoAparelho ? Number(venda.valor) || 0 : hasComandaAparelhoExtra ? Number(venda.comandaAparelhoValor) || 0 : 0;
+  const valorPre = isPlanoAparelho ? parseNumericValue(venda.valor) : hasComandaAparelhoExtra ? parseNumericValue(venda.comandaAparelhoValor) : 0;
 
   const seguroTipoSelecionado = venda.comandaSeguroTipo || (isPlanoSeguro ? servico || plano : "");
   const seguroTexto = seguroTipoSelecionado ? `SIM - ${seguroTipoSelecionado}` : "";
@@ -379,8 +401,8 @@ export function exportVendaComanda(filename, venda = {}) {
   const tvContrato = isPlanoTv ? venda.contrato || "" : hasComandaTvExtra ? venda.comandaTvContrato || "" : "";
   const tvBox = isPlanoTv ? venda.boxImediata || "" : hasComandaTvExtra ? venda.comandaTvBoxImediata || "" : "";
 
-  const acessoriosQuantidade = isPlanoAcessorio ? Number(venda.qty) || 1 : hasComandaAcessoriosExtra ? Number(venda.comandaAcessoriosQuantidade) || 1 : "";
-  const acessoriosReceita = isPlanoAcessorio ? Number(venda.valor) || 0 : hasComandaAcessoriosExtra ? Number(venda.comandaAcessoriosValor) || 0 : null;
+  const acessoriosQuantidade = isPlanoAcessorio ? parseNumericValue(venda.qty, 1) : hasComandaAcessoriosExtra ? parseNumericValue(venda.comandaAcessoriosQuantidade, 1) : "";
+  const acessoriosReceita = isPlanoAcessorio ? parseNumericValue(venda.valor) : hasComandaAcessoriosExtra ? parseNumericValue(venda.comandaAcessoriosValor) : null;
 
   const xml = `<?xml version="1.0"?>
   <?mso-application progid="Excel.Sheet"?>

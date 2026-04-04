@@ -53,40 +53,154 @@ const normalizeSearchText = (value = "") =>
 const APP_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=DM+Sans:wght@400;500;600&display=swap');
   :root{
-    --bg:#0b1220;
-    --bg-soft:#101a2d;
-    --panel:#131f34;
-    --panel-strong:#111b2f;
-    --line:rgba(148,163,184,0.24);
+    --bg:#061022;
+    --bg-soft:#0b1830;
+    --panel:#12213a;
+    --panel-strong:#101d33;
+    --line:rgba(125,211,252,0.18);
+    --line-strong:rgba(125,211,252,0.3);
     --text:#e6edf7;
+    --text-strong:#f8fbff;
     --muted:#9fb0c9;
     --brand:#38bdf8;
+    --accent-info:#22d3ee;
+    --accent-success:#22c55e;
+    --accent-warning:#f59e0b;
+    --accent-danger:#ef4444;
+    --accent-info-soft:rgba(34,211,238,0.18);
+    --accent-success-soft:rgba(34,197,94,0.16);
+    --accent-warning-soft:rgba(245,158,11,0.16);
+    --accent-danger-soft:rgba(239,68,68,0.16);
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   body{
-    background:linear-gradient(180deg, var(--bg-soft), var(--bg));
+    background:
+      radial-gradient(circle at 12% 16%, rgba(14,165,233,0.18), transparent 34%),
+      radial-gradient(circle at 88% 8%, rgba(16,185,129,0.14), transparent 30%),
+      linear-gradient(180deg, var(--bg-soft), var(--bg));
     color:var(--text);
   }
   @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
   @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  @keyframes auroraDrift{0%{transform:translate3d(-2%,0,0)}50%{transform:translate3d(2%,1%,0)}100%{transform:translate3d(-2%,0,0)}}
+  .app-atmosphere{
+    position:relative;
+    isolation:isolate;
+    background:
+      radial-gradient(circle at 15% 12%, rgba(14,165,233,0.14), transparent 30%),
+      radial-gradient(circle at 85% 7%, rgba(16,185,129,0.11), transparent 28%),
+      linear-gradient(165deg,#050b18 0%, #081327 46%, #0a1729 100%);
+    overflow:hidden;
+  }
+  .app-atmosphere::before{
+    content:"";
+    position:absolute;
+    inset:-22% -18%;
+    background:
+      conic-gradient(from 110deg at 25% 38%, rgba(34,211,238,0.12), transparent 26%),
+      conic-gradient(from 235deg at 72% 42%, rgba(34,197,94,0.09), transparent 24%);
+    filter:blur(10px);
+    animation:auroraDrift 26s ease-in-out infinite;
+    pointer-events:none;
+    z-index:0;
+  }
+  .app-atmosphere::after{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:
+      linear-gradient(rgba(148,163,184,0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148,163,184,0.045) 1px, transparent 1px);
+    background-size:44px 44px;
+    mask-image:radial-gradient(circle at center, black 18%, transparent 82%);
+    opacity:0.25;
+    pointer-events:none;
+    z-index:0;
+  }
+  .app-atmosphere > *{
+    position:relative;
+    z-index:1;
+  }
   button:focus-visible,
   input:focus-visible,
   select:focus-visible{
-    outline:2px solid #22d3ee;
+    outline:2px solid var(--accent-info);
     outline-offset:2px;
   }
   .touch-btn:hover{transform:translateY(-1px);}
   .touch-btn:active{transform:translateY(0);}
   .lift-hover:hover{transform:translateY(-1px);}
+  input::placeholder,
+  textarea::placeholder{
+    color:#8ea3be;
+    opacity:1;
+  }
   .panel-surface{
-    background:linear-gradient(180deg,var(--panel),var(--panel-strong));
+    background:
+      radial-gradient(circle at 95% 10%, rgba(34,211,238,0.1), transparent 34%),
+      linear-gradient(180deg,var(--panel),var(--panel-strong));
     border:1px solid var(--line);
     border-radius:14px;
-    box-shadow:0 10px 24px rgba(2,6,23,0.22);
+    box-shadow:0 12px 28px rgba(2,6,23,0.26);
+    box-shadow:0 12px 28px rgba(2,6,23,0.26), inset 0 1px 0 rgba(248,250,252,0.06);
+    backdrop-filter:blur(7px);
+    transition:border-color .2s ease, box-shadow .2s ease;
+  }
+  @media (hover:hover){
+    .panel-surface:hover{
+      border-color:var(--line-strong);
+      box-shadow:0 16px 30px rgba(2,6,23,0.32), inset 0 1px 0 rgba(248,250,252,0.08);
+    }
   }
   .stat-card{
     transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease;
     animation:fadeUp .34s ease both;
+  }
+  @media (hover:hover){
+    .stat-card{
+      will-change:transform, box-shadow;
+    }
+    .stat-card::after{
+      content:"";
+      position:absolute;
+      inset:-35% -120%;
+      background:linear-gradient(100deg, rgba(255,255,255,0) 20%, rgba(186,230,253,0.12) 50%, rgba(255,255,255,0) 80%);
+      transform:translateX(-28%);
+      opacity:0;
+      transition:transform .45s ease, opacity .45s ease;
+      pointer-events:none;
+    }
+    .stat-card:hover{
+      transform:translateY(-5px);
+      border-color:rgba(125,211,252,0.52) !important;
+      box-shadow:0 18px 34px rgba(8,47,73,0.3) !important;
+    }
+    .stat-card:hover::after{
+      transform:translateX(32%);
+      opacity:1;
+    }
+    .seller-summary-card{
+      transition:transform .22s ease, border-color .22s ease, box-shadow .22s ease;
+      will-change:transform, box-shadow;
+    }
+    .seller-summary-card:hover{
+      transform:translateY(-4px);
+      border-color:rgba(103,232,249,0.38) !important;
+      box-shadow:0 16px 30px rgba(8,47,73,0.24) !important;
+    }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .stat-card,
+    .seller-summary-card{
+      transition:none !important;
+      animation:none !important;
+    }
+    .app-atmosphere::before{
+      animation:none !important;
+    }
+    .stat-card::after{
+      display:none;
+    }
   }
   .kpi-grid .stat-card:nth-child(1){animation-delay:.02s;}
   .kpi-grid .stat-card:nth-child(2){animation-delay:.05s;}
@@ -128,8 +242,8 @@ const APP_STYLES = `
   }
   .action-pill:hover{filter:brightness(1.04);}
   .action-pill-info{background:rgba(56,189,248,0.14);color:#bae6fd;border:1px solid rgba(56,189,248,0.3);}
-  .action-pill-edit{background:rgba(34,197,94,0.12);color:#bbf7d0;border:1px solid rgba(34,197,94,0.28);}
-  .action-pill-delete{background:rgba(239,68,68,0.14);color:#fecaca;border:1px solid rgba(239,68,68,0.3);}
+  .action-pill-edit{background:var(--accent-success-soft);color:#bbf7d0;border:1px solid rgba(34,197,94,0.28);}
+  .action-pill-delete{background:var(--accent-danger-soft);color:#fecaca;border:1px solid rgba(239,68,68,0.3);}
   .filters-bar{
     display:flex;
     flex-wrap:nowrap;
@@ -157,7 +271,7 @@ const APP_STYLES = `
     font-size:13px;
     font-weight:600;
   }
-  .quick-filter-btn:hover{border-color:#22d3ee!important;color:#67e8f9!important;}
+  .quick-filter-btn:hover{border-color:var(--accent-info)!important;color:#67e8f9!important;}
   input[type="date"],
   input[type="month"]{
     color-scheme:dark;
@@ -175,7 +289,7 @@ const APP_STYLES = `
   input[type="date"]:hover,
   input[type="month"]:hover{
     border-color:rgba(34,211,238,0.45);
-    box-shadow:0 0 0 2px rgba(34,211,238,0.08);
+    box-shadow:0 0 0 2px var(--accent-info-soft);
   }
   input[type="date"]::-webkit-calendar-picker-indicator,
   input[type="month"]::-webkit-calendar-picker-indicator{
@@ -198,7 +312,7 @@ const APP_STYLES = `
     background:rgba(30,41,59,0.78)!important;
   }
   .app-nav button:focus-visible{
-    outline:2px solid #22d3ee;
+    outline:2px solid var(--accent-info);
     outline-offset:1px;
   }
   .plan-choice:hover,
@@ -578,6 +692,37 @@ export default function App() {
 
     return venda.data;
   };
+  const parseNumericValue = (value) => {
+    if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+    const raw = String(value ?? "").trim();
+    if (!raw) return 0;
+    const compact = raw.replace(/\s/g, "");
+    const hasComma = compact.includes(",");
+    const hasDot = compact.includes(".");
+    let normalized = compact;
+
+    if (hasComma && hasDot) {
+      normalized =
+        compact.lastIndexOf(",") > compact.lastIndexOf(".")
+          ? compact.replace(/\./g, "").replace(",", ".")
+          : compact.replace(/,/g, "");
+    } else if (hasComma) {
+      normalized = compact.replace(",", ".");
+    }
+
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  const getVendaRevenue = (venda = {}) => {
+    const valorBase = parseNumericValue(venda.valor);
+    if (["Plano Controle", "Plano Pós-Pago", "TV", "Internet Residencial", "Internet Movel Mais", "Seguro Movel Celular"].includes(venda.plano)) {
+      const remuneracaoTabela = getRemunerationValue(venda.plano, venda.tipoPlano);
+      return remuneracaoTabela ?? valorBase;
+    }
+    if (venda.plano === "Aparelho Celular") return valorBase * 0.05;
+    if (venda.plano === "Acessorios") return valorBase * 0.15;
+    return valorBase;
+  };
   const cycleScopedVendas = scopedVendas.filter((venda) => getVendaCompetenceMonth(venda) === currentCycleMonth);
   const installationCycleScopedVendas = scopedVendas.filter(
     (venda) =>
@@ -619,26 +764,15 @@ export default function App() {
 
   const vendasComValor = cycleScopedVendas.filter((venda) => venda.status === "Ativa");
   const ativas = vendasComValor;
-  const totalVal = vendasComValor.reduce((sum, venda) => {
-    if (["Plano Controle", "Plano Pós-Pago", "TV", "Internet Residencial", "Internet Movel Mais", "Seguro Movel Celular"].includes(venda.plano)) {
-      const remuneracaoTabela = getRemunerationValue(venda.plano, venda.tipoPlano);
-      return sum + (remuneracaoTabela ?? venda.valor);
-    }
-    if (venda.plano === "Aparelho Celular") return sum + venda.valor * 0.05;
-    if (venda.plano === "Acessorios") return sum + venda.valor * 0.15;
-    return sum;
-  }, 0);
+  const totalVal = vendasComValor.reduce((sum, venda) => sum + getVendaRevenue(venda), 0);
   const ticketCelularVendas = vendasComValor.filter((venda) => venda.plano === "Aparelho Celular");
-  const ticketCelularTotal = ticketCelularVendas.reduce((sum, venda) => sum + venda.valor * 0.05, 0);
+  const ticketCelularTotal = ticketCelularVendas.reduce((sum, venda) => sum + getVendaRevenue(venda), 0);
   const ticketCelular = ticketCelularTotal;
   const ticketAcessoriosVendas = vendasComValor.filter((venda) => venda.plano === "Acessorios");
-  const ticketAcessoriosTotal = ticketAcessoriosVendas.reduce((sum, venda) => sum + venda.valor * 0.15, 0);
+  const ticketAcessoriosTotal = ticketAcessoriosVendas.reduce((sum, venda) => sum + getVendaRevenue(venda), 0);
   const ticketAcessorios = ticketAcessoriosVendas.length ? ticketAcessoriosTotal / ticketAcessoriosVendas.length : 0;
   const ticketPlanosPrincipaisVendas = vendasComValor.filter((venda) => ["Plano Controle", "Plano Pós-Pago", "TV", "Internet Residencial", "Internet Movel Mais"].includes(venda.plano));
-  const ticketPlanosPrincipaisTotal = ticketPlanosPrincipaisVendas.reduce((sum, venda) => {
-    const remuneracaoTabela = getRemunerationValue(venda.plano, venda.tipoPlano);
-    return sum + (remuneracaoTabela ?? venda.valor);
-  }, 0);
+  const ticketPlanosPrincipaisTotal = ticketPlanosPrincipaisVendas.reduce((sum, venda) => sum + getVendaRevenue(venda), 0);
   const computeGoalProgress = (vendasList = [], receitaTotal = 0) => {
     const activeVendas = (vendasList || []).filter((venda) => venda.status !== "Cancelada");
     const bandaLarga = activeVendas.reduce((sum, venda) => {
@@ -768,14 +902,15 @@ export default function App() {
     const month = getVendaCompetenceMonth(venda);
     if (!month) return;
     ensureMonthBucket(month);
+    const vendaRevenue = getVendaRevenue(venda);
 
     if (PLANOS.includes(venda.plano)) {
-      byMonth[month][venda.plano] += venda.valor;
+      byMonth[month][venda.plano] += vendaRevenue;
     } else {
-      byMonth[month].Outros = (byMonth[month].Outros || 0) + venda.valor;
+      byMonth[month].Outros = (byMonth[month].Outros || 0) + vendaRevenue;
       hasOtherPlanoInMonth = true;
     }
-    byMonth[month].total += venda.valor;
+    byMonth[month].total += vendaRevenue;
   });
 
   const monthPlanSeries = hasOtherPlanoInMonth ? [...PLANOS, "Outros"] : PLANOS;
@@ -789,28 +924,29 @@ export default function App() {
 
   const byPlano = {};
   cycleScopedVendas.forEach((venda) => {
-    if (venda.status === "Ativa") byPlano[venda.plano] = (byPlano[venda.plano] || 0) + venda.valor;
+    if (venda.status === "Ativa") byPlano[venda.plano] = (byPlano[venda.plano] || 0) + getVendaRevenue(venda);
   });
   const planoData = Object.entries(byPlano).map(([name, value]) => ({ name, value }));
 
   const reportScopedVendas = scopedVendas;
 
   const dailyReportVendas = reportScopedVendas
-    .map((venda) => ({ ...venda, dataCompetencia: getVendaCompetenceDate(venda) }))
+    .map((venda) => ({ ...venda, dataCompetencia: getVendaCompetenceDate(venda), receita: getVendaRevenue(venda) }))
     .filter((venda) => !dailyReportDate || venda.dataCompetencia === dailyReportDate)
     .sort((a, b) => a.dataCompetencia.localeCompare(b.dataCompetencia) || a.cliente.localeCompare(b.cliente));
-  const dailyReportTotal = dailyReportVendas.filter((venda) => venda.status === "Ativa").reduce((sum, venda) => sum + venda.valor, 0);
+  const dailyReportTotal = dailyReportVendas.filter((venda) => venda.status === "Ativa").reduce((sum, venda) => sum + venda.receita, 0);
   const monthlyReportVendas = reportScopedVendas
     .filter((venda) => !monthlyReportMonth || getVendaCompetenceMonth(venda) === monthlyReportMonth)
+    .map((venda) => ({ ...venda, receita: getVendaRevenue(venda) }))
     .sort((a, b) => a.data.localeCompare(b.data) || a.cliente.localeCompare(b.cliente));
-  const monthlyReportTotal = monthlyReportVendas.filter((venda) => venda.status === "Ativa").reduce((sum, venda) => sum + venda.valor, 0);
+  const monthlyReportTotal = monthlyReportVendas.filter((venda) => venda.status === "Ativa").reduce((sum, venda) => sum + venda.receita, 0);
 
   const reportSellerName = currentUser?.role === "seller" ? String(currentUser.nome || "").toUpperCase() : "Todos vendedores";
 
   const sellerSummaries = sellers
     .map((seller) => {
       const sellerVendas = cycleScopedVendas.filter((venda) => venda.vendedorId === seller.id || venda.vendedor === seller.nome);
-      const activeRevenue = sellerVendas.filter((venda) => venda.status === "Ativa").reduce((sum, venda) => sum + venda.valor, 0);
+      const activeRevenue = sellerVendas.filter((venda) => venda.status === "Ativa").reduce((sum, venda) => sum + getVendaRevenue(venda), 0);
 
       return {
         ...seller,
@@ -909,10 +1045,7 @@ export default function App() {
           if (!payload?.plano || !payload?.tipoPlano || !payload?.valor || payload.valor <= 0) return;
           additionalSales.push(payload);
         };
-        const num = (value) => {
-          const parsed = Number(value);
-          return Number.isFinite(parsed) ? parsed : 0;
-        };
+        const num = parseNumericValue;
 
         const additionalBase = {
           cliente: baseData.cliente,
@@ -1135,7 +1268,7 @@ export default function App() {
         venda.cpf || "",
         PLANO_LABELS[venda.plano] || venda.plano,
         venda.tipoPlano || "",
-        venda.valor,
+        venda.receita,
         venda.vendedor ? String(venda.vendedor).toUpperCase() : "",
         venda.descricao || "",
       ]);
@@ -1168,7 +1301,7 @@ export default function App() {
         venda.cpf || "",
         PLANO_LABELS[venda.plano] || venda.plano,
         venda.tipoPlano || "",
-        venda.valor,
+        venda.receita,
         venda.vendedor ? String(venda.vendedor).toUpperCase() : "",
         venda.descricao || "",
       ]);
@@ -1253,7 +1386,7 @@ export default function App() {
           {tab === "vendas" && (
             <div className="kpi-grid">
               <div className="kpi-featured">
-                <StatCard icon="💰" label="Receita Total" value={fmtBRL(totalVal)} sub={`${ativas.length} vendas ativas`} color="#22c55e" featured />
+                <StatCard icon="💰" label="Receita Total" value={fmtBRL(totalVal)} color="#22c55e" featured />
               </div>
               <div className="kpi-row">
                 <StatCard icon="📲" label="Ticket Celular (5%)" value={fmtBRL(ticketCelular)} sub={`${ticketCelularVendas.length} vendas`} color="#10b981" />

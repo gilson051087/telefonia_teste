@@ -318,6 +318,28 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
     });
   }
 
+  function parseNumericInput(value) {
+    if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+    const raw = String(value ?? "").trim();
+    if (!raw) return 0;
+    const compact = raw.replace(/\s/g, "");
+    const hasComma = compact.includes(",");
+    const hasDot = compact.includes(".");
+    let normalized = compact;
+
+    if (hasComma && hasDot) {
+      normalized =
+        compact.lastIndexOf(",") > compact.lastIndexOf(".")
+          ? compact.replace(/\./g, "").replace(",", ".")
+          : compact.replace(/,/g, "");
+    } else if (hasComma) {
+      normalized = compact.replace(",", ".");
+    }
+
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
   function validate() {
     const next = {};
     if (!form.cliente.trim()) next.cliente = "Obrigatório";
@@ -327,7 +349,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
     if (usesInstallationStatus && !form.statusInstalacao) next.statusInstalacao = "Obrigatório";
     if (!usesInstallationStatus && form.dataInstalacao && !form.statusInstalacao) next.statusInstalacao = "Obrigatório";
     if (!initial && currentPlano === "Aparelho Celular" && form.adicionarSeguro && !form.tipoSeguro) next.tipoSeguro = "Selecione o seguro";
-    if (!form.valor || Number.isNaN(+form.valor) || +form.valor <= 0) next.valor = "Valor inválido";
+    if (!form.valor || parseNumericInput(form.valor) <= 0) next.valor = "Valor inválido";
     if (!form.data) next.data = "Obrigatório";
     if (!form.vendedorId && currentUser.role === "admin") next.vendedor = "Selecione um vendedor";
     if (!initial && isCurrentControle) {
@@ -403,7 +425,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
                 ? "Cancelada"
                 : "Pendente"
             : "Ativa",
-        valor: parseFloat(form.valor),
+        valor: parseNumericInput(form.valor),
         vendedor: currentUser.role === "seller" ? currentUser.nome : form.vendedor,
         vendedorId: currentUser.role === "seller" ? currentUser.id : form.vendedorId,
       });
