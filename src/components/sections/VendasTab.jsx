@@ -275,7 +275,7 @@ export default function VendasTab({
       </div>
 
       {filtered.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "80px 0", color: "#475569", flex: 1, overflow: "auto" }}>
+        <div style={{ textAlign: "center", padding: "80px 0", color: "#475569", flex: 1 }}>
           <div style={{ fontSize: 52, marginBottom: 12 }}>📡</div>
           <p style={{ fontFamily: "'Crimson Pro',serif", fontSize: 18, color: "#94a3b8", marginBottom: 6 }}>Nenhum lançamento encontrado</p>
           <button onClick={onOpenNew} className="touch-btn lift-hover" style={{ ...btnPrimary, marginTop: 12 }}>
@@ -283,7 +283,7 @@ export default function VendasTab({
           </button>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, minHeight: 0, overflowY: "auto", paddingRight: 2, alignItems: "stretch" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, minHeight: 0, overflowY: "visible", paddingRight: 2, alignItems: "stretch", paddingBottom: 84 }}>
           {grouped.map((group) => {
             const color = PLANO_COLORS[group.plano] || "#22d3ee";
             const icon = PLANO_ICONS[group.plano] || "📦";
@@ -352,7 +352,17 @@ export default function VendasTab({
 
                 {isOpen && (
                   <div>
-                <div className="desktop-table" style={{ overflowX: "auto", padding: "4px 10px 10px" }}>
+                <div
+                  className="desktop-table"
+                  style={{
+                    overflow: "auto",
+                    maxHeight: "clamp(260px, 56vh, 560px)",
+                    overscrollBehavior: "contain",
+                    WebkitOverflowScrolling: "touch",
+                    scrollbarWidth: "thin",
+                    padding: "4px 10px 10px",
+                  }}
+                >
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 920 }}>
                     <thead>
                       <tr style={{ borderBottom: "1px solid #1e293b", background: "rgba(15,23,42,0.7)" }}>

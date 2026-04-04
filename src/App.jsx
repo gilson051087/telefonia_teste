@@ -337,11 +337,12 @@ const APP_STYLES = `
     gap:16px;
   }
   .vendas-screen{
-    height:calc(100vh - 220px);
+    height:auto;
     min-height:0;
     display:flex;
     flex-direction:column;
     gap:12px;
+    overflow:visible;
   }
   .kpi-grid{
     display:grid;
