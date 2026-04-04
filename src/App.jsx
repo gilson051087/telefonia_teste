@@ -763,7 +763,6 @@ export default function App() {
   const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
   const vendasComValor = cycleScopedVendas.filter((venda) => venda.status === "Ativa");
-  const ativas = vendasComValor;
   const totalVal = vendasComValor.reduce((sum, venda) => sum + getVendaRevenue(venda), 0);
   const ticketCelularVendas = vendasComValor.filter((venda) => venda.plano === "Aparelho Celular");
   const ticketCelularTotal = ticketCelularVendas.reduce((sum, venda) => sum + getVendaRevenue(venda), 0);
