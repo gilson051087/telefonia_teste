@@ -96,7 +96,7 @@ as $$
   limit 1;
 $$;
 
-create or replace function public.app_login(p_username text, p_senha text)
+create or replace function public.app_login(p_senha text, p_username text)
 returns jsonb
 language plpgsql
 security definer

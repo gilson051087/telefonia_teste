@@ -84,8 +84,8 @@ export async function login(username, senha) {
   const client = ensureSupabase(false);
 
   const { data, error } = await client.rpc("app_login", {
-    p_username: normalizedUsername,
     p_senha: String(senha || ""),
+    p_username: normalizedUsername,
   });
 
   if (error || !data?.token || !data?.user) {
