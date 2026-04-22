@@ -1,13 +1,17 @@
-import { isSupabaseConfigured, supabase, supabaseConfigError } from "./lib/supabase";
+import { createSupabaseClient, isSupabaseConfigured, supabaseConfigError } from "./lib/supabase";
 import { normalizeLegacyVenda } from "./utils/sales";
 
-const SESSION_KEY = "telefonia_supabase_session_v1";
+const SESSION_KEY = "telefonia_supabase_session_v2";
 
-function ensureSupabase() {
-  if (!isSupabaseConfigured || !supabase) {
+function ensureSupabase(includeSessionToken = true) {
+  if (!isSupabaseConfigured) {
     throw new Error(supabaseConfigError);
   }
-  return supabase;
+
+  const session = includeSessionToken ? getStoredSession() : null;
+  const client = createSupabaseClient(session?.token || null);
+  if (!client) throw new Error(supabaseConfigError);
+  return client;
 }
 
 function genId() {
@@ -20,7 +24,10 @@ function nowIso() {
 
 function getStoredSession() {
   try {
-    return JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
+    const raw = JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
+    if (!raw || typeof raw !== "object") return null;
+    if (!raw.token || !raw.user?.id) return null;
+    return raw;
   } catch {
     return null;
   }
@@ -42,37 +49,25 @@ function mapUser(row) {
   };
 }
 
-async function hashPassword(value) {
-  const data = new TextEncoder().encode(value);
-  const hashBuffer = await window.crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hashBuffer))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-async function fetchUserByUsername(username) {
-  const client = ensureSupabase();
-  const { data, error } = await client.from("users").select("*").eq("username", username.toLowerCase()).maybeSingle();
-  if (error) throw new Error(error.message || "Erro ao buscar usuario.");
-  return data;
-}
-
 async function requireCurrentUser() {
   const session = getStoredSession();
-  if (!session?.user?.id) {
+  if (!session?.token) {
     throw new Error("Sessao nao encontrada.");
   }
 
-  const client = ensureSupabase();
-  const { data, error } = await client.from("users").select("*").eq("id", session.user.id).maybeSingle();
-  if (error) throw new Error(error.message || "Erro ao carregar sessao.");
-  if (!data) {
+  const client = ensureSupabase(true);
+  const { data, error } = await client.rpc("app_get_session");
+  if (error || !data?.user) {
     setStoredSession(null);
-    throw new Error("Usuario da sessao nao encontrado.");
+    throw new Error(error?.message || "Usuario da sessao nao encontrado.");
   }
 
-  const user = mapUser(data);
-  setStoredSession({ user });
+  const user = mapUser(data.user);
+  setStoredSession({
+    token: session.token,
+    expiresAt: data.expiresAt || session.expiresAt || null,
+    user,
+  });
   return user;
 }
 
@@ -86,50 +81,54 @@ async function ensureAdmin() {
 
 export async function login(username, senha) {
   const normalizedUsername = String(username || "").trim().toLowerCase();
-  const user = await fetchUserByUsername(normalizedUsername);
+  const client = ensureSupabase(false);
 
-  if (!user) {
-    throw new Error("Usuario ou senha invalidos.");
+  const { data, error } = await client.rpc("app_login", {
+    p_username: normalizedUsername,
+    p_senha: String(senha || ""),
+  });
+
+  if (error || !data?.token || !data?.user) {
+    throw new Error(error?.message || "Usuario ou senha invalidos.");
   }
 
-  const hashed = await hashPassword(String(senha || ""));
-  if (hashed !== user.password_hash) {
-    throw new Error("Usuario ou senha invalidos.");
-  }
-
-  const mapped = mapUser(user);
-  setStoredSession({ user: mapped });
-  return mapped;
+  const user = mapUser(data.user);
+  setStoredSession({
+    token: data.token,
+    expiresAt: data.expiresAt || null,
+    user,
+  });
+  return user;
 }
 
 export async function logout() {
-  setStoredSession(null);
+  try {
+    const session = getStoredSession();
+    if (session?.token) {
+      const client = ensureSupabase(true);
+      await client.rpc("app_logout");
+    }
+  } catch {
+    // noop
+  } finally {
+    setStoredSession(null);
+  }
 }
 
 export async function getSession() {
-  const session = getStoredSession();
-  if (!session?.user) {
-    throw new Error("Sessao nao encontrada.");
-  }
-
   return requireCurrentUser();
 }
 
 export async function listUsers() {
-  const user = await requireCurrentUser();
-  if (user.role === "admin") {
-    const client = ensureSupabase();
-    const { data, error } = await client.from("users").select("id, nome, username, role, created_at").order("role", { ascending: false }).order("nome", { ascending: true });
-    if (error) throw new Error(error.message || "Erro ao carregar usuarios.");
-    return (data || []).map(mapUser);
-  }
-
-  return [user];
+  const client = ensureSupabase(true);
+  const { data, error } = await client.rpc("app_list_users");
+  if (error) throw new Error(error.message || "Erro ao carregar usuarios.");
+  return (data || []).map(mapUser);
 }
 
 export async function createSeller(payload) {
   await ensureAdmin();
-  const client = ensureSupabase();
+  const client = ensureSupabase(true);
 
   const nome = String(payload?.nome || "").trim().toUpperCase();
   const username = String(payload?.username || "").trim().toLowerCase();
@@ -143,55 +142,35 @@ export async function createSeller(payload) {
     throw new Error("A senha deve ter pelo menos 6 caracteres.");
   }
 
-  const existing = await fetchUserByUsername(username);
-  if (existing) {
-    throw new Error("Ja existe um usuario com esse login.");
-  }
+  const { data, error } = await client.rpc("app_create_seller", {
+    p_nome: nome,
+    p_username: username,
+    p_senha: senha,
+  });
 
-  const record = {
-    id: genId(),
-    nome,
-    username,
-    password_hash: await hashPassword(senha),
-    role: "seller",
-    created_at: nowIso(),
-  };
-
-  const { data, error } = await client.from("users").insert(record).select("id, nome, username, role, created_at").single();
   if (error) throw new Error(error.message || "Erro ao cadastrar vendedor.");
   return mapUser(data);
 }
 
 export async function deleteSeller(id) {
   await ensureAdmin();
-  const client = ensureSupabase();
-
-  const { data: user, error: fetchError } = await client.from("users").select("id, role").eq("id", id).maybeSingle();
-  if (fetchError) throw new Error(fetchError.message || "Erro ao carregar vendedor.");
-  if (!user) throw new Error("Vendedor nao encontrado.");
-  if (user.role === "admin") throw new Error("Nao e permitido excluir o administrador.");
-
-  const { error } = await client.from("users").delete().eq("id", id);
+  const client = ensureSupabase(true);
+  const { error } = await client.rpc("app_delete_seller", { p_id: id });
   if (error) throw new Error(error.message || "Erro ao excluir vendedor.");
 }
 
 export async function listVendas() {
-  const user = await requireCurrentUser();
-  const client = ensureSupabase();
-  let query = client.from("vendas").select("payload, created_at").order("created_at", { ascending: false });
+  await requireCurrentUser();
+  const client = ensureSupabase(true);
+  const { data, error } = await client.from("vendas").select("payload, created_at").order("created_at", { ascending: false });
 
-  if (user.role !== "admin") {
-    query = query.or(`vendedor_id.eq.${user.id},vendedor.eq.${user.nome}`);
-  }
-
-  const { data, error } = await query;
   if (error) throw new Error(error.message || "Erro ao carregar vendas.");
   return (data || []).map((row) => normalizeLegacyVenda(row.payload));
 }
 
 export async function createVenda(payload) {
   const user = await requireCurrentUser();
-  const client = ensureSupabase();
+  const client = ensureSupabase(true);
   const venda = normalizeLegacyVenda({
     ...payload,
     id: genId(),
@@ -215,7 +194,7 @@ export async function createVenda(payload) {
 
 export async function updateVenda(id, payload) {
   const user = await requireCurrentUser();
-  const client = ensureSupabase();
+  const client = ensureSupabase(true);
   const { data: currentRow, error: fetchError } = await client.from("vendas").select("payload").eq("id", id).maybeSingle();
   if (fetchError) throw new Error(fetchError.message || "Erro ao carregar venda.");
   if (!currentRow?.payload) throw new Error("Venda nao encontrada.");
@@ -249,7 +228,7 @@ export async function updateVenda(id, payload) {
 
 export async function deleteVenda(id) {
   const user = await requireCurrentUser();
-  const client = ensureSupabase();
+  const client = ensureSupabase(true);
   const { data: currentRow, error: fetchError } = await client.from("vendas").select("payload").eq("id", id).maybeSingle();
   if (fetchError) throw new Error(fetchError.message || "Erro ao carregar venda.");
   if (!currentRow?.payload) throw new Error("Venda nao encontrada.");
@@ -265,33 +244,27 @@ export async function deleteVenda(id) {
 
 export async function migrateLegacyData(payload) {
   await ensureAdmin();
-  const client = ensureSupabase();
+  const client = ensureSupabase(true);
 
   const users = Array.isArray(payload?.users) ? payload.users : [];
   const vendas = Array.isArray(payload?.vendas) ? payload.vendas : [];
 
   if (users.length) {
-    const { data: existingUsers, error: usersError } = await client.from("users").select("username");
+    const { data: existingUsers, error: usersError } = await client.rpc("app_list_users");
     if (usersError) throw new Error(usersError.message || "Erro ao migrar usuarios.");
-    const usernames = new Set((existingUsers || []).map((item) => item.username));
+    const usernames = new Set((existingUsers || []).map((item) => String(item.username || "").toLowerCase()));
 
-    const newUsers = [];
     for (const user of users) {
       const username = String(user.username || "").trim().toLowerCase();
       if (!username || usernames.has(username) || user.role !== "seller") continue;
-      newUsers.push({
-        id: user.id || genId(),
-        nome: user.nome || username,
-        username,
-        password_hash: await hashPassword(String(user.senha || "123456")),
-        role: "seller",
-        created_at: user.createdAt || nowIso(),
-      });
-    }
 
-    if (newUsers.length) {
-      const { error } = await client.from("users").insert(newUsers);
-      if (error) throw new Error(error.message || "Erro ao migrar usuarios.");
+      const { error } = await client.rpc("app_create_seller", {
+        p_nome: String(user.nome || username).toUpperCase(),
+        p_username: username,
+        p_senha: String(user.senha || "123456"),
+      });
+
+      if (!error) usernames.add(username);
     }
   }
 
@@ -320,27 +293,17 @@ export async function migrateLegacyData(payload) {
 }
 
 export async function changePassword(currentSenha, newSenha) {
-  const user = await requireCurrentUser();
-  const client = ensureSupabase();
-  const { data, error } = await client.from("users").select("password_hash").eq("id", user.id).maybeSingle();
-  if (error) throw new Error(error.message || "Erro ao carregar usuario.");
-  if (!data) throw new Error("Usuario nao encontrado.");
+  const client = ensureSupabase(true);
+  const { error } = await client.rpc("app_change_password", {
+    p_current_senha: String(currentSenha || ""),
+    p_new_senha: String(newSenha || ""),
+  });
 
-  const currentHash = await hashPassword(String(currentSenha || ""));
-  if (currentHash !== data.password_hash) {
-    throw new Error("Senha atual incorreta.");
-  }
-
-  if (!newSenha || newSenha.length < 6) {
-    throw new Error("A nova senha deve ter pelo menos 6 caracteres.");
-  }
-
-  const { error: updateError } = await client.from("users").update({ password_hash: await hashPassword(newSenha) }).eq("id", user.id);
-  if (updateError) throw new Error(updateError.message || "Erro ao alterar senha.");
+  if (error) throw new Error(error.message || "Erro ao alterar senha.");
 }
 
 export function hasApiToken() {
-  return Boolean(getStoredSession()?.user);
+  return Boolean(getStoredSession()?.token);
 }
 
 export function clearApiToken() {

@@ -10,12 +10,17 @@ Isso cria:
 
 - `users`
 - `vendas`
+- `app_sessions`
 - admin inicial
+- funcoes RPC de autenticacao/usuarios
+- RLS nas tabelas sensiveis
 
 Login inicial:
 
 - usuario: `admin`
 - senha: `123456`
+
+Troque a senha do admin no primeiro acesso.
 
 ## 2. Variaveis na Vercel
 
@@ -28,14 +33,28 @@ Como este projeto usa `react-scripts`, essas sao as variaveis que realmente prec
 
 ## 3. Observacao importante
 
-Nesta versao, o app usa o Supabase como banco direto pelo frontend.
-Isso remove os erros `404` da Vercel porque o app deixa de depender das rotas `/api/...`.
+Nesta versao, o app continua no Supabase direto pelo frontend, mas com fluxo seguro:
 
-Para simplificar a migracao, a autenticacao atual continua personalizada e usa a tabela `users`.
-Ou seja: ainda nao esta usando `Supabase Auth`.
+- login via RPC (`app_login`)
+- sessao no banco (`app_sessions`)
+- cabecalho `x-app-session` enviado pelo cliente
+- acesso a `vendas` protegido por RLS
+- tabela `users` sem acesso direto para `anon/authenticated` (somente via RPC)
 
-Se quiser uma versao mais segura depois, o proximo passo e migrar para:
+Nao usa `Supabase Auth` nativo; a autenticacao continua personalizada em `users`, mas com controles de acesso no banco.
+
+## 4. Deploy sem quebra
+
+1. Execute `supabase/schema.sql` no projeto Supabase de producao.
+2. Faça novo deploy do frontend.
+3. Refaça login (a chave de sessao local mudou para `telefonia_supabase_session_v2`).
+
+Se aplicar o SQL e o novo build juntos, o app segue funcionando sem quebrar as telas.
+
+## 5. Proximo passo recomendado (opcional)
+
+Para nivel enterprise, o passo seguinte e migrar para:
 
 - `Supabase Auth`
-- `RLS`
-- funcoes/server actions para operacoes administrativas
+- politicas RLS baseadas em `auth.uid()`
+- funcoes administrativas com `service_role` no backend
