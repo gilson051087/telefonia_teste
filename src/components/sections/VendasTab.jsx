@@ -247,7 +247,7 @@ export default function VendasTab({
             style={{ ...inputStyle, width: "100%", paddingLeft: 34 }}
           />
         </div>
-        {currentUser.role === "admin" && (
+        {currentUser.role !== "seller" && (
           <div className="filter-field">
             <select
               aria-label="Filtrar por vendedor"

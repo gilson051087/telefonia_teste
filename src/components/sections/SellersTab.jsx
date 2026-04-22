@@ -7,7 +7,9 @@ function fmtMonthLabel(value) {
   return `${month}/${year}`;
 }
 
-export default function SellersTab({ sellerSummaries, currentCycleMonth, onOpenSellerModal, onDeleteSeller }) {
+export default function SellersTab({ userSummaries, currentCycleMonth, onOpenSellerModal, onDeleteSeller, canManageAdmins = false }) {
+  const sellerSummaries = userSummaries.filter((item) => item.role === "seller");
+  const adminCount = userSummaries.filter((item) => item.role === "admin").length;
   return (
     <div style={{ display: "grid", gap: 18 }}>
       <div
@@ -21,34 +23,41 @@ export default function SellersTab({ sellerSummaries, currentCycleMonth, onOpenS
           alignItems: "center",
           flexWrap: "wrap",
         }}
-      >
+        >
         <div>
-          <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 26, color: "#FFFFFF", marginBottom: 4 }}>Vendedores cadastrados</div>
-          <div style={{ color: "#A1A1AA", fontSize: 14 }}>Visão mensal {fmtMonthLabel(currentCycleMonth)} da equipe e vendas vinculadas.</div>
+          <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 26, color: "#FFFFFF", marginBottom: 4 }}>
+            {canManageAdmins ? "Usuários cadastrados" : "Vendedores cadastrados"}
+          </div>
+          <div style={{ color: "#A1A1AA", fontSize: 14 }}>
+            Visão mensal {fmtMonthLabel(currentCycleMonth)} da equipe e vendas vinculadas.
+          </div>
         </div>
         <button onClick={onOpenSellerModal} style={btnPrimary}>
-          + Novo vendedor
+          {canManageAdmins ? "+ Novo usuário" : "+ Novo vendedor"}
         </button>
       </div>
 
       <div className="kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14 }}>
-        <StatCard icon="👥" label="Vendedores" value={sellerSummaries.length} color="#DA291C" />
+        <StatCard icon="👥" label={canManageAdmins ? "Usuários" : "Vendedores"} value={userSummaries.length} color="#DA291C" />
+        <StatCard icon="🛠️" label={canManageAdmins ? "Administradores" : "Vendedores ativos"} value={canManageAdmins ? adminCount : sellerSummaries.length} color="#DA291C" />
         <StatCard icon="📋" label="Vendas da Equipe" value={sellerSummaries.reduce((sum, seller) => sum + seller.vendas, 0)} color="#DA291C" />
         <StatCard icon="✅" label="Ativas" value={sellerSummaries.reduce((sum, seller) => sum + seller.ativas, 0)} color="#22C55E" />
         <StatCard icon="⏳" label="Pendentes" value={sellerSummaries.reduce((sum, seller) => sum + seller.pendentes, 0)} color="#FACC15" />
       </div>
 
-      {sellerSummaries.length === 0 ? (
+      {userSummaries.length === 0 ? (
         <div style={{ textAlign: "center", padding: "80px 0", color: "#2A2A2E" }}>
           <div style={{ fontSize: 52, marginBottom: 12 }}>👥</div>
-          <p style={{ fontFamily: "'Crimson Pro',serif", fontSize: 18, color: "#A1A1AA", marginBottom: 6 }}>Nenhum vendedor cadastrado</p>
+          <p style={{ fontFamily: "'Crimson Pro',serif", fontSize: 18, color: "#A1A1AA", marginBottom: 6 }}>
+            {canManageAdmins ? "Nenhum usuário cadastrado" : "Nenhum vendedor cadastrado"}
+          </p>
           <button onClick={onOpenSellerModal} style={{ ...btnPrimary, marginTop: 12 }}>
-            + Cadastrar vendedor
+            {canManageAdmins ? "+ Cadastrar usuário" : "+ Cadastrar vendedor"}
           </button>
         </div>
       ) : (
         <div style={{ display: "grid", gap: 14 }}>
-          {sellerSummaries.map((seller) => (
+          {userSummaries.map((seller) => (
             <div
               key={seller.id}
               className="panel-surface seller-summary-card"
@@ -67,7 +76,9 @@ export default function SellersTab({ sellerSummaries, currentCycleMonth, onOpenS
                   <div style={{ color: "#A1A1AA", fontSize: 13 }}>Login: {seller.username}</div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                  <Badge color="#EF4444">Vendedor</Badge>
+                  <Badge color={seller.role === "admin" ? "#DA291C" : "#EF4444"}>
+                    {seller.role === "admin" ? "Administrador" : "Vendedor"}
+                  </Badge>
                   <button onClick={() => onDeleteSeller(seller.id)} style={{ ...btnDanger, padding: "8px 14px", fontSize: 12 }}>
                     Excluir
                   </button>

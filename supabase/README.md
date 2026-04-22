@@ -22,6 +22,12 @@ Login inicial:
 
 Troque a senha do admin no primeiro acesso.
 
+### Perfis de acesso
+
+- `superadmin`: cria/remove administradores e vendedores
+- `admin`: cria/remove apenas vendedores e gerencia vendas
+- `seller`: acessa apenas as proprias vendas
+
 ## 2. Variaveis na Vercel
 
 Cadastre:

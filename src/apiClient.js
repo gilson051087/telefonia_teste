@@ -49,6 +49,34 @@ function mapUser(row) {
   };
 }
 
+function isMissingRpcFunction(error, functionName) {
+  const message = String(error?.message || "");
+  return (
+    message.includes(`Could not find the function public.${functionName}`) ||
+    message.includes(`function public.${functionName}`)
+  );
+}
+
+async function rpcUserCreateWithFallback(client, functionName, nome, username, senha) {
+  const attempts = [
+    { p_nome: nome, p_senha: senha, p_username: username },
+    { nome, senha, username },
+  ];
+
+  let lastError = null;
+  for (const params of attempts) {
+    const result = await client.rpc(functionName, params);
+    if (!result.error) return result;
+    lastError = result.error;
+
+    if (!isMissingRpcFunction(result.error, functionName)) {
+      return result;
+    }
+  }
+
+  return { data: null, error: lastError };
+}
+
 async function requireCurrentUser() {
   const session = getStoredSession();
   if (!session?.token) {
@@ -73,7 +101,7 @@ async function requireCurrentUser() {
 
 async function ensureAdmin() {
   const user = await requireCurrentUser();
-  if (user.role !== "admin") {
+  if (!["admin", "superadmin"].includes(user.role)) {
     throw new Error("Acesso restrito ao administrador.");
   }
   return user;
@@ -127,12 +155,13 @@ export async function listUsers() {
 }
 
 export async function createSeller(payload) {
-  await ensureAdmin();
+  const user = await ensureAdmin();
   const client = ensureSupabase(true);
 
   const nome = String(payload?.nome || "").trim().toUpperCase();
   const username = String(payload?.username || "").trim().toLowerCase();
   const senha = String(payload?.senha || "");
+  const role = payload?.role === "admin" ? "admin" : "seller";
 
   if (!nome || !username || !senha) {
     throw new Error("Preencha nome, usuario e senha.");
@@ -142,21 +171,53 @@ export async function createSeller(payload) {
     throw new Error("A senha deve ter pelo menos 6 caracteres.");
   }
 
-  const { data, error } = await client.rpc("app_create_seller", {
-    p_nome: nome,
-    p_username: username,
-    p_senha: senha,
-  });
+  const isCreatingAdmin = role === "admin";
+  if (isCreatingAdmin && user.role !== "superadmin") {
+    throw new Error("Apenas superadmin pode criar administradores.");
+  }
 
-  if (error) throw new Error(error.message || "Erro ao cadastrar vendedor.");
+  const functionName = isCreatingAdmin ? "app_create_admin" : "app_create_seller";
+  const { data, error } = await rpcUserCreateWithFallback(client, functionName, nome, username, senha);
+
+  if (error && isMissingRpcFunction(error, functionName)) {
+    throw new Error(
+      `A função RPC ${functionName} não existe no projeto Supabase atual. Execute o SQL de schema (supabase/schema.sql) no mesmo projeto apontado por REACT_APP_SUPABASE_URL e recarregue o cache do PostgREST.`
+    );
+  }
+
+  if (error) throw new Error(error.message || "Erro ao cadastrar usuário.");
   return mapUser(data);
 }
 
 export async function deleteSeller(id) {
   await ensureAdmin();
   const client = ensureSupabase(true);
-  const { error } = await client.rpc("app_delete_seller", { p_id: id });
-  if (error) throw new Error(error.message || "Erro ao excluir vendedor.");
+  const primary = await client.rpc("app_delete_seller", { p_id: id });
+  if (!primary.error) return;
+
+  const notFoundByParamName =
+    String(primary.error?.message || "").includes("public.app_delete_seller(p_id)") ||
+    String(primary.error?.message || "").includes("function public.app_delete_seller(p_id)");
+
+  if (!notFoundByParamName) {
+    throw new Error(primary.error.message || "Erro ao excluir usuário.");
+  }
+
+  // Backward compatibility for databases where the RPC argument is still named `id`.
+  const legacy = await client.rpc("app_delete_seller", { id });
+  if (!legacy.error) return;
+
+  const missingFunction =
+    String(legacy.error?.message || "").includes("Could not find the function public.app_delete_seller") ||
+    String(legacy.error?.message || "").includes("function public.app_delete_seller");
+
+  if (missingFunction) {
+    throw new Error(
+      "A função RPC app_delete_seller não existe no projeto Supabase atual. Execute o SQL de schema (supabase/schema.sql) no mesmo projeto apontado por REACT_APP_SUPABASE_URL e recarregue o cache do PostgREST."
+    );
+  }
+
+  throw new Error(legacy.error.message || "Erro ao excluir usuário.");
 }
 
 export async function listVendas() {
@@ -200,7 +261,7 @@ export async function updateVenda(id, payload) {
   if (!currentRow?.payload) throw new Error("Venda nao encontrada.");
 
   const current = normalizeLegacyVenda(currentRow.payload);
-  if (user.role !== "admin" && current.vendedorId !== user.id) {
+  if (!["admin", "superadmin"].includes(user.role) && current.vendedorId !== user.id) {
     throw new Error("Sem permissao para editar esta venda.");
   }
 
@@ -234,7 +295,7 @@ export async function deleteVenda(id) {
   if (!currentRow?.payload) throw new Error("Venda nao encontrada.");
 
   const current = normalizeLegacyVenda(currentRow.payload);
-  if (user.role !== "admin" && current.vendedorId !== user.id) {
+  if (!["admin", "superadmin"].includes(user.role) && current.vendedorId !== user.id) {
     throw new Error("Sem permissao para excluir esta venda.");
   }
 
@@ -258,11 +319,13 @@ export async function migrateLegacyData(payload) {
       const username = String(user.username || "").trim().toLowerCase();
       if (!username || usernames.has(username) || user.role !== "seller") continue;
 
-      const { error } = await client.rpc("app_create_seller", {
-        p_nome: String(user.nome || username).toUpperCase(),
-        p_username: username,
-        p_senha: String(user.senha || "123456"),
-      });
+      const { error } = await rpcUserCreateWithFallback(
+        client,
+        "app_create_seller",
+        String(user.nome || username).toUpperCase(),
+        username,
+        String(user.senha || "123456")
+      );
 
       if (!error) usernames.add(username);
     }

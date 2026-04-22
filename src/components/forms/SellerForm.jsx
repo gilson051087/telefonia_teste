@@ -2,8 +2,8 @@ import { useState } from "react";
 import { slugify } from "../../utils/sales";
 import { Field, btnPrimary, btnSecondary, inputStyle } from "../ui";
 
-export default function SellerForm({ users, onSave, onClose }) {
-  const [form, setForm] = useState({ nome: "", username: "", senha: "" });
+export default function SellerForm({ users, onSave, onClose, canManageAdmins = false }) {
+  const [form, setForm] = useState({ nome: "", username: "", senha: "", role: "seller" });
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -28,7 +28,7 @@ export default function SellerForm({ users, onSave, onClose }) {
         nome,
         username,
         senha: form.senha,
-        role: "seller",
+        role: canManageAdmins ? form.role : "seller",
       });
     } catch (err) {
       setError(err.message || "Erro ao cadastrar vendedor.");
@@ -39,7 +39,7 @@ export default function SellerForm({ users, onSave, onClose }) {
 
   return (
     <div>
-      <Field label="Nome do vendedor">
+      <Field label={canManageAdmins ? "Nome do usuário" : "Nome do vendedor"}>
         <input
           value={form.nome}
           onChange={(e) =>
@@ -61,6 +61,18 @@ export default function SellerForm({ users, onSave, onClose }) {
           placeholder="Ex: maria.souza"
         />
       </Field>
+      {canManageAdmins && (
+        <Field label="Perfil de acesso">
+          <select
+            value={form.role}
+            onChange={(e) => setForm((current) => ({ ...current, role: e.target.value === "admin" ? "admin" : "seller" }))}
+            style={{ ...inputStyle, appearance: "none" }}
+          >
+            <option value="seller">Vendedor</option>
+            <option value="admin">Administrador</option>
+          </select>
+        </Field>
+      )}
       <Field label="Senha">
         <input
           type="password"
@@ -76,7 +88,7 @@ export default function SellerForm({ users, onSave, onClose }) {
           Cancelar
         </button>
         <button style={{ ...btnPrimary, opacity: isSaving ? 0.7 : 1 }} onClick={handleSave} disabled={isSaving}>
-          {isSaving ? "Salvando..." : "Cadastrar vendedor"}
+          {isSaving ? "Salvando..." : canManageAdmins ? "Cadastrar usuário" : "Cadastrar vendedor"}
         </button>
       </div>
     </div>

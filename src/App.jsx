@@ -554,6 +554,8 @@ export default function App() {
   }, []);
 
   const sellers = users.filter((user) => user.role === "seller");
+  const canManageUsers = currentUser ? currentUser.role !== "seller" : false;
+  const canManageAdmins = currentUser?.role === "superadmin";
 
 
   const fetchLatestVendas = useCallback(async () => {
@@ -571,7 +573,7 @@ export default function App() {
     if (typeof window === "undefined") return;
     const handler = (event) => {
       if (event.key !== STORAGE_KEYS.vendasSync) return;
-      if (currentUser?.role !== "admin") return;
+      if (currentUser?.role === "seller") return;
       if (!event.newValue) return;
       fetchLatestVendas().catch(() => {});
     };
@@ -604,7 +606,7 @@ export default function App() {
 
   useEffect(() => {
     async function migrateLegacy() {
-      if (!currentUser || currentUser.role !== "admin") return;
+      if (!currentUser || currentUser.role === "seller") return;
       if (localStorage.getItem(STORAGE_KEYS.backendMigration) === "done") return;
 
       const legacyUsers = loadUsers().filter((user) => user.role === "seller");
@@ -659,7 +661,7 @@ export default function App() {
 
   const scopedVendas = vendas.filter((venda) => {
     if (!currentUser) return false;
-    if (currentUser.role === "admin") return true;
+    if (currentUser.role !== "seller") return true;
     return venda.vendedorId === currentUser.id || venda.vendedor === currentUser.nome;
   });
 
@@ -740,7 +742,7 @@ export default function App() {
       } else if (getVendaCompetenceMonth(venda) !== currentCycleMonth) {
         return false;
       }
-      if (currentUser?.role === "admin" && fVendedor !== "Todos" && venda.vendedorId !== fVendedor) return false;
+      if (currentUser?.role !== "seller" && fVendedor !== "Todos" && venda.vendedorId !== fVendedor) return false;
       return true;
     })
     .sort((a, b) => {
@@ -936,13 +938,19 @@ export default function App() {
 
   const reportSellerName = currentUser?.role === "seller" ? String(currentUser.nome || "").toUpperCase() : "Todos vendedores";
 
-  const sellerSummaries = sellers
-    .map((seller) => {
-      const sellerVendas = cycleScopedVendas.filter((venda) => venda.vendedorId === seller.id || venda.vendedor === seller.nome);
+  const managedUsers = users.filter((user) => {
+    if (user.role === "superadmin") return false;
+    if (canManageAdmins) return true;
+    return user.role === "seller";
+  });
+
+  const sellerSummaries = managedUsers
+    .map((managedUser) => {
+      const sellerVendas = cycleScopedVendas.filter((venda) => venda.vendedorId === managedUser.id || venda.vendedor === managedUser.nome);
       const activeRevenue = sellerVendas.filter((venda) => venda.status === "Ativa").reduce((sum, venda) => sum + getVendaRevenue(venda), 0);
 
       return {
-        ...seller,
+        ...managedUser,
         vendas: sellerVendas.length,
         ativas: sellerVendas.filter((venda) => venda.status === "Ativa").length,
         pendentes: sellerVendas.filter((venda) => venda.status === "Pendente").length,
@@ -1202,14 +1210,15 @@ export default function App() {
 
   const confirmSellerDelete = useCallback(async () => {
     try {
+      const removedUser = users.find((item) => item.id === sellerDeleteId);
       await deleteSeller(sellerDeleteId);
       setUsers((current) => current.filter((item) => item.id !== sellerDeleteId));
       setSellerDeleteId(null);
-      pushToast("Vendedor excluído com sucesso.", "success");
+      pushToast(removedUser?.role === "admin" ? "Administrador excluído com sucesso." : "Vendedor excluído com sucesso.", "success");
     } catch (err) {
-      pushToast(err.message || "Erro ao excluir vendedor.", "error");
+      pushToast(err.message || "Erro ao excluir usuário.", "error");
     }
-  }, [sellerDeleteId, pushToast]);
+  }, [sellerDeleteId, pushToast, users]);
 
   function toggleSort(col) {
     if (sortBy === col) setSortDir((value) => (value === "asc" ? "desc" : "asc"));
@@ -1362,7 +1371,7 @@ export default function App() {
     return <AuthScreen onLogin={handleLogin} />;
   }
 
-  const sellerToDelete = sellers.find((seller) => seller.id === sellerDeleteId) || null;
+  const sellerToDelete = users.find((seller) => seller.id === sellerDeleteId) || null;
 
   return (
     <>
@@ -1376,6 +1385,8 @@ export default function App() {
           onOpenSellerModal={() => setModal("seller")}
           onOpenPasswordModal={() => setModal("password")}
           onLogout={handleLogout}
+          canManageUsers={canManageUsers}
+          manageButtonLabel={canManageAdmins ? "+ Usuário" : "+ Vendedor"}
         />
 
         <div className="app-shell">
@@ -1465,8 +1476,14 @@ export default function App() {
             />
           )}
 
-          {tab === "vendedores" && currentUser.role === "admin" && (
-            <SellersTab sellerSummaries={sellerSummaries} currentCycleMonth={currentCycleMonth} onOpenSellerModal={() => setModal("seller")} onDeleteSeller={setSellerDeleteId} />
+          {tab === "vendedores" && currentUser.role !== "seller" && (
+            <SellersTab
+              userSummaries={sellerSummaries}
+              currentCycleMonth={currentCycleMonth}
+              onOpenSellerModal={() => setModal("seller")}
+              onDeleteSeller={setSellerDeleteId}
+              canManageAdmins={canManageAdmins}
+            />
           )}
           </div>
           <footer
@@ -1495,9 +1512,9 @@ export default function App() {
         </Modal>
       )}
 
-      {modal === "seller" && currentUser.role === "admin" && (
-        <Modal title="Cadastrar Vendedor" onClose={() => setModal(null)}>
-          <SellerForm users={users} onSave={handleRegister} onClose={() => setModal(null)} />
+      {modal === "seller" && currentUser.role !== "seller" && (
+        <Modal title={canManageAdmins ? "Cadastrar Usuário" : "Cadastrar Vendedor"} onClose={() => setModal(null)}>
+          <SellerForm users={users} onSave={handleRegister} onClose={() => setModal(null)} canManageAdmins={canManageAdmins} />
         </Modal>
       )}
 
@@ -1507,7 +1524,7 @@ export default function App() {
         </Modal>
       )}
 
-      {sellerDeleteId && currentUser.role === "admin" && (
+      {sellerDeleteId && currentUser.role !== "seller" && (
         <div
           style={{
             position: "fixed",
@@ -1522,9 +1539,9 @@ export default function App() {
         >
           <Panel style={{ maxWidth: 420, width: "90%", textAlign: "center", padding: 28 }}>
             <div style={{ fontSize: 42, marginBottom: 14 }}>👤</div>
-            <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 20, color: "#FFFFFF", marginBottom: 8 }}>Excluir vendedor?</div>
+            <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 20, color: "#FFFFFF", marginBottom: 8 }}>Excluir usuário?</div>
             <div style={{ color: "#A1A1AA", fontSize: 14, marginBottom: 10 }}>
-              {sellerToDelete?.nome ? `${sellerToDelete.nome} perderá o acesso ao sistema.` : "Este vendedor perderá o acesso ao sistema."}
+              {sellerToDelete?.nome ? `${sellerToDelete.nome} perderá o acesso ao sistema.` : "Este usuário perderá o acesso ao sistema."}
             </div>
             <div style={{ color: "#A1A1AA", fontSize: 13, marginBottom: 24 }}>As vendas já registradas serão mantidas no histórico.</div>
             <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>

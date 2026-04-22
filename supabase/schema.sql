@@ -5,9 +5,12 @@ create table if not exists public.users (
   nome text not null,
   username text not null unique,
   password_hash text not null,
-  role text not null check (role in ('admin', 'seller')),
+  role text not null check (role in ('superadmin', 'admin', 'seller')),
   created_at timestamptz not null default timezone('utc', now())
 );
+
+alter table public.users drop constraint if exists users_role_check;
+alter table public.users add constraint users_role_check check (role in ('superadmin', 'admin', 'seller'));
 
 create table if not exists public.vendas (
   id text primary key,
@@ -35,6 +38,7 @@ create or replace function public.app_hash_password(p_password text)
 returns text
 language sql
 immutable
+set search_path = public, extensions
 as $$
   select encode(digest(coalesce(p_password, ''), 'sha256'), 'hex');
 $$;
@@ -60,7 +64,7 @@ returns text
 language sql
 stable
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
   select s.user_id
   from public.app_sessions s
@@ -75,7 +79,7 @@ returns text
 language sql
 stable
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
   select u.role
   from public.users u
@@ -88,7 +92,7 @@ returns text
 language sql
 stable
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
   select u.nome
   from public.users u
@@ -100,7 +104,7 @@ create or replace function public.app_login(p_senha text, p_username text)
 returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_user public.users%rowtype;
@@ -145,7 +149,7 @@ create or replace function public.app_logout()
 returns void
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 begin
   delete from public.app_sessions where token = public.app_session_token();
@@ -156,16 +160,20 @@ create or replace function public.app_get_session()
 returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
-  v_user public.users%rowtype;
+  v_id text;
+  v_nome text;
+  v_username text;
+  v_role text;
+  v_created_at timestamptz;
   v_expires timestamptz;
 begin
   delete from public.app_sessions where expires_at <= timezone('utc', now());
 
-  select u.*, s.expires_at
-    into v_user, v_expires
+  select u.id, u.nome, u.username, u.role, u.created_at, s.expires_at
+    into v_id, v_nome, v_username, v_role, v_created_at, v_expires
   from public.app_sessions s
   join public.users u on u.id = s.user_id
   where s.token = public.app_session_token()
@@ -173,18 +181,18 @@ begin
   order by s.created_at desc
   limit 1;
 
-  if v_user.id is null then
+  if v_id is null then
     raise exception 'Sessao nao encontrada.';
   end if;
 
   return jsonb_build_object(
     'expiresAt', v_expires,
     'user', jsonb_build_object(
-      'id', v_user.id,
-      'nome', v_user.nome,
-      'username', v_user.username,
-      'role', v_user.role,
-      'created_at', v_user.created_at
+      'id', v_id,
+      'nome', v_nome,
+      'username', v_username,
+      'role', v_role,
+      'created_at', v_created_at
     )
   );
 end;
@@ -200,7 +208,7 @@ returns table (
 )
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_user_id text;
@@ -213,11 +221,18 @@ begin
     raise exception 'Sessao nao encontrada.';
   end if;
 
-  if v_user_role = 'admin' then
+  if v_user_role = 'superadmin' then
     return query
       select u.id, u.nome, u.username, u.role, u.created_at
       from public.users u
+      where u.role in ('admin', 'seller')
       order by u.role desc, u.nome asc;
+  elsif v_user_role = 'admin' then
+    return query
+      select u.id, u.nome, u.username, u.role, u.created_at
+      from public.users u
+      where u.role = 'seller'
+      order by u.nome asc;
   else
     return query
       select u.id, u.nome, u.username, u.role, u.created_at
@@ -231,7 +246,7 @@ create or replace function public.app_create_seller(p_nome text, p_username text
 returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_admin_role text;
@@ -240,7 +255,7 @@ declare
   v_new_user public.users%rowtype;
 begin
   v_admin_role := public.app_current_user_role();
-  if v_admin_role <> 'admin' then
+  if v_admin_role not in ('superadmin', 'admin') then
     raise exception 'Acesso restrito ao administrador.';
   end if;
 
@@ -280,29 +295,86 @@ begin
 end;
 $$;
 
+create or replace function public.app_create_admin(p_nome text, p_username text, p_senha text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_admin_role text;
+  v_nome text;
+  v_username text;
+  v_new_user public.users%rowtype;
+begin
+  v_admin_role := public.app_current_user_role();
+  if v_admin_role <> 'superadmin' then
+    raise exception 'Apenas superadmin pode criar administradores.';
+  end if;
+
+  v_nome := trim(coalesce(p_nome, ''));
+  v_username := public.app_normalize_username(p_username);
+
+  if v_nome = '' or v_username = '' or coalesce(p_senha, '') = '' then
+    raise exception 'Preencha nome, usuario e senha.';
+  end if;
+
+  if length(p_senha) < 6 then
+    raise exception 'A senha deve ter pelo menos 6 caracteres.';
+  end if;
+
+  if exists(select 1 from public.users where username = v_username) then
+    raise exception 'Ja existe um usuario com esse login.';
+  end if;
+
+  insert into public.users (id, nome, username, password_hash, role, created_at)
+  values (
+    encode(gen_random_bytes(16), 'hex'),
+    upper(v_nome),
+    v_username,
+    public.app_hash_password(p_senha),
+    'admin',
+    timezone('utc', now())
+  )
+  returning * into v_new_user;
+
+  return jsonb_build_object(
+    'id', v_new_user.id,
+    'nome', v_new_user.nome,
+    'username', v_new_user.username,
+    'role', v_new_user.role,
+    'created_at', v_new_user.created_at
+  );
+end;
+$$;
+
 create or replace function public.app_delete_seller(p_id text)
 returns void
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
-  v_admin_role text;
+  v_requester_role text;
   v_target_role text;
 begin
-  v_admin_role := public.app_current_user_role();
-  if v_admin_role <> 'admin' then
+  v_requester_role := public.app_current_user_role();
+  if v_requester_role not in ('superadmin', 'admin') then
     raise exception 'Acesso restrito ao administrador.';
   end if;
 
   select role into v_target_role from public.users where id = p_id limit 1;
 
   if v_target_role is null then
-    raise exception 'Vendedor nao encontrado.';
+    raise exception 'Usuario nao encontrado.';
   end if;
 
-  if v_target_role = 'admin' then
-    raise exception 'Nao e permitido excluir o administrador.';
+  if v_target_role = 'superadmin' then
+    raise exception 'Nao e permitido excluir superadmin.';
+  end if;
+
+  if v_target_role = 'admin' and v_requester_role <> 'superadmin' then
+    raise exception 'Apenas superadmin pode excluir administradores.';
   end if;
 
   delete from public.users where id = p_id;
@@ -313,7 +385,7 @@ create or replace function public.app_change_password(p_current_senha text, p_ne
 returns void
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_user_id text;
@@ -356,7 +428,7 @@ drop policy if exists vendas_delete_policy on public.vendas;
 create policy vendas_select_policy on public.vendas
 for select
 using (
-  public.app_current_user_role() = 'admin'
+  public.app_current_user_role() in ('superadmin', 'admin')
   or (
     public.app_current_user_role() = 'seller'
     and (
@@ -369,7 +441,7 @@ using (
 create policy vendas_insert_policy on public.vendas
 for insert
 with check (
-  public.app_current_user_role() = 'admin'
+  public.app_current_user_role() in ('superadmin', 'admin')
   or (
     public.app_current_user_role() = 'seller'
     and vendedor_id = public.app_current_user_id()
@@ -380,14 +452,14 @@ with check (
 create policy vendas_update_policy on public.vendas
 for update
 using (
-  public.app_current_user_role() = 'admin'
+  public.app_current_user_role() in ('superadmin', 'admin')
   or (
     public.app_current_user_role() = 'seller'
     and vendedor_id = public.app_current_user_id()
   )
 )
 with check (
-  public.app_current_user_role() = 'admin'
+  public.app_current_user_role() in ('superadmin', 'admin')
   or (
     public.app_current_user_role() = 'seller'
     and vendedor_id = public.app_current_user_id()
@@ -398,7 +470,7 @@ with check (
 create policy vendas_delete_policy on public.vendas
 for delete
 using (
-  public.app_current_user_role() = 'admin'
+  public.app_current_user_role() in ('superadmin', 'admin')
   or (
     public.app_current_user_role() = 'seller'
     and vendedor_id = public.app_current_user_id()
@@ -418,6 +490,7 @@ grant execute on function public.app_logout() to anon, authenticated;
 grant execute on function public.app_get_session() to anon, authenticated;
 grant execute on function public.app_list_users() to anon, authenticated;
 grant execute on function public.app_create_seller(text, text, text) to anon, authenticated;
+grant execute on function public.app_create_admin(text, text, text) to anon, authenticated;
 grant execute on function public.app_delete_seller(text) to anon, authenticated;
 grant execute on function public.app_change_password(text, text) to anon, authenticated;
 
@@ -427,7 +500,7 @@ values (
   'Administrador',
   'admin',
   public.app_hash_password('123456'),
-  'admin',
+  'superadmin',
   timezone('utc', now())
 )
 on conflict (id) do update

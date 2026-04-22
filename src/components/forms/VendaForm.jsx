@@ -351,7 +351,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
     if (!initial && currentPlano === "Aparelho Celular" && form.adicionarSeguro && !form.tipoSeguro) next.tipoSeguro = "Selecione o seguro";
     if (!form.valor || parseNumericInput(form.valor) <= 0) next.valor = "Valor inválido";
     if (!form.data) next.data = "Obrigatório";
-    if (!form.vendedorId && currentUser.role === "admin") next.vendedor = "Selecione um vendedor";
+    if (!form.vendedorId && currentUser.role !== "seller") next.vendedor = "Selecione um vendedor";
     if (!initial && isCurrentControle) {
       const hasInvalidControleAdicional = controleAdicionaisList.some((item) => !item?.tipoPlano);
       if (hasInvalidControleAdicional) next.controleAdicionais = "Preencha o tipo de plano em todas as linhas adicionais";
@@ -373,7 +373,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
     if (step === 2) {
       if (!form.cliente.trim()) next.cliente = "Obrigatório";
       if (form.cpf && !isValidCPF(form.cpf)) next.cpf = "CPF inválido";
-      if (!form.vendedorId && currentUser.role === "admin") next.vendedor = "Selecione um vendedor";
+      if (!form.vendedorId && currentUser.role !== "seller") next.vendedor = "Selecione um vendedor";
       return next;
     }
 
@@ -733,7 +733,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
           />
         </Field>
 
-        {currentUser.role === "admin" ? (
+        {currentUser.role !== "seller" ? (
           <Field label="Vendedor" error={errors.vendedor}>
             <select value={form.vendedorId || ""} onChange={(e) => handleSellerChange(e.target.value)} style={{ ...inputStyle, appearance: "none" }}>
               <option value="">Selecione</option>

@@ -1,13 +1,13 @@
 import { btnSecondary } from "./ui";
 import Logo from "./Logo";
 
-export default function AppHeader({ currentUser, tab, onTabChange, onOpenSellerModal, onOpenPasswordModal, onLogout }) {
+export default function AppHeader({ currentUser, tab, onTabChange, onOpenSellerModal, onOpenPasswordModal, onLogout, canManageUsers = false, manageButtonLabel = "+ Vendedor" }) {
   const tabs = [
     ["vendas", "📋 Vendas"],
     ["pendencias", "⏱ Pendências"],
     ["relatorios", "📊 Relatórios"],
     ["metas", "🎯 Metas"],
-    ...(currentUser.role === "admin" ? [["vendedores", "👥 Vendedores"]] : []),
+    ...(currentUser.role !== "seller" ? [["vendedores", "👥 Vendedores"]] : []),
   ];
 
   return (
@@ -37,7 +37,7 @@ export default function AppHeader({ currentUser, tab, onTabChange, onOpenSellerM
           <Logo
             size={40}
             className="brand-logo-img"
-            alt={currentUser.role === "admin" ? "Claro Painel de Vendas Geral" : "Claro Painel de Vendas Individual"}
+            alt={currentUser.role === "seller" ? "Claro Painel de Vendas Individual" : "Claro Painel de Vendas Geral"}
           />
         </div>
 
@@ -78,11 +78,13 @@ export default function AppHeader({ currentUser, tab, onTabChange, onOpenSellerM
         <div className="app-user-actions" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
           <div className="app-user-meta" style={{ textAlign: "right" }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "#FFFFFF" }}>{String(currentUser.nome || "").toUpperCase()}</div>
-            <div style={{ fontSize: 11, color: "#A1A1AA" }}>{currentUser.role === "admin" ? "Administrador" : "Vendedor"}</div>
+            <div style={{ fontSize: 11, color: "#A1A1AA" }}>
+              {currentUser.role === "superadmin" ? "Superadmin" : currentUser.role === "admin" ? "Administrador" : "Vendedor"}
+            </div>
           </div>
-          {currentUser.role === "admin" && (
+          {canManageUsers && (
             <button onClick={onOpenSellerModal} style={{ ...btnSecondary, padding: "9px 14px", borderRadius: 10 }}>
-              + Vendedor
+              {manageButtonLabel}
             </button>
           )}
           <button
