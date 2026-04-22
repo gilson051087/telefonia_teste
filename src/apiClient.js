@@ -57,6 +57,23 @@ function isMissingRpcFunction(error, functionName) {
   );
 }
 
+function mapGoalsRows(rows) {
+  const result = {};
+  (rows || []).forEach((row) => {
+    const userId = String(row?.user_id || "").trim();
+    const month = String(row?.cycle_month || "").trim();
+    const key = String(row?.goal_key || "").trim();
+    if (!userId || !month || !key) return;
+
+    if (!result[userId]) result[userId] = {};
+    if (!result[userId][month]) result[userId][month] = {};
+
+    const numericValue = Number(row?.goal_value);
+    result[userId][month][key] = Number.isFinite(numericValue) ? numericValue : "";
+  });
+  return result;
+}
+
 async function rpcUserCreateWithFallback(client, functionName, nome, username, senha) {
   const attempts = [
     { p_nome: nome, p_senha: senha, p_username: username },
@@ -70,6 +87,56 @@ async function rpcUserCreateWithFallback(client, functionName, nome, username, s
     lastError = result.error;
 
     if (!isMissingRpcFunction(result.error, functionName)) {
+      return result;
+    }
+  }
+
+  return { data: null, error: lastError };
+}
+
+async function rpcUserNameUpdateWithFallback(client, userId, nome) {
+  const attempts = [
+    { p_id: userId, p_nome: nome },
+    { id: userId, nome },
+  ];
+
+  let lastError = null;
+  for (const params of attempts) {
+    const result = await client.rpc("app_update_user_nome", params);
+    if (!result.error) return result;
+    lastError = result.error;
+
+    if (!isMissingRpcFunction(result.error, "app_update_user_nome")) {
+      return result;
+    }
+  }
+
+  return { data: null, error: lastError };
+}
+
+async function rpcGoalUpsertWithFallback(client, payload) {
+  const attempts = [
+    {
+      p_user_id: payload.userId,
+      p_cycle_month: payload.month,
+      p_goal_key: payload.key,
+      p_goal_value: payload.value,
+    },
+    {
+      user_id: payload.userId,
+      cycle_month: payload.month,
+      goal_key: payload.key,
+      goal_value: payload.value,
+    },
+  ];
+
+  let lastError = null;
+  for (const params of attempts) {
+    const result = await client.rpc("app_upsert_goal", params);
+    if (!result.error) return result;
+    lastError = result.error;
+
+    if (!isMissingRpcFunction(result.error, "app_upsert_goal")) {
       return result;
     }
   }
@@ -154,6 +221,21 @@ export async function listUsers() {
   return (data || []).map(mapUser);
 }
 
+export async function listGoals() {
+  await requireCurrentUser();
+  const client = ensureSupabase(true);
+  const { data, error } = await client.rpc("app_list_goals");
+
+  if (error && isMissingRpcFunction(error, "app_list_goals")) {
+    throw new Error(
+      "A função RPC app_list_goals não existe no projeto Supabase atual. Execute o SQL de schema (supabase/schema.sql) no mesmo projeto apontado por REACT_APP_SUPABASE_URL e recarregue o cache do PostgREST."
+    );
+  }
+
+  if (error) throw new Error(error.message || "Erro ao carregar metas.");
+  return mapGoalsRows(data);
+}
+
 export async function createSeller(payload) {
   const user = await ensureAdmin();
   const client = ensureSupabase(true);
@@ -189,6 +271,40 @@ export async function createSeller(payload) {
   return mapUser(data);
 }
 
+export async function updateUserName(id, nome) {
+  const requester = await ensureAdmin();
+  const client = ensureSupabase(true);
+  const normalizedName = String(nome || "").trim().toUpperCase();
+
+  if (!id || !normalizedName) {
+    throw new Error("Informe um nome válido.");
+  }
+
+  const { data, error } = await rpcUserNameUpdateWithFallback(client, id, normalizedName);
+
+  if (error && isMissingRpcFunction(error, "app_update_user_nome")) {
+    throw new Error(
+      "A função RPC app_update_user_nome não existe no projeto Supabase atual. Execute o SQL de schema (supabase/schema.sql) no mesmo projeto apontado por REACT_APP_SUPABASE_URL e recarregue o cache do PostgREST."
+    );
+  }
+
+  if (error) throw new Error(error.message || "Erro ao atualizar nome do usuário.");
+
+  const updatedUser = mapUser(data);
+  if (requester.id === updatedUser?.id) {
+    const session = getStoredSession();
+    if (session?.token) {
+      setStoredSession({
+        token: session.token,
+        expiresAt: session.expiresAt || null,
+        user: updatedUser,
+      });
+    }
+  }
+
+  return updatedUser;
+}
+
 export async function deleteSeller(id) {
   await ensureAdmin();
   const client = ensureSupabase(true);
@@ -218,6 +334,38 @@ export async function deleteSeller(id) {
   }
 
   throw new Error(legacy.error.message || "Erro ao excluir usuário.");
+}
+
+export async function upsertGoalTarget(payload) {
+  await requireCurrentUser();
+  const client = ensureSupabase(true);
+  const userId = String(payload?.userId || "").trim();
+  const month = String(payload?.month || "").trim();
+  const key = String(payload?.key || "").trim();
+  const value = payload?.value === "" || payload?.value == null ? null : Number(payload.value);
+
+  if (!userId || !month || !key) {
+    throw new Error("Parâmetros de meta inválidos.");
+  }
+
+  if (value != null && !Number.isFinite(value)) {
+    throw new Error("Valor de meta inválido.");
+  }
+
+  const { error } = await rpcGoalUpsertWithFallback(client, {
+    userId,
+    month,
+    key,
+    value,
+  });
+
+  if (error && isMissingRpcFunction(error, "app_upsert_goal")) {
+    throw new Error(
+      "A função RPC app_upsert_goal não existe no projeto Supabase atual. Execute o SQL de schema (supabase/schema.sql) no mesmo projeto apontado por REACT_APP_SUPABASE_URL e recarregue o cache do PostgREST."
+    );
+  }
+
+  if (error) throw new Error(error.message || "Erro ao salvar meta.");
 }
 
 export async function listVendas() {

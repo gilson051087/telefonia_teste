@@ -2,7 +2,17 @@ import { useEffect, useMemo, useState } from "react";
 import { fmtBRL } from "../../utils/sales";
 import { Badge } from "../ui";
 
-export default function GoalsTab({ goalItems, onGoalTargetChange, projectedGoalProgress, elapsedDays = 1, ownerName = "" }) {
+export default function GoalsTab({
+  goalItems,
+  onGoalTargetChange,
+  projectedGoalProgress,
+  elapsedDays = 1,
+  ownerName = "",
+  ownerOptions = [],
+  selectedOwnerId = "",
+  onOwnerChange,
+  readOnly = false,
+}) {
   const items = useMemo(() => (Array.isArray(goalItems) ? goalItems : []), [goalItems]);
   const projected = projectedGoalProgress || {};
   const [draftTargets, setDraftTargets] = useState({});
@@ -74,6 +84,7 @@ export default function GoalsTab({ goalItems, onGoalTargetChange, projectedGoalP
           setDraftTargets((current) => ({ ...current, [item.key]: String(item.target ?? "") }));
         }}
         onChange={(event) => {
+          if (readOnly) return;
           const sanitized = sanitizeDraft(item, event.target.value);
           setDraftTargets((current) => ({ ...current, [item.key]: sanitized }));
           onGoalTargetChange(item.key, sanitized);
@@ -86,16 +97,18 @@ export default function GoalsTab({ goalItems, onGoalTargetChange, projectedGoalP
             event.currentTarget.blur();
           }
         }}
+        disabled={readOnly}
         style={{
           width: 120,
           border: "1px solid #2A2A2E",
           borderRadius: 12,
-          background: "#141416",
-          color: "#FFFFFF",
+          background: readOnly ? "#101012" : "#141416",
+          color: readOnly ? "#A1A1AA" : "#FFFFFF",
           padding: "8px 12px",
           fontSize: 13,
           fontWeight: 600,
           minHeight: 38,
+          cursor: readOnly ? "not-allowed" : "text",
         }}
       />
     );
@@ -117,10 +130,38 @@ export default function GoalsTab({ goalItems, onGoalTargetChange, projectedGoalP
             <div style={{ color: "#A1A1AA", fontSize: 12 }}>Acompanhe performance e ajuste objetivos do ciclo em tempo real.</div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <Badge color="#EF4444">Editável</Badge>
+            <Badge color={readOnly ? "#A1A1AA" : "#EF4444"}>{readOnly ? "Somente leitura" : "Editável"}</Badge>
             <Badge color="#22C55E">{`Metas de: ${String(ownerName || "Usuário").toUpperCase()}`}</Badge>
           </div>
         </div>
+        {Array.isArray(ownerOptions) && ownerOptions.length > 0 && (
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ color: "#A1A1AA", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              Visualizar metas de
+            </div>
+            <select
+              value={selectedOwnerId}
+              onChange={(event) => onOwnerChange?.(event.target.value)}
+              style={{
+                minHeight: 40,
+                border: "1px solid #2A2A2E",
+                borderRadius: 10,
+                background: "#141416",
+                color: "#FFFFFF",
+                padding: "8px 12px",
+                fontSize: 13,
+                fontWeight: 600,
+                minWidth: 220,
+              }}
+            >
+              {ownerOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
           <div style={{ border: "1px solid #2A2A2E", borderRadius: 8, padding: "10px 12px", background: "#141416" }}>
             <div style={{ color: "#A1A1AA", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>Metas atingidas</div>

@@ -1,4 +1,4 @@
-import { Badge, StatCard, btnDanger, btnPrimary } from "../ui";
+import { Badge, StatCard, btnDanger, btnPrimary, btnSecondary } from "../ui";
 import { fmtBRL } from "../../utils/sales";
 
 function fmtMonthLabel(value) {
@@ -7,7 +7,19 @@ function fmtMonthLabel(value) {
   return `${month}/${year}`;
 }
 
-export default function SellersTab({ userSummaries, currentCycleMonth, onOpenSellerModal, onDeleteSeller, canManageAdmins = false }) {
+function getRoleLabel(role) {
+  if (role === "superadmin") return "Superadmin";
+  if (role === "admin") return "Administrador";
+  return "Vendedor";
+}
+
+function getRoleColor(role) {
+  if (role === "superadmin") return "#0EA5E9";
+  if (role === "admin") return "#DA291C";
+  return "#EF4444";
+}
+
+export default function SellersTab({ userSummaries, currentCycleMonth, onOpenSellerModal, onDeleteSeller, onEditUser, canManageAdmins = false }) {
   const sellerSummaries = userSummaries.filter((item) => item.role === "seller");
   const adminCount = userSummaries.filter((item) => item.role === "admin").length;
   return (
@@ -76,12 +88,17 @@ export default function SellersTab({ userSummaries, currentCycleMonth, onOpenSel
                   <div style={{ color: "#A1A1AA", fontSize: 13 }}>Login: {seller.username}</div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                  <Badge color={seller.role === "admin" ? "#DA291C" : "#EF4444"}>
-                    {seller.role === "admin" ? "Administrador" : "Vendedor"}
+                  <Badge color={getRoleColor(seller.role)}>
+                    {getRoleLabel(seller.role)}
                   </Badge>
-                  <button onClick={() => onDeleteSeller(seller.id)} style={{ ...btnDanger, padding: "8px 14px", fontSize: 12 }}>
-                    Excluir
+                  <button onClick={() => onEditUser(seller.id)} style={{ ...btnSecondary, padding: "8px 14px", fontSize: 12 }}>
+                    Editar nome
                   </button>
+                  {seller.role !== "superadmin" && (
+                    <button onClick={() => onDeleteSeller(seller.id)} style={{ ...btnDanger, padding: "8px 14px", fontSize: 12 }}>
+                      Excluir
+                    </button>
+                  )}
                 </div>
               </div>
 

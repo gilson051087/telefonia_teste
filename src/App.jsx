@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   changePassword as apiChangePassword,
   clearApiToken,
@@ -8,11 +8,14 @@ import {
   deleteVenda,
   getSession,
   hasApiToken,
+  listGoals,
   listUsers,
   listVendas,
   login as apiLogin,
   logout as apiLogout,
   migrateLegacyData,
+  upsertGoalTarget,
+  updateUserName as apiUpdateUserName,
   updateVenda,
 } from "./apiClient";
 import AppHeader from "./components/AppHeader";
@@ -20,6 +23,7 @@ import AuthScreen from "./components/AuthScreen";
 import Logo from "./components/Logo";
 import PasswordForm from "./components/forms/PasswordForm";
 import SellerForm from "./components/forms/SellerForm";
+import UserNameForm from "./components/forms/UserNameForm";
 import VendaForm from "./components/forms/VendaForm";
 import ReportsTab from "./components/sections/ReportsTab";
 import SellersTab from "./components/sections/SellersTab";
@@ -44,6 +48,7 @@ const GOAL_FIELDS = [
   { key: "tv", label: "Tv", type: "count", icon: "📺" },
 ];
 const DEFAULT_GOAL_VALUES = GOAL_FIELDS.reduce((acc, field) => ({ ...acc, [field.key]: 0 }), {});
+const GOAL_OWNER_ALL_ADMINS = "__all_admins__";
 
 const normalizeSearchText = (value = "") =>
   String(value)
@@ -523,6 +528,7 @@ export default function App() {
   const [modal, setModal] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
   const [sellerDeleteId, setSellerDeleteId] = useState(null);
+  const [userEditId, setUserEditId] = useState(null);
   const [viewItem, setViewItem] = useState(null);
   const [tab, setTab] = useState("vendas");
   const [search, setSearch] = useState("");
@@ -539,6 +545,9 @@ export default function App() {
   const [page, setPage] = useState(1);
   const [toasts, setToasts] = useState([]);
   const [goalsByMonth, setGoalsByMonth] = useState(storedGoalsByMonth);
+  const [goalOwnerId, setGoalOwnerId] = useState("");
+  const goalSaveTimersRef = useRef({});
+  const goalSyncWarningShownRef = useRef(false);
   const PER_PAGE = 8;
 
   const pushToast = useCallback((message, type = "info") => {
@@ -551,6 +560,35 @@ export default function App() {
 
   const dismissToast = useCallback((id) => {
     setToasts((current) => current.filter((item) => item.id !== id));
+  }, []);
+
+  const readLocalGoalsCache = useCallback(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.goalsByMonth);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  }, []);
+
+  const loadGoalsWithFallback = useCallback(async () => {
+    try {
+      const remoteGoals = await listGoals();
+      goalSyncWarningShownRef.current = false;
+      return remoteGoals || {};
+    } catch {
+      if (!goalSyncWarningShownRef.current) {
+        pushToast("Não foi possível carregar metas do Supabase. Usando cache local.", "warning");
+        goalSyncWarningShownRef.current = true;
+      }
+      return readLocalGoalsCache();
+    }
+  }, [pushToast, readLocalGoalsCache]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(goalSaveTimersRef.current).forEach((timerId) => clearTimeout(timerId));
+    };
   }, []);
 
   const sellers = users.filter((user) => user.role === "seller");
@@ -590,10 +628,11 @@ export default function App() {
 
       try {
         const user = await getSession();
-        const [loadedUsers, loadedVendas] = await Promise.all([listUsers(), listVendas()]);
+        const [loadedUsers, loadedVendas, loadedGoals] = await Promise.all([listUsers(), listVendas(), loadGoalsWithFallback()]);
         setCurrentUser(user);
         setUsers(loadedUsers);
         setVendas(loadedVendas.map(normalizeLegacyVenda));
+        setGoalsByMonth(loadedGoals || {});
       } catch {
         clearApiToken();
       } finally {
@@ -602,7 +641,7 @@ export default function App() {
     }
 
     bootstrap();
-  }, []);
+  }, [loadGoalsWithFallback]);
 
   useEffect(() => {
     async function migrateLegacy() {
@@ -619,15 +658,16 @@ export default function App() {
 
       try {
         await migrateLegacyData({ users: legacyUsers, vendas: legacyVendas });
-        const [loadedUsers, loadedVendas] = await Promise.all([listUsers(), listVendas()]);
+        const [loadedUsers, loadedVendas, loadedGoals] = await Promise.all([listUsers(), listVendas(), loadGoalsWithFallback()]);
         setUsers(loadedUsers);
         setVendas(loadedVendas.map(normalizeLegacyVenda));
+        setGoalsByMonth(loadedGoals || {});
         localStorage.setItem(STORAGE_KEYS.backendMigration, "done");
       } catch {}
     }
 
     migrateLegacy();
-  }, [currentUser]);
+  }, [currentUser, loadGoalsWithFallback]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -658,6 +698,25 @@ export default function App() {
       localStorage.setItem(STORAGE_KEYS.goalsByMonth, JSON.stringify(goalsByMonth));
     } catch {}
   }, [goalsByMonth]);
+
+  useEffect(() => {
+    if (!currentUser?.id) {
+      setGoalOwnerId("");
+      return;
+    }
+
+    if (currentUser.role !== "superadmin") {
+      setGoalOwnerId(currentUser.id);
+      return;
+    }
+
+    const adminIds = users.filter((user) => user.role === "admin").map((user) => user.id);
+    setGoalOwnerId((current) => {
+      if (current === GOAL_OWNER_ALL_ADMINS) return current;
+      if (adminIds.includes(current)) return current;
+      return GOAL_OWNER_ALL_ADMINS;
+    });
+  }, [currentUser?.id, currentUser?.role, users]);
 
   const scopedVendas = vendas.filter((venda) => {
     if (!currentUser) return false;
@@ -815,9 +874,52 @@ export default function App() {
     .sort((a, b) => a.dataInstalacao.localeCompare(b.dataInstalacao));
   const pendingInstallationCount = installationReminders.length;
   const pendingQueue = buildPendingQueue(scopedVendas, cycleDate, currentCycleMonth);
-  const currentUserGoalsByMonth = currentUser?.id ? (goalsByMonth[currentUser.id] || {}) : {};
-  const currentGoalTargets = { ...DEFAULT_GOAL_VALUES, ...(currentUserGoalsByMonth[currentCycleMonth] || {}) };
-  const goalProgress = computeGoalProgress(cycleScopedVendas, totalVal);
+  const adminGoalUsers = users
+    .filter((user) => user.role === "admin")
+    .sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || "")));
+  const canReviewAdminGoals = currentUser?.role === "superadmin";
+  const isAllAdminsGoalView = canReviewAdminGoals && goalOwnerId === GOAL_OWNER_ALL_ADMINS;
+  const selectedGoalOwner = isAllAdminsGoalView ? null : (users.find((user) => user.id === goalOwnerId) || currentUser);
+  const selectedGoalOwnerId = isAllAdminsGoalView ? null : (selectedGoalOwner?.id || currentUser?.id || null);
+  const goalScopeUsers = isAllAdminsGoalView
+    ? adminGoalUsers
+    : selectedGoalOwner
+      ? [selectedGoalOwner]
+      : [];
+  const goalScopeUserIds = new Set(goalScopeUsers.map((user) => user.id));
+  const goalScopeUserNames = new Set(goalScopeUsers.map((user) => String(user.nome || "").toUpperCase()));
+  const goalScopedVendas = cycleScopedVendas.filter((venda) => {
+    const sellerName = String(venda.vendedor || "").toUpperCase();
+    return goalScopeUserIds.has(venda.vendedorId) || goalScopeUserNames.has(sellerName);
+  });
+  const goalScopedTotal = goalScopedVendas
+    .filter((venda) => venda.status === "Ativa")
+    .reduce((sum, venda) => sum + getVendaRevenue(venda), 0);
+  const selectedGoalOwnerByMonth = selectedGoalOwnerId ? (goalsByMonth[selectedGoalOwnerId] || {}) : {};
+  const allAdminsGoalTargets = adminGoalUsers.reduce((acc, adminUser) => {
+    const monthGoals = goalsByMonth[adminUser.id]?.[currentCycleMonth] || {};
+    GOAL_FIELDS.forEach((field) => {
+      acc[field.key] = Number(acc[field.key] || 0) + (Number(monthGoals[field.key]) || 0);
+    });
+    return acc;
+  }, { ...DEFAULT_GOAL_VALUES });
+  const currentGoalTargets = isAllAdminsGoalView
+    ? allAdminsGoalTargets
+    : { ...DEFAULT_GOAL_VALUES, ...(selectedGoalOwnerByMonth[currentCycleMonth] || {}) };
+  const goalProgress = computeGoalProgress(goalScopedVendas, goalScopedTotal);
+  const goalOwnerDisplayName = isAllAdminsGoalView
+    ? "Todos administradores"
+    : (selectedGoalOwner?.nome || currentUser?.nome || "");
+  const goalTargetsReadOnly = isAllAdminsGoalView;
+  const goalOwnerOptions = canReviewAdminGoals
+    ? [
+        { id: GOAL_OWNER_ALL_ADMINS, label: "Todos administradores (consolidado)" },
+        ...adminGoalUsers.map((user) => ({
+          id: user.id,
+          label: String(user.nome || user.username || "Administrador").toUpperCase(),
+        })),
+      ]
+    : [];
   const [goalYear, goalMonth] = currentCycleMonth.split("-").map(Number);
   const daysInGoalMonth = Number.isFinite(goalYear) && Number.isFinite(goalMonth)
     ? new Date(goalYear, goalMonth, 0).getDate()
@@ -841,17 +943,37 @@ export default function App() {
     };
   });
 
+  const queueGoalTargetSync = useCallback((payload) => {
+    const timerKey = `${payload.userId}|${payload.month}|${payload.key}`;
+    const existingTimer = goalSaveTimersRef.current[timerKey];
+    if (existingTimer) clearTimeout(existingTimer);
+
+    goalSaveTimersRef.current[timerKey] = setTimeout(async () => {
+      try {
+        await upsertGoalTarget(payload);
+        goalSyncWarningShownRef.current = false;
+      } catch {
+        if (!goalSyncWarningShownRef.current) {
+          pushToast("Não foi possível sincronizar metas com o Supabase. As alterações seguem salvas localmente.", "warning");
+          goalSyncWarningShownRef.current = true;
+        }
+      } finally {
+        delete goalSaveTimersRef.current[timerKey];
+      }
+    }, 450);
+  }, [pushToast]);
+
   const handleGoalTargetChange = useCallback((goalKey, nextValue) => {
-    if (!currentUser?.id) return;
+    if (!selectedGoalOwnerId) return;
     const goalType = GOAL_FIELDS.find((field) => field.key === goalKey)?.type || "count";
     const rawValue = String(nextValue ?? "").trim();
     if (rawValue === "") {
       setGoalsByMonth((current) => {
-        const currentUserMonthMap = current[currentUser.id] || {};
+        const currentUserMonthMap = current[selectedGoalOwnerId] || {};
         const monthGoals = { ...DEFAULT_GOAL_VALUES, ...(currentUserMonthMap[currentCycleMonth] || {}) };
         return {
           ...current,
-          [currentUser.id]: {
+          [selectedGoalOwnerId]: {
             ...currentUserMonthMap,
             [currentCycleMonth]: {
               ...monthGoals,
@@ -860,26 +982,38 @@ export default function App() {
           },
         };
       });
+      queueGoalTargetSync({
+        userId: selectedGoalOwnerId,
+        month: currentCycleMonth,
+        key: goalKey,
+        value: null,
+      });
       return;
     }
     const normalized = Number(String(nextValue || "").replace(",", "."));
     const numericValue = Number.isFinite(normalized) ? Math.max(0, normalized) : 0;
     const safeValue = goalType === "currency" ? numericValue : Math.round(numericValue);
     setGoalsByMonth((current) => {
-      const currentUserMonthMap = current[currentUser.id] || {};
+      const currentUserMonthMap = current[selectedGoalOwnerId] || {};
       const monthGoals = { ...DEFAULT_GOAL_VALUES, ...(currentUserMonthMap[currentCycleMonth] || {}) };
       return {
         ...current,
-        [currentUser.id]: {
+        [selectedGoalOwnerId]: {
           ...currentUserMonthMap,
           [currentCycleMonth]: {
             ...monthGoals,
             [goalKey]: safeValue,
           },
-        },
-      };
+            },
+        };
+      });
+    queueGoalTargetSync({
+      userId: selectedGoalOwnerId,
+      month: currentCycleMonth,
+      key: goalKey,
+      value: safeValue,
     });
-  }, [currentCycleMonth, currentUser?.id]);
+  }, [currentCycleMonth, queueGoalTargetSync, selectedGoalOwnerId]);
 
   const byMonth = {};
   const ensureMonthBucket = (month) => {
@@ -939,7 +1073,6 @@ export default function App() {
   const reportSellerName = currentUser?.role === "seller" ? String(currentUser.nome || "").toUpperCase() : "Todos vendedores";
 
   const managedUsers = users.filter((user) => {
-    if (user.role === "superadmin") return false;
     if (canManageAdmins) return true;
     return user.role === "seller";
   });
@@ -1231,16 +1364,35 @@ export default function App() {
 
   async function handleLogin(username, senha) {
     const user = await apiLogin(username, senha);
-    const [loadedUsers, loadedVendas] = await Promise.all([listUsers(), listVendas()]);
+    const [loadedUsers, loadedVendas, loadedGoals] = await Promise.all([listUsers(), listVendas(), loadGoalsWithFallback()]);
     setCurrentUser(user);
     setUsers(loadedUsers);
     setVendas(loadedVendas.map(normalizeLegacyVenda));
+    setGoalsByMonth(loadedGoals || {});
   }
 
   async function handleRegister(user) {
     const created = await createSeller(user);
     setUsers((current) => [...current, created]);
     setModal(null);
+  }
+
+  async function handleUserNameUpdate(nextName) {
+    if (!userEditId) return;
+    const updatedUser = await apiUpdateUserName(userEditId, nextName);
+    setUsers((current) => current.map((item) => (item.id === updatedUser.id ? { ...item, ...updatedUser } : item)));
+    setCurrentUser((current) => (current?.id === updatedUser.id ? { ...current, ...updatedUser } : current));
+    setVendas((current) =>
+      current.map((item) => {
+        if (item.vendedorId !== updatedUser.id) return item;
+        return {
+          ...item,
+          vendedor: updatedUser.nome,
+        };
+      })
+    );
+    setUserEditId(null);
+    pushToast("Nome atualizado com sucesso.", "success");
   }
 
   async function handlePasswordChange(currentSenha, newSenha) {
@@ -1253,13 +1405,19 @@ export default function App() {
     try {
       await apiLogout();
     } catch {}
+    Object.values(goalSaveTimersRef.current).forEach((timerId) => clearTimeout(timerId));
+    goalSaveTimersRef.current = {};
+    goalSyncWarningShownRef.current = false;
     setCurrentUser(null);
     setUsers([]);
     setVendas([]);
+    setGoalsByMonth({});
     setModal(null);
     setViewItem(null);
     setDeleteId(null);
     setSellerDeleteId(null);
+    setUserEditId(null);
+    setGoalOwnerId("");
   }
 
   function handleExportDailyReport() {
@@ -1372,6 +1530,7 @@ export default function App() {
   }
 
   const sellerToDelete = users.find((seller) => seller.id === sellerDeleteId) || null;
+  const userToEdit = users.find((item) => item.id === userEditId) || null;
 
   return (
     <>
@@ -1472,7 +1631,11 @@ export default function App() {
               onGoalTargetChange={handleGoalTargetChange}
               projectedGoalProgress={projectedGoalProgress}
               elapsedDays={elapsedDays}
-              ownerName={currentUser?.nome || ""}
+              ownerName={goalOwnerDisplayName}
+              ownerOptions={goalOwnerOptions}
+              selectedOwnerId={goalOwnerId}
+              onOwnerChange={setGoalOwnerId}
+              readOnly={goalTargetsReadOnly}
             />
           )}
 
@@ -1482,6 +1645,7 @@ export default function App() {
               currentCycleMonth={currentCycleMonth}
               onOpenSellerModal={() => setModal("seller")}
               onDeleteSeller={setSellerDeleteId}
+              onEditUser={setUserEditId}
               canManageAdmins={canManageAdmins}
             />
           )}
@@ -1521,6 +1685,12 @@ export default function App() {
       {modal === "password" && (
         <Modal title="Alterar Senha" onClose={() => setModal(null)}>
           <PasswordForm onSave={handlePasswordChange} onClose={() => setModal(null)} />
+        </Modal>
+      )}
+
+      {userEditId && currentUser.role !== "seller" && userToEdit && (
+        <Modal title="Editar Nome do Usuário" onClose={() => setUserEditId(null)}>
+          <UserNameForm user={userToEdit} onSave={handleUserNameUpdate} onClose={() => setUserEditId(null)} />
         </Modal>
       )}
 

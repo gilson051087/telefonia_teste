@@ -6,11 +6,44 @@ create table if not exists public.users (
   username text not null unique,
   password_hash text not null,
   role text not null check (role in ('superadmin', 'admin', 'seller')),
+  store_id text,
   created_at timestamptz not null default timezone('utc', now())
 );
 
+alter table public.users add column if not exists store_id text;
+
 alter table public.users drop constraint if exists users_role_check;
 alter table public.users add constraint users_role_check check (role in ('superadmin', 'admin', 'seller'));
+
+update public.users
+set store_id = null
+where role = 'superadmin';
+
+update public.users
+set store_id = id
+where role = 'admin'
+  and coalesce(store_id, '') = '';
+
+update public.users s
+set store_id = coalesce(
+  nullif(s.store_id, ''),
+  (
+    select a.store_id
+    from public.users a
+    where a.role = 'admin'
+      and coalesce(a.store_id, '') <> ''
+    order by a.created_at asc
+    limit 1
+  ),
+  s.id
+)
+where s.role = 'seller';
+
+alter table public.users drop constraint if exists users_store_scope_check;
+alter table public.users add constraint users_store_scope_check check (
+  (role = 'superadmin' and store_id is null)
+  or (role in ('admin', 'seller') and store_id is not null)
+);
 
 create table if not exists public.vendas (
   id text primary key,
@@ -28,11 +61,26 @@ create table if not exists public.app_sessions (
   expires_at timestamptz not null
 );
 
+create table if not exists public.app_goal_targets (
+  user_id text not null references public.users(id) on delete cascade,
+  cycle_month text not null,
+  goal_key text not null,
+  goal_value numeric,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  updated_by text references public.users(id) on delete set null,
+  primary key (user_id, cycle_month, goal_key),
+  constraint app_goal_targets_cycle_month_check check (cycle_month ~ '^\d{4}-\d{2}$'),
+  constraint app_goal_targets_goal_value_check check (goal_value is null or goal_value >= 0)
+);
+
 create index if not exists idx_users_username on public.users (username);
+create index if not exists idx_users_store_id on public.users (store_id);
 create index if not exists idx_vendas_vendedor_id on public.vendas (vendedor_id);
 create index if not exists idx_vendas_created_at on public.vendas (created_at desc);
 create index if not exists idx_app_sessions_user_id on public.app_sessions (user_id);
 create index if not exists idx_app_sessions_expires_at on public.app_sessions (expires_at);
+create index if not exists idx_app_goal_targets_user_month on public.app_goal_targets (user_id, cycle_month);
 
 create or replace function public.app_hash_password(p_password text)
 returns text
@@ -82,6 +130,19 @@ security definer
 set search_path = public, extensions
 as $$
   select u.role
+  from public.users u
+  where u.id = public.app_current_user_id()
+  limit 1;
+$$;
+
+create or replace function public.app_current_user_store_id()
+returns text
+language sql
+stable
+security definer
+set search_path = public, extensions
+as $$
+  select u.store_id
   from public.users u
   where u.id = public.app_current_user_id()
   limit 1;
@@ -213,9 +274,11 @@ as $$
 declare
   v_user_id text;
   v_user_role text;
+  v_user_store_id text;
 begin
   v_user_id := public.app_current_user_id();
   v_user_role := public.app_current_user_role();
+  v_user_store_id := public.app_current_user_store_id();
 
   if v_user_id is null then
     raise exception 'Sessao nao encontrada.';
@@ -225,13 +288,19 @@ begin
     return query
       select u.id, u.nome, u.username, u.role, u.created_at
       from public.users u
-      where u.role in ('admin', 'seller')
-      order by u.role desc, u.nome asc;
+      order by
+        case u.role
+          when 'superadmin' then 0
+          when 'admin' then 1
+          else 2
+        end,
+        u.nome asc;
   elsif v_user_role = 'admin' then
     return query
       select u.id, u.nome, u.username, u.role, u.created_at
       from public.users u
       where u.role = 'seller'
+        and u.store_id = v_user_store_id
       order by u.nome asc;
   else
     return query
@@ -242,6 +311,214 @@ begin
 end;
 $$;
 
+create or replace function public.app_list_goals()
+returns table (
+  user_id text,
+  cycle_month text,
+  goal_key text,
+  goal_value numeric
+)
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_requester_id text;
+  v_requester_role text;
+begin
+  v_requester_id := public.app_current_user_id();
+  v_requester_role := public.app_current_user_role();
+
+  if v_requester_id is null then
+    raise exception 'Sessao nao encontrada.';
+  end if;
+
+  if v_requester_role = 'superadmin' then
+    return query
+      select g.user_id, g.cycle_month, g.goal_key, g.goal_value
+      from public.app_goal_targets g
+      join public.users u on u.id = g.user_id
+      where u.role in ('superadmin', 'admin')
+      order by g.cycle_month desc, g.user_id asc, g.goal_key asc;
+  else
+    return query
+      select g.user_id, g.cycle_month, g.goal_key, g.goal_value
+      from public.app_goal_targets g
+      where g.user_id = v_requester_id
+      order by g.cycle_month desc, g.goal_key asc;
+  end if;
+end;
+$$;
+
+create or replace function public.app_upsert_goal(
+  p_user_id text,
+  p_cycle_month text,
+  p_goal_key text,
+  p_goal_value numeric
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_requester_id text;
+  v_requester_role text;
+  v_target_role text;
+  v_month text;
+  v_goal_key text;
+begin
+  v_requester_id := public.app_current_user_id();
+  v_requester_role := public.app_current_user_role();
+
+  if v_requester_id is null then
+    raise exception 'Sessao nao encontrada.';
+  end if;
+
+  v_month := trim(coalesce(p_cycle_month, ''));
+  v_goal_key := trim(coalesce(p_goal_key, ''));
+
+  if v_month = '' or v_goal_key = '' or coalesce(p_user_id, '') = '' then
+    raise exception 'Parametros de meta invalidos.';
+  end if;
+
+  if v_month !~ '^\d{4}-\d{2}$' then
+    raise exception 'Mes de competencia invalido.';
+  end if;
+
+  if v_goal_key not in ('bandaLarga', 'grossTotal', 'posPagoTitular', 'residencial', 'receita', 'tv') then
+    raise exception 'Indicador de meta invalido.';
+  end if;
+
+  if p_goal_value is not null and p_goal_value < 0 then
+    raise exception 'Valor de meta invalido.';
+  end if;
+
+  select role
+    into v_target_role
+  from public.users
+  where id = p_user_id
+  limit 1;
+
+  if v_target_role is null then
+    raise exception 'Usuario nao encontrado.';
+  end if;
+
+  if v_requester_role = 'superadmin' then
+    if v_target_role not in ('superadmin', 'admin') then
+      raise exception 'Superadmin pode editar metas apenas de administradores.';
+    end if;
+  elsif v_requester_role in ('admin', 'seller') then
+    if p_user_id <> v_requester_id then
+      raise exception 'Sem permissao para editar metas de outro usuario.';
+    end if;
+  else
+    raise exception 'Acesso restrito.';
+  end if;
+
+  if p_goal_value is null then
+    delete from public.app_goal_targets
+    where user_id = p_user_id
+      and cycle_month = v_month
+      and goal_key = v_goal_key;
+  else
+    insert into public.app_goal_targets (user_id, cycle_month, goal_key, goal_value, created_at, updated_at, updated_by)
+    values (p_user_id, v_month, v_goal_key, p_goal_value, timezone('utc', now()), timezone('utc', now()), v_requester_id)
+    on conflict (user_id, cycle_month, goal_key)
+    do update
+      set goal_value = excluded.goal_value,
+          updated_at = timezone('utc', now()),
+          updated_by = v_requester_id;
+  end if;
+
+  return jsonb_build_object(
+    'user_id', p_user_id,
+    'cycle_month', v_month,
+    'goal_key', v_goal_key,
+    'goal_value', p_goal_value
+  );
+end;
+$$;
+
+create or replace function public.app_update_user_nome(p_id text, p_nome text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_requester_id text;
+  v_requester_role text;
+  v_requester_store_id text;
+  v_target public.users%rowtype;
+  v_old_nome text;
+  v_nome text;
+begin
+  v_requester_id := public.app_current_user_id();
+  v_requester_role := public.app_current_user_role();
+  v_requester_store_id := public.app_current_user_store_id();
+
+  if v_requester_id is null then
+    raise exception 'Sessao nao encontrada.';
+  end if;
+
+  if v_requester_role not in ('superadmin', 'admin') then
+    raise exception 'Acesso restrito ao administrador.';
+  end if;
+
+  v_nome := upper(trim(coalesce(p_nome, '')));
+  if v_nome = '' then
+    raise exception 'Informe um nome valido.';
+  end if;
+
+  select *
+    into v_target
+  from public.users
+  where id = p_id
+  limit 1;
+
+  if v_target.id is null then
+    raise exception 'Usuario nao encontrado.';
+  end if;
+
+  if v_target.role = 'superadmin' and v_requester_role <> 'superadmin' then
+    raise exception 'Apenas superadmin pode alterar superadmin.';
+  end if;
+
+  if v_requester_role = 'admin' then
+    if v_target.id = v_requester_id then
+      null;
+    elsif v_target.role <> 'seller' then
+      raise exception 'Admin pode alterar apenas vendedores da propria loja.';
+    elsif v_target.store_id <> v_requester_store_id then
+      raise exception 'Sem permissao para alterar vendedor de outra loja.';
+    end if;
+  end if;
+
+  v_old_nome := v_target.nome;
+
+  update public.users
+  set nome = v_nome
+  where id = v_target.id
+  returning * into v_target;
+
+  update public.vendas
+  set
+    vendedor = v_nome,
+    updated_at = timezone('utc', now())
+  where vendedor_id = v_target.id
+     or (vendedor_id is null and vendedor = v_old_nome);
+
+  return jsonb_build_object(
+    'id', v_target.id,
+    'nome', v_target.nome,
+    'username', v_target.username,
+    'role', v_target.role,
+    'created_at', v_target.created_at
+  );
+end;
+$$;
+
 create or replace function public.app_create_seller(p_nome text, p_username text, p_senha text)
 returns jsonb
 language plpgsql
@@ -249,14 +526,23 @@ security definer
 set search_path = public, extensions
 as $$
 declare
+  v_requester_id text;
   v_admin_role text;
+  v_requester_store_id text;
+  v_target_store_id text;
   v_nome text;
   v_username text;
   v_new_user public.users%rowtype;
 begin
+  v_requester_id := public.app_current_user_id();
   v_admin_role := public.app_current_user_role();
+  v_requester_store_id := public.app_current_user_store_id();
   if v_admin_role not in ('superadmin', 'admin') then
     raise exception 'Acesso restrito ao administrador.';
+  end if;
+
+  if v_requester_id is null then
+    raise exception 'Sessao nao encontrada.';
   end if;
 
   v_nome := trim(coalesce(p_nome, ''));
@@ -274,13 +560,24 @@ begin
     raise exception 'Ja existe um usuario com esse login.';
   end if;
 
-  insert into public.users (id, nome, username, password_hash, role, created_at)
+  if v_admin_role = 'admin' then
+    v_target_store_id := v_requester_store_id;
+  else
+    v_target_store_id := coalesce(v_requester_store_id, v_requester_id);
+  end if;
+
+  if coalesce(v_target_store_id, '') = '' then
+    raise exception 'Loja do administrador nao encontrada.';
+  end if;
+
+  insert into public.users (id, nome, username, password_hash, role, store_id, created_at)
   values (
     encode(gen_random_bytes(16), 'hex'),
     upper(v_nome),
     v_username,
     public.app_hash_password(p_senha),
     'seller',
+    v_target_store_id,
     timezone('utc', now())
   )
   returning * into v_new_user;
@@ -305,6 +602,7 @@ declare
   v_admin_role text;
   v_nome text;
   v_username text;
+  v_new_user_id text;
   v_new_user public.users%rowtype;
 begin
   v_admin_role := public.app_current_user_role();
@@ -327,13 +625,16 @@ begin
     raise exception 'Ja existe um usuario com esse login.';
   end if;
 
-  insert into public.users (id, nome, username, password_hash, role, created_at)
+  v_new_user_id := encode(gen_random_bytes(16), 'hex');
+
+  insert into public.users (id, nome, username, password_hash, role, store_id, created_at)
   values (
-    encode(gen_random_bytes(16), 'hex'),
+    v_new_user_id,
     upper(v_nome),
     v_username,
     public.app_hash_password(p_senha),
     'admin',
+    v_new_user_id,
     timezone('utc', now())
   )
   returning * into v_new_user;
@@ -356,14 +657,21 @@ set search_path = public, extensions
 as $$
 declare
   v_requester_role text;
+  v_requester_store_id text;
   v_target_role text;
+  v_target_store_id text;
 begin
   v_requester_role := public.app_current_user_role();
+  v_requester_store_id := public.app_current_user_store_id();
   if v_requester_role not in ('superadmin', 'admin') then
     raise exception 'Acesso restrito ao administrador.';
   end if;
 
-  select role into v_target_role from public.users where id = p_id limit 1;
+  select role, store_id
+    into v_target_role, v_target_store_id
+  from public.users
+  where id = p_id
+  limit 1;
 
   if v_target_role is null then
     raise exception 'Usuario nao encontrado.';
@@ -375,6 +683,10 @@ begin
 
   if v_target_role = 'admin' and v_requester_role <> 'superadmin' then
     raise exception 'Apenas superadmin pode excluir administradores.';
+  end if;
+
+  if v_requester_role = 'admin' and v_target_store_id <> v_requester_store_id then
+    raise exception 'Sem permissao para excluir usuario de outra loja.';
   end if;
 
   delete from public.users where id = p_id;
@@ -419,6 +731,7 @@ $$;
 alter table public.users enable row level security;
 alter table public.vendas enable row level security;
 alter table public.app_sessions enable row level security;
+alter table public.app_goal_targets enable row level security;
 
 drop policy if exists vendas_select_policy on public.vendas;
 drop policy if exists vendas_insert_policy on public.vendas;
@@ -428,7 +741,20 @@ drop policy if exists vendas_delete_policy on public.vendas;
 create policy vendas_select_policy on public.vendas
 for select
 using (
-  public.app_current_user_role() in ('superadmin', 'admin')
+  public.app_current_user_role() = 'superadmin'
+  or (
+    public.app_current_user_role() = 'admin'
+    and exists (
+      select 1
+      from public.users u
+      where u.store_id = public.app_current_user_store_id()
+        and u.role in ('admin', 'seller')
+        and (
+          (vendedor_id is not null and u.id = vendedor_id)
+          or (vendedor_id is null and u.nome = vendedor)
+        )
+    )
+  )
   or (
     public.app_current_user_role() = 'seller'
     and (
@@ -441,7 +767,18 @@ using (
 create policy vendas_insert_policy on public.vendas
 for insert
 with check (
-  public.app_current_user_role() in ('superadmin', 'admin')
+  public.app_current_user_role() = 'superadmin'
+  or (
+    public.app_current_user_role() = 'admin'
+    and exists (
+      select 1
+      from public.users u
+      where u.id = vendedor_id
+        and u.store_id = public.app_current_user_store_id()
+        and u.role in ('admin', 'seller')
+        and u.nome = vendedor
+    )
+  )
   or (
     public.app_current_user_role() = 'seller'
     and vendedor_id = public.app_current_user_id()
@@ -452,14 +789,38 @@ with check (
 create policy vendas_update_policy on public.vendas
 for update
 using (
-  public.app_current_user_role() in ('superadmin', 'admin')
+  public.app_current_user_role() = 'superadmin'
+  or (
+    public.app_current_user_role() = 'admin'
+    and exists (
+      select 1
+      from public.users u
+      where u.store_id = public.app_current_user_store_id()
+        and u.role in ('admin', 'seller')
+        and (
+          (vendedor_id is not null and u.id = vendedor_id)
+          or (vendedor_id is null and u.nome = vendedor)
+        )
+    )
+  )
   or (
     public.app_current_user_role() = 'seller'
     and vendedor_id = public.app_current_user_id()
   )
 )
 with check (
-  public.app_current_user_role() in ('superadmin', 'admin')
+  public.app_current_user_role() = 'superadmin'
+  or (
+    public.app_current_user_role() = 'admin'
+    and exists (
+      select 1
+      from public.users u
+      where u.id = vendedor_id
+        and u.store_id = public.app_current_user_store_id()
+        and u.role in ('admin', 'seller')
+        and u.nome = vendedor
+    )
+  )
   or (
     public.app_current_user_role() = 'seller'
     and vendedor_id = public.app_current_user_id()
@@ -470,7 +831,20 @@ with check (
 create policy vendas_delete_policy on public.vendas
 for delete
 using (
-  public.app_current_user_role() in ('superadmin', 'admin')
+  public.app_current_user_role() = 'superadmin'
+  or (
+    public.app_current_user_role() = 'admin'
+    and exists (
+      select 1
+      from public.users u
+      where u.store_id = public.app_current_user_store_id()
+        and u.role in ('admin', 'seller')
+        and (
+          (vendedor_id is not null and u.id = vendedor_id)
+          or (vendedor_id is null and u.nome = vendedor)
+        )
+    )
+  )
   or (
     public.app_current_user_role() = 'seller'
     and vendedor_id = public.app_current_user_id()
@@ -482,6 +856,7 @@ grant usage on schema public to anon, authenticated;
 revoke all on table public.users from anon, authenticated;
 revoke all on table public.vendas from anon, authenticated;
 revoke all on table public.app_sessions from anon, authenticated;
+revoke all on table public.app_goal_targets from anon, authenticated;
 
 grant select, insert, update, delete on table public.vendas to anon, authenticated;
 
@@ -489,18 +864,22 @@ grant execute on function public.app_login(text, text) to anon, authenticated;
 grant execute on function public.app_logout() to anon, authenticated;
 grant execute on function public.app_get_session() to anon, authenticated;
 grant execute on function public.app_list_users() to anon, authenticated;
+grant execute on function public.app_list_goals() to anon, authenticated;
 grant execute on function public.app_create_seller(text, text, text) to anon, authenticated;
 grant execute on function public.app_create_admin(text, text, text) to anon, authenticated;
+grant execute on function public.app_upsert_goal(text, text, text, numeric) to anon, authenticated;
+grant execute on function public.app_update_user_nome(text, text) to anon, authenticated;
 grant execute on function public.app_delete_seller(text) to anon, authenticated;
 grant execute on function public.app_change_password(text, text) to anon, authenticated;
 
-insert into public.users (id, nome, username, password_hash, role, created_at)
+insert into public.users (id, nome, username, password_hash, role, store_id, created_at)
 values (
   'admin-root',
   'Administrador',
   'admin',
   public.app_hash_password('123456'),
   'superadmin',
+  null,
   timezone('utc', now())
 )
 on conflict (id) do update
@@ -508,4 +887,5 @@ set
   nome = excluded.nome,
   username = excluded.username,
   password_hash = excluded.password_hash,
-  role = excluded.role;
+  role = excluded.role,
+  store_id = excluded.store_id;
