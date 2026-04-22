@@ -39,12 +39,12 @@ export default function GoalsTab({ goalItems, onGoalTargetChange, projectedGoalP
   const pendingCount = pendingItems.length;
 
   const accentByKey = {
-    bandaLarga: "#22d3ee",
-    grossTotal: "#818cf8",
-    posPagoTitular: "#38bdf8",
-    residencial: "#14b8a6",
-    receita: "#22c55e",
-    tv: "#f59e0b",
+    bandaLarga: "#DA291C",
+    grossTotal: "#DA291C",
+    posPagoTitular: "#DA291C",
+    residencial: "#DA291C",
+    receita: "#DA291C",
+    tv: "#DA291C",
   };
 
   function sanitizeDraft(item, raw) {
@@ -88,10 +88,10 @@ export default function GoalsTab({ goalItems, onGoalTargetChange, projectedGoalP
         }}
         style={{
           width: 120,
-          border: "1px solid #334155",
+          border: "1px solid #2A2A2E",
           borderRadius: 12,
-          background: "#0f172a",
-          color: "#e2e8f0",
+          background: "#141416",
+          color: "#FFFFFF",
           padding: "8px 12px",
           fontSize: 13,
           fontWeight: 600,
@@ -113,27 +113,27 @@ export default function GoalsTab({ goalItems, onGoalTargetChange, projectedGoalP
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <div>
-            <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 24, color: "#f8fafc" }}>Central de Metas</div>
-            <div style={{ color: "#9fb0c9", fontSize: 12 }}>Acompanhe performance e ajuste objetivos do ciclo em tempo real.</div>
+            <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 24, color: "#FFFFFF" }}>Central de Metas</div>
+            <div style={{ color: "#A1A1AA", fontSize: 12 }}>Acompanhe performance e ajuste objetivos do ciclo em tempo real.</div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <Badge color="#38bdf8">Editável</Badge>
-            <Badge color="#22c55e">{`Metas de: ${String(ownerName || "Usuário").toUpperCase()}`}</Badge>
+            <Badge color="#EF4444">Editável</Badge>
+            <Badge color="#22C55E">{`Metas de: ${String(ownerName || "Usuário").toUpperCase()}`}</Badge>
           </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
-          <div style={{ border: "1px solid rgba(148,163,184,0.26)", borderRadius: 12, padding: "10px 12px", background: "rgba(2,6,23,0.22)" }}>
-            <div style={{ color: "#9fb0c9", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>Metas atingidas</div>
-            <div style={{ color: "#f8fafc", fontFamily: "'Crimson Pro',serif", fontSize: 28, lineHeight: 1 }}>{reachedCount}/{items.length || 0}</div>
+          <div style={{ border: "1px solid #2A2A2E", borderRadius: 8, padding: "10px 12px", background: "#141416" }}>
+            <div style={{ color: "#A1A1AA", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>Metas atingidas</div>
+            <div style={{ color: "#FFFFFF", fontFamily: "'Crimson Pro',serif", fontSize: 28, lineHeight: 1 }}>{reachedCount}/{items.length || 0}</div>
           </div>
-          <div style={{ border: "1px solid rgba(148,163,184,0.26)", borderRadius: 12, padding: "10px 12px", background: "rgba(2,6,23,0.22)" }}>
-            <div style={{ color: "#cbd5e1", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>Progresso médio</div>
-            <div style={{ color: "#f8fafc", fontFamily: "'Crimson Pro',serif", fontSize: 28, lineHeight: 1 }}>{Math.round(avgProgress)}%</div>
+          <div style={{ border: "1px solid #2A2A2E", borderRadius: 8, padding: "10px 12px", background: "#141416" }}>
+            <div style={{ color: "#FFFFFF", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>Progresso médio</div>
+            <div style={{ color: "#FFFFFF", fontFamily: "'Crimson Pro',serif", fontSize: 28, lineHeight: 1 }}>{Math.round(avgProgress)}%</div>
           </div>
-          <div style={{ border: "1px solid rgba(148,163,184,0.26)", borderRadius: 12, padding: "10px 12px", background: "rgba(2,6,23,0.22)" }}>
-            <div style={{ color: "#cbd5e1", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>Pendências</div>
-            <div style={{ color: "#f8fafc", fontFamily: "'Crimson Pro',serif", fontSize: 28, lineHeight: 1 }}>{pendingCount}</div>
-            <div style={{ color: "#fef3c7", fontSize: 11 }}>
+          <div style={{ border: "1px solid #2A2A2E", borderRadius: 8, padding: "10px 12px", background: "#141416" }}>
+            <div style={{ color: "#FFFFFF", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>Pendências</div>
+            <div style={{ color: "#FFFFFF", fontFamily: "'Crimson Pro',serif", fontSize: 28, lineHeight: 1 }}>{pendingCount}</div>
+            <div style={{ color: "#FACC15", fontSize: 11 }}>
               Metas ainda abaixo do alvo
             </div>
           </div>
@@ -144,7 +144,7 @@ export default function GoalsTab({ goalItems, onGoalTargetChange, projectedGoalP
         {items.map((item) => {
           const progress = getProgressPercent(item);
           const isMet = item.remaining <= 0;
-          const accent = accentByKey[item.key] || "#38bdf8";
+          const accent = accentByKey[item.key] || "#EF4444";
           const projectedValue = Number(projected[item.key]) || 0;
           const dailyEfficiencyRaw = (Number(item.done) || 0) / Math.max(1, elapsedDays);
           const dailyEfficiency = item.type === "currency" ? dailyEfficiencyRaw : Math.round(dailyEfficiencyRaw);
@@ -153,20 +153,20 @@ export default function GoalsTab({ goalItems, onGoalTargetChange, projectedGoalP
               key={item.key}
               className="panel-surface"
               style={{
-                border: "1px solid rgba(148,163,184,0.24)",
-                borderRadius: 14,
+                border: "1px solid #2A2A2E",
+                borderRadius: 8,
                 padding: "12px 13px",
-                background: "linear-gradient(180deg, rgba(15,23,42,0.78), rgba(15,23,42,0.92))",
+                background: "#141416",
                 display: "grid",
                 gap: 10,
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                <div style={{ color: "#e2e8f0", fontSize: 13, fontWeight: 700 }}>
+                <div style={{ color: "#FFFFFF", fontSize: 13, fontWeight: 700 }}>
                   <span style={{ marginRight: 6 }}>{item.icon}</span>
                   {item.label}
                 </div>
-                <Badge color={isMet ? "#22c55e" : "#94a3b8"}>
+                <Badge color={isMet ? "#22C55E" : "#EF4444"}>
                   {Math.round(progress)}%
                 </Badge>
               </div>
@@ -175,9 +175,9 @@ export default function GoalsTab({ goalItems, onGoalTargetChange, projectedGoalP
                 style={{
                   height: 9,
                   borderRadius: 999,
-                  background: "rgba(51,65,85,0.85)",
+                  background: "rgba(42,42,46,0.95)",
                   overflow: "hidden",
-                  border: "1px solid rgba(71,85,105,0.7)",
+                  border: "1px solid #2A2A2E",
                 }}
               >
                 <div
@@ -185,37 +185,37 @@ export default function GoalsTab({ goalItems, onGoalTargetChange, projectedGoalP
                     width: `${progress}%`,
                     height: "100%",
                     borderRadius: 999,
-                    background: `linear-gradient(90deg, ${accent}, ${isMet ? "#22c55e" : "#38bdf8"})`,
+                    background: `linear-gradient(90deg, ${accent}, ${isMet ? "#22C55E" : "#EF4444"})`,
                     transition: "width .25s ease",
                   }}
                 />
               </div>
 
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, color: "#94a3b8", fontSize: 12, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, color: "#A1A1AA", fontSize: 12, flexWrap: "wrap" }}>
                 <span>
-                  Realizado: <strong style={{ color: "#e2e8f0" }}>{renderGoalValue(item, item.done)}</strong>
+                  Realizado: <strong style={{ color: "#FFFFFF" }}>{renderGoalValue(item, item.done)}</strong>
                 </span>
                 <span>
                   {isMet ? "Meta batida" : "Falta"}:{" "}
-                  <strong style={{ color: isMet ? "#22c55e" : "#fbbf24" }}>{renderGoalValue(item, Math.abs(item.remaining))}</strong>
+                  <strong style={{ color: isMet ? "#22C55E" : "#FACC15" }}>{renderGoalValue(item, Math.abs(item.remaining))}</strong>
                 </span>
               </div>
 
-              <div style={{ display: "grid", gap: 4, color: "#94a3b8", fontSize: 11 }}>
+              <div style={{ display: "grid", gap: 4, color: "#A1A1AA", fontSize: 11 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-                  <span>Eficiência diária: <strong style={{ color: "#cbd5e1" }}>{renderGoalValue(item, dailyEfficiency)}/dia</strong></span>
+                  <span>Eficiência diária: <strong style={{ color: "#FFFFFF" }}>{renderGoalValue(item, dailyEfficiency)}/dia</strong></span>
                   <span>
                     Ritmo atual
                   </span>
                 </div>
                 <div>
                   Projeção fechamento:{" "}
-                  <strong style={{ color: "#a5f3fc" }}>{renderGoalValue(item, projectedValue)}</strong>
+                  <strong style={{ color: "#FFFFFF" }}>{renderGoalValue(item, projectedValue)}</strong>
                 </div>
               </div>
 
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <div style={{ color: "#94a3b8", fontSize: 11 }}>
+                <div style={{ color: "#A1A1AA", fontSize: 11 }}>
                   Meta definida
                 </div>
                 {renderGoalInput(item)}

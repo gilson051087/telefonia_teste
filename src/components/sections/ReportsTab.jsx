@@ -1,8 +1,21 @@
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, Line } from "recharts";
-import { PIE_COLORS, PLANO_COLORS, PLANO_LABELS } from "../../constants/sales";
+import { PLANO_LABELS } from "../../constants/sales";
 import { fmtBRL, fmtDate, fmtMonth } from "../../utils/sales";
 import { btnPrimary, inputStyle } from "../ui";
+
+const REPORT_PLANO_COLORS = {
+  "Plano Controle": "#6366f1",
+  "Plano Pós-Pago": "#8b5cf6",
+  "Internet Residencial": "#06b6d4",
+  "Internet Movel Mais": "#0ea5e9",
+  TV: "#f59e0b",
+  "Aparelho Celular": "#10b981",
+  Acessorios: "#ec4899",
+  "Seguro Movel Celular": "#f97316",
+};
+
+const REPORT_PIE_COLORS = ["#6366f1", "#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ec4899", "#f97316"];
 
 export default function ReportsTab({
   reportScopedVendas,
@@ -77,15 +90,16 @@ export default function ReportsTab({
       <div
         className="panel-surface"
         style={{
-          borderRadius: 14,
+          borderRadius: 8,
           padding: "12px 14px",
-          borderColor: "rgba(14,165,233,0.4)",
-          background: "linear-gradient(135deg, rgba(14,165,233,0.14), rgba(15,23,42,0.9))",
-          color: "#cbd5e1",
+          borderColor: "#2A2A2E",
+          borderTop: "2px solid #DA291C",
+          background: "#141416",
+          color: "#FFFFFF",
           fontSize: 12,
         }}
       >
-        <strong style={{ color: "#67e8f9" }}>Competência dos relatórios:</strong> vendas de Internet e TV instaladas usam a data de finalização para apuração diária e mensal.
+        <strong style={{ color: "#FFFFFF" }}>Competência dos relatórios:</strong> vendas de Internet e TV instaladas usam a data de finalização para apuração diária e mensal.
       </div>
 
       <div
@@ -99,8 +113,8 @@ export default function ReportsTab({
       >
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
           <div>
-            <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 22, color: "#f1f5f9", marginBottom: 4 }}>Relatório mensal</div>
-            <div style={{ fontSize: 13, color: "#94a3b8" }}>Selecione um mês para ver o consolidado e exportar em Excel.</div>
+            <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 22, color: "#FFFFFF", marginBottom: 4 }}>Relatório mensal</div>
+            <div style={{ fontSize: 13, color: "#A1A1AA" }}>Selecione um mês para ver o consolidado e exportar em Excel.</div>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <input aria-label="Selecionar mês do relatório mensal" type="month" value={monthlyReportMonth} onChange={(event) => setMonthlyReportMonth(event.target.value)} style={{ ...inputStyle, width: 180 }} />
@@ -111,22 +125,22 @@ export default function ReportsTab({
         </div>
 
         <div className="rel-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
-          <div style={{ background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.15)", borderRadius: 12, padding: 14 }}>
-            <div style={{ color: "#64748b", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Mês</div>
-            <div style={{ color: "#f1f5f9", fontSize: 20, fontWeight: 700 }}>{monthlyReportMonth ? fmtMonth(monthlyReportMonth) : "Selecione"}</div>
+          <div style={{ background: "#141416", border: "1px solid #2A2A2E", borderRadius: 8, padding: 14 }}>
+            <div style={{ color: "#A1A1AA", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Mês</div>
+            <div style={{ color: "#FFFFFF", fontSize: 20, fontWeight: 700 }}>{monthlyReportMonth ? fmtMonth(monthlyReportMonth) : "Selecione"}</div>
           </div>
-          <div style={{ background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.15)", borderRadius: 12, padding: 14 }}>
-            <div style={{ color: "#64748b", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Vendas do mês</div>
-            <div style={{ color: "#f1f5f9", fontSize: 20, fontWeight: 700 }}>{monthlyReportVendas.length}</div>
+          <div style={{ background: "#141416", border: "1px solid #2A2A2E", borderRadius: 8, padding: 14 }}>
+            <div style={{ color: "#A1A1AA", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Vendas do mês</div>
+            <div style={{ color: "#FFFFFF", fontSize: 20, fontWeight: 700 }}>{monthlyReportVendas.length}</div>
           </div>
-          <div style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 12, padding: 14 }}>
-            <div style={{ color: "#64748b", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Total do mês</div>
-            <div style={{ color: "#10b981", fontSize: 20, fontWeight: 700 }}>{fmtBRL(monthlyReportTotal)}</div>
+          <div style={{ background: "#141416", border: "1px solid #2A2A2E", borderRadius: 8, padding: 14 }}>
+            <div style={{ color: "#A1A1AA", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Total do mês</div>
+            <div style={{ color: "#22C55E", fontSize: 20, fontWeight: 700 }}>{fmtBRL(monthlyReportTotal)}</div>
           </div>
         </div>
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <div style={{ fontSize: 12, color: "#64748b" }}>
+          <div style={{ fontSize: 12, color: "#A1A1AA" }}>
             {showMonthlySales ? "Lista completa de vendas expandida por categoria." : "Lista completa de vendas recolhida."}
           </div>
           <button
@@ -140,12 +154,12 @@ export default function ReportsTab({
         </div>
 
         {showMonthlySales && (
-          <div style={{ border: "1px solid rgba(71,85,105,0.55)", borderRadius: 12, overflow: "hidden", maxHeight: 460, overflowY: "auto" }}>
+          <div style={{ border: "1px solid rgba(42,42,46,0.95)", borderRadius: 12, overflow: "hidden", maxHeight: 460, overflowY: "auto" }}>
             {groupedAllSalesEntries.length === 0 ? (
-              <div style={{ padding: "18px 16px", color: "#64748b", fontSize: 13 }}>Nenhuma venda encontrada.</div>
+              <div style={{ padding: "18px 16px", color: "#A1A1AA", fontSize: 13 }}>Nenhuma venda encontrada.</div>
             ) : (
               groupedAllSalesEntries.map(([plano, vendas]) => (
-                <div key={plano} style={{ borderTop: "1px solid #1e293b" }}>
+                <div key={plano} style={{ borderTop: "1px solid #2A2A2E" }}>
                   <button
                     type="button"
                     onClick={() => toggleCategory(plano)}
@@ -156,7 +170,7 @@ export default function ReportsTab({
                       textAlign: "left",
                       padding: "10px 16px",
                       background: "rgba(255,255,255,0.03)",
-                      color: "#cbd5e1",
+                      color: "#FFFFFF",
                       fontSize: 12,
                       fontWeight: 700,
                       display: "flex",
@@ -179,8 +193,8 @@ export default function ReportsTab({
                             gridTemplateColumns: "1fr 2fr 1fr 1.2fr",
                             gap: 12,
                             padding: "10px 16px",
-                            borderTop: index === 0 ? "none" : "1px solid #1e293b",
-                            color: "#e2e8f0",
+                            borderTop: index === 0 ? "none" : "1px solid #2A2A2E",
+                            color: "#FFFFFF",
                             fontSize: 13,
                           }}
                         >
@@ -208,8 +222,8 @@ export default function ReportsTab({
       >
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
           <div>
-            <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 22, color: "#f1f5f9", marginBottom: 4 }}>Relatório diário</div>
-            <div style={{ fontSize: 13, color: "#94a3b8" }}>Selecione um dia para ver as vendas e exportar em Excel.</div>
+            <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 22, color: "#FFFFFF", marginBottom: 4 }}>Relatório diário</div>
+            <div style={{ fontSize: 13, color: "#A1A1AA" }}>Selecione um dia para ver as vendas e exportar em Excel.</div>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <input aria-label="Selecionar data do relatório diário" type="date" value={dailyReportDate} onChange={(event) => setDailyReportDate(event.target.value)} style={{ ...inputStyle, width: 180 }} />
@@ -220,26 +234,26 @@ export default function ReportsTab({
         </div>
 
         <div className="rel-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
-          <div style={{ background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.15)", borderRadius: 12, padding: 14 }}>
-            <div style={{ color: "#64748b", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Data</div>
-            <div style={{ color: "#f1f5f9", fontSize: 20, fontWeight: 700 }}>{dailyReportDate ? fmtDate(dailyReportDate) : "Selecione"}</div>
+          <div style={{ background: "#141416", border: "1px solid #2A2A2E", borderRadius: 8, padding: 14 }}>
+            <div style={{ color: "#A1A1AA", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Data</div>
+            <div style={{ color: "#FFFFFF", fontSize: 20, fontWeight: 700 }}>{dailyReportDate ? fmtDate(dailyReportDate) : "Selecione"}</div>
           </div>
-          <div style={{ background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.15)", borderRadius: 12, padding: 14 }}>
-            <div style={{ color: "#64748b", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Vendas do dia</div>
-            <div style={{ color: "#f1f5f9", fontSize: 20, fontWeight: 700 }}>{dailyReportVendas.length}</div>
+          <div style={{ background: "#141416", border: "1px solid #2A2A2E", borderRadius: 8, padding: 14 }}>
+            <div style={{ color: "#A1A1AA", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Vendas do dia</div>
+            <div style={{ color: "#FFFFFF", fontSize: 20, fontWeight: 700 }}>{dailyReportVendas.length}</div>
           </div>
-          <div style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 12, padding: 14 }}>
-            <div style={{ color: "#64748b", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Total do dia</div>
-            <div style={{ color: "#10b981", fontSize: 20, fontWeight: 700 }}>{fmtBRL(dailyReportTotal)}</div>
+          <div style={{ background: "#141416", border: "1px solid #2A2A2E", borderRadius: 8, padding: 14 }}>
+            <div style={{ color: "#A1A1AA", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Total do dia</div>
+            <div style={{ color: "#22C55E", fontSize: 20, fontWeight: 700 }}>{fmtBRL(dailyReportTotal)}</div>
           </div>
         </div>
 
-        <div style={{ border: "1px solid rgba(71,85,105,0.55)", borderRadius: 12, overflow: "hidden", maxHeight: 420, overflowY: "auto" }}>
+        <div style={{ border: "1px solid rgba(42,42,46,0.95)", borderRadius: 12, overflow: "hidden", maxHeight: 420, overflowY: "auto" }}>
           {groupedDailySalesEntries.length === 0 ? (
-            <div style={{ padding: "18px 16px", color: "#64748b", fontSize: 13 }}>Nenhuma venda encontrada para a data selecionada.</div>
+            <div style={{ padding: "18px 16px", color: "#A1A1AA", fontSize: 13 }}>Nenhuma venda encontrada para a data selecionada.</div>
           ) : (
             groupedDailySalesEntries.map(([plano, vendas]) => (
-              <div key={plano} style={{ borderTop: "1px solid #1e293b" }}>
+              <div key={plano} style={{ borderTop: "1px solid #2A2A2E" }}>
                 <button
                   type="button"
                   onClick={() => toggleDailyCategory(plano)}
@@ -250,7 +264,7 @@ export default function ReportsTab({
                     textAlign: "left",
                     padding: "10px 16px",
                     background: "rgba(255,255,255,0.03)",
-                    color: "#cbd5e1",
+                    color: "#FFFFFF",
                     fontSize: 12,
                     fontWeight: 700,
                     display: "flex",
@@ -273,8 +287,8 @@ export default function ReportsTab({
                           gridTemplateColumns: "1fr 2fr 1fr 1.2fr",
                           gap: 12,
                           padding: "10px 16px",
-                          borderTop: index === 0 ? "none" : "1px solid #1e293b",
-                          color: "#e2e8f0",
+                          borderTop: index === 0 ? "none" : "1px solid #2A2A2E",
+                          color: "#FFFFFF",
                           fontSize: 13,
                         }}
                       >
@@ -292,20 +306,20 @@ export default function ReportsTab({
 
       <div className="rel-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 18 }}>
         <div className="panel-surface" style={{ borderRadius: 14, padding: 24 }}>
-          <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 18, color: "#f1f5f9", marginBottom: 2 }}>Receita por mês</div>
-          <div style={{ fontSize: 12, color: "#475569", marginBottom: 18 }}>Colunas por serviço em cada mês + linha de total mensal.</div>
+          <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 18, color: "#FFFFFF", marginBottom: 2 }}>Receita por mês</div>
+          <div style={{ fontSize: 12, color: "#A1A1AA", marginBottom: 18 }}>Colunas por serviço em cada mês + linha de total mensal.</div>
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={monthDataWithTotal} barSize={36} barGap={1} barCategoryGap="2%" margin={{ top: 10, right: 6, left: -8, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="4 4" stroke="rgba(51,65,85,0.65)" vertical={false} />
-              <XAxis dataKey="name" tick={{ fill: "#94a3b8", fontSize: 12, fontWeight: 700 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(value) => `R$${(value / 1000).toFixed(0)}k`} />
+              <CartesianGrid strokeDasharray="4 4" stroke="rgba(42,42,46,0.95)" vertical={false} />
+              <XAxis dataKey="name" tick={{ fill: "#A1A1AA", fontSize: 12, fontWeight: 700 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: "#A1A1AA", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(value) => `R$${(value / 1000).toFixed(0)}k`} />
               <Tooltip content={<RevenueTooltip />} cursor={{ fill: "rgba(34,211,238,0.08)", stroke: "rgba(34,211,238,0.35)", strokeWidth: 1 }} />
-              <Legend formatter={(value) => PLANO_LABELS[value] || value} wrapperStyle={{ fontSize: 11, color: "#94a3b8" }} />
+              <Legend formatter={(value) => PLANO_LABELS[value] || value} wrapperStyle={{ fontSize: 11, color: "#A1A1AA" }} />
               {monthPlanSeries.map((plano, index) => (
                 <Bar
                   key={plano}
                   dataKey={plano}
-                  fill={PLANO_COLORS[plano] || PIE_COLORS[index % PIE_COLORS.length]}
+                  fill={REPORT_PLANO_COLORS[plano] || REPORT_PIE_COLORS[index % REPORT_PIE_COLORS.length]}
                   fillOpacity={0.88}
                   radius={[4, 4, 0, 0]}
                   animationDuration={700}
@@ -317,19 +331,19 @@ export default function ReportsTab({
                   }}
                 />
               ))}
-              <Line type="monotone" dataKey="total" stroke="#22d3ee" strokeWidth={2.2} dot={{ r: 2, strokeWidth: 1, fill: "#0f172a" }} activeDot={{ r: 4 }} />
+              <Line type="monotone" dataKey="total" stroke="#22d3ee" strokeWidth={2.2} dot={{ r: 2, strokeWidth: 1, fill: "#141416" }} activeDot={{ r: 4 }} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         <div className="panel-surface" style={{ borderRadius: 14, padding: 24 }}>
-          <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 18, color: "#f1f5f9", marginBottom: 2 }}>Por produto</div>
-          <div style={{ fontSize: 12, color: "#475569", marginBottom: 10 }}>Distribuição de receita</div>
+          <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 18, color: "#FFFFFF", marginBottom: 2 }}>Por produto</div>
+          <div style={{ fontSize: 12, color: "#A1A1AA", marginBottom: 10 }}>Distribuição de receita</div>
           <ResponsiveContainer width="100%" height={160}>
             <PieChart>
               <Pie data={planoData} cx="50%" cy="50%" innerRadius={44} outerRadius={72} dataKey="value" paddingAngle={3}>
                 {planoData.map((_, index) => (
-                  <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                  <Cell key={index} fill={REPORT_PIE_COLORS[index % REPORT_PIE_COLORS.length]} />
                 ))}
               </Pie>
               <Tooltip contentStyle={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 8, color: "#e2e8f0" }} formatter={(value) => [fmtBRL(value)]} />
@@ -338,9 +352,9 @@ export default function ReportsTab({
           <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 8 }}>
             {planoData.map((item, index) => (
               <div key={item.name} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 11 }}>
-                <div style={{ width: 9, height: 9, borderRadius: 2, background: PIE_COLORS[index % PIE_COLORS.length], flexShrink: 0 }} />
-                <span style={{ color: "#94a3b8", flex: 1 }}>{PLANO_LABELS[item.name] || item.name}</span>
-                <span style={{ color: "#f1f5f9", fontWeight: 700 }}>{fmtBRL(item.value)}</span>
+                <div style={{ width: 9, height: 9, borderRadius: 2, background: REPORT_PIE_COLORS[index % REPORT_PIE_COLORS.length], flexShrink: 0 }} />
+                <span style={{ color: "#A1A1AA", flex: 1 }}>{PLANO_LABELS[item.name] || item.name}</span>
+                <span style={{ color: "#FFFFFF", fontWeight: 700 }}>{fmtBRL(item.value)}</span>
               </div>
             ))}
           </div>

@@ -42,14 +42,14 @@ export const PLANO_ICONS = {
 };
 
 export const PLANO_COLORS = {
-  "Plano Controle": "#6366f1",
-  "Plano Pós-Pago": "#8b5cf6",
-  "Internet Residencial": "#06b6d4",
-  "Internet Movel Mais": "#0ea5e9",
-  TV: "#f59e0b",
-  "Aparelho Celular": "#10b981",
-  Acessorios: "#ec4899",
-  "Seguro Movel Celular": "#f97316",
+  "Plano Controle": "#DA291C",
+  "Plano Pós-Pago": "#C6241A",
+  "Internet Residencial": "#B71C1C",
+  "Internet Movel Mais": "#E63A2B",
+  TV: "#DA291C",
+  "Aparelho Celular": "#B71C1C",
+  Acessorios: "#DA291C",
+  "Seguro Movel Celular": "#E63A2B",
 };
 
 export const REMUNERATION_OPTIONS_BY_PLANO = {
@@ -209,9 +209,9 @@ export const PLANO_EXTRAS = {
 };
 
 export const STATUS_OPTIONS = ["Ativa", "Pendente", "Cancelada"];
-export const STATUS_COLORS = { Ativa: "#10b981", Pendente: "#f59e0b", Cancelada: "#ef4444" };
+export const STATUS_COLORS = { Ativa: "#22C55E", Pendente: "#FACC15", Cancelada: "#EF4444" };
 export const MONTH_NAMES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-export const PIE_COLORS = ["#6366f1", "#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ec4899", "#f97316"];
+export const PIE_COLORS = ["#DA291C", "#C6241A", "#B71C1C", "#E63A2B", "#DA291C", "#B71C1C", "#E63A2B"];
 
 const INSTALLATION_PLANOS = ["Internet Residencial", "TV"];
 

@@ -17,6 +17,7 @@ import {
 } from "./apiClient";
 import AppHeader from "./components/AppHeader";
 import AuthScreen from "./components/AuthScreen";
+import Logo from "./components/Logo";
 import PasswordForm from "./components/forms/PasswordForm";
 import SellerForm from "./components/forms/SellerForm";
 import VendaForm from "./components/forms/VendaForm";
@@ -53,31 +54,32 @@ const normalizeSearchText = (value = "") =>
 const APP_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=DM+Sans:wght@400;500;600&display=swap');
   :root{
-    --bg:#061022;
-    --bg-soft:#0b1830;
-    --panel:#12213a;
-    --panel-strong:#101d33;
-    --line:rgba(125,211,252,0.18);
-    --line-strong:rgba(125,211,252,0.3);
-    --text:#e6edf7;
-    --text-strong:#f8fbff;
-    --muted:#9fb0c9;
-    --brand:#38bdf8;
-    --accent-info:#22d3ee;
-    --accent-success:#22c55e;
-    --accent-warning:#f59e0b;
-    --accent-danger:#ef4444;
-    --accent-info-soft:rgba(34,211,238,0.18);
+    --bg:#0B0B0C;
+    --bg-soft:#101012;
+    --panel:#141416;
+    --panel-strong:#141416;
+    --line:#2A2A2E;
+    --line-strong:#DA291C;
+    --text:#FFFFFF;
+    --text-strong:#FFFFFF;
+    --muted:#A1A1AA;
+    --brand:#DA291C;
+    --brand-dark:#B71C1C;
+    --accent-info:#DA291C;
+    --accent-success:#22C55E;
+    --accent-warning:#FACC15;
+    --accent-danger:#EF4444;
+    --accent-info-soft:rgba(218,41,28,0.22);
     --accent-success-soft:rgba(34,197,94,0.16);
-    --accent-warning-soft:rgba(245,158,11,0.16);
+    --accent-warning-soft:rgba(250,204,21,0.2);
     --accent-danger-soft:rgba(239,68,68,0.16);
+    --radius-md:10px;
+    --radius-lg:12px;
+    --shadow-soft:0 12px 24px rgba(0,0,0,0.28);
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   body{
-    background:
-      radial-gradient(circle at 12% 16%, rgba(14,165,233,0.18), transparent 34%),
-      radial-gradient(circle at 88% 8%, rgba(16,185,129,0.14), transparent 30%),
-      linear-gradient(180deg, var(--bg-soft), var(--bg));
+    background:var(--bg);
     color:var(--text);
   }
   @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
@@ -86,34 +88,25 @@ const APP_STYLES = `
   .app-atmosphere{
     position:relative;
     isolation:isolate;
-    background:
-      radial-gradient(circle at 15% 12%, rgba(14,165,233,0.14), transparent 30%),
-      radial-gradient(circle at 85% 7%, rgba(16,185,129,0.11), transparent 28%),
-      linear-gradient(165deg,#050b18 0%, #081327 46%, #0a1729 100%);
+    background:var(--bg);
     overflow:hidden;
   }
   .app-atmosphere::before{
-    content:"";
+    content:none;
     position:absolute;
     inset:-22% -18%;
-    background:
-      conic-gradient(from 110deg at 25% 38%, rgba(34,211,238,0.12), transparent 26%),
-      conic-gradient(from 235deg at 72% 42%, rgba(34,197,94,0.09), transparent 24%);
-    filter:blur(10px);
-    animation:auroraDrift 26s ease-in-out infinite;
+    background:none;
+    filter:none;
+    animation:none;
     pointer-events:none;
     z-index:0;
   }
   .app-atmosphere::after{
-    content:"";
+    content:none;
     position:absolute;
     inset:0;
-    background:
-      linear-gradient(rgba(148,163,184,0.045) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(148,163,184,0.045) 1px, transparent 1px);
-    background-size:44px 44px;
-    mask-image:radial-gradient(circle at center, black 18%, transparent 82%);
-    opacity:0.25;
+    background:none;
+    opacity:0;
     pointer-events:none;
     z-index:0;
   }
@@ -132,24 +125,20 @@ const APP_STYLES = `
   .lift-hover:hover{transform:translateY(-1px);}
   input::placeholder,
   textarea::placeholder{
-    color:#8ea3be;
+    color:var(--muted);
     opacity:1;
   }
   .panel-surface{
-    background:
-      radial-gradient(circle at 95% 10%, rgba(34,211,238,0.1), transparent 34%),
-      linear-gradient(180deg,var(--panel),var(--panel-strong));
+    background:#141416;
     border:1px solid var(--line);
-    border-radius:14px;
-    box-shadow:0 12px 28px rgba(2,6,23,0.26);
-    box-shadow:0 12px 28px rgba(2,6,23,0.26), inset 0 1px 0 rgba(248,250,252,0.06);
-    backdrop-filter:blur(7px);
-    transition:border-color .2s ease, box-shadow .2s ease;
+    border-radius:8px;
+    box-shadow:0 8px 16px rgba(0,0,0,0.26);
+    transition:all .2s ease;
   }
   @media (hover:hover){
     .panel-surface:hover{
-      border-color:var(--line-strong);
-      box-shadow:0 16px 30px rgba(2,6,23,0.32), inset 0 1px 0 rgba(248,250,252,0.08);
+      border-color:rgba(218,41,28,0.45);
+      box-shadow:0 10px 18px rgba(0,0,0,0.3);
     }
   }
   .stat-card{
@@ -164,16 +153,16 @@ const APP_STYLES = `
       content:"";
       position:absolute;
       inset:-35% -120%;
-      background:linear-gradient(100deg, rgba(255,255,255,0) 20%, rgba(186,230,253,0.12) 50%, rgba(255,255,255,0) 80%);
+      background:linear-gradient(100deg, rgba(255,255,255,0) 24%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0) 76%);
       transform:translateX(-28%);
       opacity:0;
       transition:transform .45s ease, opacity .45s ease;
       pointer-events:none;
     }
     .stat-card:hover{
-      transform:translateY(-5px);
-      border-color:rgba(125,211,252,0.52) !important;
-      box-shadow:0 18px 34px rgba(8,47,73,0.3) !important;
+      transform:translateY(-3px);
+      border-color:rgba(218,41,28,0.5) !important;
+      box-shadow:0 12px 24px rgba(0,0,0,0.34) !important;
     }
     .stat-card:hover::after{
       transform:translateX(32%);
@@ -184,9 +173,9 @@ const APP_STYLES = `
       will-change:transform, box-shadow;
     }
     .seller-summary-card:hover{
-      transform:translateY(-4px);
-      border-color:rgba(103,232,249,0.38) !important;
-      box-shadow:0 16px 30px rgba(8,47,73,0.24) !important;
+      transform:translateY(-3px);
+      border-color:rgba(218,41,28,0.45) !important;
+      box-shadow:0 12px 24px rgba(0,0,0,0.3) !important;
     }
   }
   @media (prefers-reduced-motion: reduce){
@@ -215,20 +204,20 @@ const APP_STYLES = `
   }
   .sales-group-card:hover{
     transform:translateY(-1px);
-    border-color:rgba(125,211,252,0.42) !important;
-    box-shadow:0 12px 22px rgba(8,47,73,0.22) !important;
+    border-color:rgba(218,41,28,0.4) !important;
+    box-shadow:0 10px 18px rgba(0,0,0,0.3) !important;
   }
   .skeleton{
-    background:linear-gradient(90deg, rgba(51,65,85,0.3) 25%, rgba(100,116,139,0.45) 50%, rgba(51,65,85,0.3) 75%);
+    background:linear-gradient(90deg, rgba(42,42,46,0.45) 25%, rgba(62,62,68,0.55) 50%, rgba(42,42,46,0.45) 75%);
     background-size:200% 100%;
     animation:shimmer 1.2s linear infinite;
     border-radius:12px;
   }
   .skeleton-card{
     padding:14px;
-    border:1px solid rgba(71,85,105,0.45);
+    border:1px solid var(--line);
     border-radius:16px;
-    background:linear-gradient(180deg, rgba(15,23,42,0.8), rgba(15,23,42,0.92));
+    background:linear-gradient(180deg, rgba(20,20,22,0.96), rgba(16,16,18,0.96));
   }
   .action-pill{
     border:none;
@@ -241,9 +230,9 @@ const APP_STYLES = `
     transition:all .15s ease;
   }
   .action-pill:hover{filter:brightness(1.04);}
-  .action-pill-info{background:rgba(56,189,248,0.14);color:#bae6fd;border:1px solid rgba(56,189,248,0.3);}
-  .action-pill-edit{background:var(--accent-success-soft);color:#bbf7d0;border:1px solid rgba(34,197,94,0.28);}
-  .action-pill-delete{background:var(--accent-danger-soft);color:#fecaca;border:1px solid rgba(239,68,68,0.3);}
+  .action-pill-info{background:rgba(218,41,28,0.16);color:#fff;border:1px solid rgba(218,41,28,0.6);}
+  .action-pill-edit{background:rgba(20,20,22,0.96);color:#fff;border:1px solid rgba(42,42,46,1);}
+  .action-pill-delete{background:rgba(20,20,22,0.96);color:#fff;border:1px solid rgba(239,68,68,0.65);}
   .filters-bar{
     display:flex;
     flex-wrap:nowrap;
@@ -267,28 +256,26 @@ const APP_STYLES = `
     flex:0 0 auto;
   }
   .filter-count{
-    color:#64748b;
+    color:var(--muted);
     font-size:13px;
     font-weight:600;
   }
-  .quick-filter-btn:hover{border-color:var(--accent-info)!important;color:#67e8f9!important;}
+  .quick-filter-btn:hover{border-color:var(--accent-info)!important;color:#fff!important;}
   input[type="date"],
   input[type="month"]{
     color-scheme:dark;
-    background:
-      linear-gradient(180deg, rgba(30,41,59,0.95), rgba(22,30,45,0.95)),
-      radial-gradient(circle at 92% 50%, rgba(34,211,238,0.2), transparent 30%);
-    border:1px solid rgba(71,85,105,0.9);
+    background:#141416;
+    border:1px solid var(--line);
     border-radius:12px;
-    color:#f1f5f9;
+    color:var(--text);
     min-height:44px;
     padding-right:42px;
-    box-shadow:inset 0 1px 0 rgba(148,163,184,0.08);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.05);
     transition:all .2s ease;
   }
   input[type="date"]:hover,
   input[type="month"]:hover{
-    border-color:rgba(34,211,238,0.45);
+    border-color:rgba(218,41,28,0.75);
     box-shadow:0 0 0 2px var(--accent-info-soft);
   }
   input[type="date"]::-webkit-calendar-picker-indicator,
@@ -297,19 +284,18 @@ const APP_STYLES = `
     opacity:.95;
     border-radius:8px;
     padding:4px;
-    background:
-      radial-gradient(circle at center, rgba(34,211,238,0.2), rgba(15,23,42,0.05));
+    background:rgba(218,41,28,0.1);
     filter:brightness(1.2) contrast(1.1);
   }
   input[type="date"]::-webkit-datetime-edit,
   input[type="month"]::-webkit-datetime-edit{
-    color:#e2e8f0;
+    color:var(--text);
   }
   .app-nav button:hover{
     transform:translateY(-1px);
-    border-color:rgba(56,189,248,0.35)!important;
-    color:#dbeafe!important;
-    background:rgba(30,41,59,0.78)!important;
+    border-color:rgba(218,41,28,0.75)!important;
+    color:#fff!important;
+    background:rgba(183,28,28,0.36)!important;
   }
   .app-nav button:focus-visible{
     outline:2px solid var(--accent-info);
@@ -321,11 +307,11 @@ const APP_STYLES = `
     filter:brightness(1.05);
   }
   ::-webkit-scrollbar{width:5px;}
-  ::-webkit-scrollbar-track{background:#0d1526;}
-  ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px;}
-  select option{background:#1e293b;}
+  ::-webkit-scrollbar-track{background:#111113;}
+  ::-webkit-scrollbar-thumb{background:#B71C1C;border-radius:3px;}
+  select option{background:#141416;}
   input[type=number]::-webkit-inner-spin-button{opacity:0;}
-  tr:hover td{background:rgba(56,189,248,0.05)!important;}
+  tr:hover td{background:rgba(225,6,19,0.08)!important;}
   .app-shell{
     padding:24px 20px;
     width:100%;
@@ -436,6 +422,9 @@ const APP_STYLES = `
     .app-brand{
       width:100%;
     }
+    .brand-logo-img{
+      width:240px !important;
+    }
     .app-nav,
     .app-user-actions{
       width:100%;
@@ -502,8 +491,8 @@ const APP_STYLES = `
     .plan-grid{
       grid-template-columns:1fr !important;
     }
-    .brand-title{
-      font-size:18px !important;
+    .brand-logo-img{
+      width:200px !important;
     }
     .auth-hero-title{
       font-size:32px !important;
@@ -714,14 +703,18 @@ export default function App() {
     const parsed = Number(normalized);
     return Number.isFinite(parsed) ? parsed : 0;
   };
+  const TICKET_PERCENTAGE_BY_PLANO = {
+    "Aparelho Celular": 0.05,
+    Acessorios: 0.15,
+  };
   const getVendaRevenue = (venda = {}) => {
     const valorBase = parseNumericValue(venda.valor);
     if (["Plano Controle", "Plano Pós-Pago", "TV", "Internet Residencial", "Internet Movel Mais", "Seguro Movel Celular"].includes(venda.plano)) {
       const remuneracaoTabela = getRemunerationValue(venda.plano, venda.tipoPlano);
       return remuneracaoTabela ?? valorBase;
     }
-    if (venda.plano === "Aparelho Celular") return valorBase * 0.05;
-    if (venda.plano === "Acessorios") return valorBase * 0.15;
+    const ticketPercentage = TICKET_PERCENTAGE_BY_PLANO[venda.plano];
+    if (ticketPercentage) return valorBase * ticketPercentage;
     return valorBase;
   };
   const cycleScopedVendas = scopedVendas.filter((venda) => getVendaCompetenceMonth(venda) === currentCycleMonth);
@@ -770,7 +763,7 @@ export default function App() {
   const ticketCelular = ticketCelularTotal;
   const ticketAcessoriosVendas = vendasComValor.filter((venda) => venda.plano === "Acessorios");
   const ticketAcessoriosTotal = ticketAcessoriosVendas.reduce((sum, venda) => sum + getVendaRevenue(venda), 0);
-  const ticketAcessorios = ticketAcessoriosVendas.length ? ticketAcessoriosTotal / ticketAcessoriosVendas.length : 0;
+  const ticketAcessorios = ticketAcessoriosTotal;
   const ticketPlanosPrincipaisVendas = vendasComValor.filter((venda) => ["Plano Controle", "Plano Pós-Pago", "TV", "Internet Residencial", "Internet Movel Mais"].includes(venda.plano));
   const ticketPlanosPrincipaisTotal = ticketPlanosPrincipaisVendas.reduce((sum, venda) => sum + getVendaRevenue(venda), 0);
   const computeGoalProgress = (vendasList = [], receitaTotal = 0) => {
@@ -1042,8 +1035,12 @@ export default function App() {
 
         const additionalSales = [];
         const addAdditional = (payload) => {
-          if (!payload?.plano || !payload?.tipoPlano || !payload?.valor || payload.valor <= 0) return;
-          additionalSales.push(payload);
+          const valorNumerico = parseNumericValue(payload?.valor);
+          if (!payload?.plano || !payload?.tipoPlano || valorNumerico <= 0) return;
+          additionalSales.push({
+            ...payload,
+            valor: valorNumerico,
+          });
         };
         const num = parseNumericValue;
 
@@ -1333,7 +1330,7 @@ export default function App() {
 
   if (isBooting) {
     return (
-      <div style={{ minHeight: "100vh", background: "#070e1c", color: "#e2e8f0", fontFamily: "'DM Sans',sans-serif" }}>
+      <div className="app-atmosphere" style={{ minHeight: "100vh", background: "#0B0B0C", color: "#FFFFFF", fontFamily: "'DM Sans',sans-serif" }}>
         <style>{APP_STYLES}</style>
         <div className="app-shell" style={{ paddingBottom: 46 }}>
           <div className="app-content">
@@ -1371,7 +1368,7 @@ export default function App() {
     <>
       <style>{APP_STYLES}</style>
 
-      <div style={{ minHeight: "100vh", background: "#070e1c", fontFamily: "'DM Sans',sans-serif", color: "#e2e8f0" }}>
+      <div className="app-atmosphere" style={{ minHeight: "100vh", background: "#0B0B0C", fontFamily: "'DM Sans',sans-serif", color: "#FFFFFF" }}>
         <AppHeader
           currentUser={currentUser}
           tab={tab}
@@ -1386,14 +1383,14 @@ export default function App() {
           {tab === "vendas" && (
             <div className="kpi-grid">
               <div className="kpi-featured">
-                <StatCard icon="💰" label="Receita Total" value={fmtBRL(totalVal)} color="#22c55e" featured />
+                <StatCard label="Receita Total" value={fmtBRL(totalVal)} color="#DA291C" featured />
               </div>
               <div className="kpi-row">
-                <StatCard icon="📲" label="Ticket Celular (5%)" value={fmtBRL(ticketCelular)} sub={`${ticketCelularVendas.length} vendas`} color="#10b981" />
-                <StatCard icon="🎧" label="Ticket Acessórios (15%)" value={fmtBRL(ticketAcessorios)} sub={`${ticketAcessoriosVendas.length} vendas`} color="#ec4899" />
-                <StatCard icon="📊" label="Controle + Pós + TV + Internet" value={fmtBRL(ticketPlanosPrincipaisTotal)} sub={`${ticketPlanosPrincipaisVendas.length} vendas`} color="#0ea5e9" />
-                <StatCard icon="📱" label="Planos Móveis" value={cycleScopedVendas.filter((venda) => ["Plano Controle", "Plano Pós-Pago"].includes(venda.plano)).length} color="#10b981" />
-                <StatCard icon="🌐" label="Internet + TV" value={cycleScopedVendas.filter((venda) => ["Internet Residencial", "Internet Movel Mais", "TV"].includes(venda.plano) && venda.status === "Ativa").length} color="#f59e0b" />
+                <StatCard icon="📲" label="Ticket Celular (5%)" value={fmtBRL(ticketCelular)} sub={`${ticketCelularVendas.length} vendas`} color="#DA291C" />
+                <StatCard icon="🎧" label="Ticket Acessórios (15%)" value={fmtBRL(ticketAcessorios)} sub={`${ticketAcessoriosVendas.length} vendas`} color="#DA291C" />
+                <StatCard icon="📊" label="Controle + Pós + TV + Internet" value={fmtBRL(ticketPlanosPrincipaisTotal)} sub={`${ticketPlanosPrincipaisVendas.length} vendas`} color="#DA291C" />
+                <StatCard icon="📱" label="Planos Móveis" value={cycleScopedVendas.filter((venda) => ["Plano Controle", "Plano Pós-Pago"].includes(venda.plano)).length} color="#DA291C" />
+                <StatCard icon="🌐" label="Internet + TV" value={cycleScopedVendas.filter((venda) => ["Internet Residencial", "Internet Movel Mais", "TV"].includes(venda.plano) && venda.status === "Ativa").length} color="#DA291C" />
               </div>
             </div>
           )}
@@ -1474,20 +1471,18 @@ export default function App() {
           </div>
           <footer
             style={{
-              position: "fixed",
-              left: 0,
-              right: 0,
-              bottom: 0,
               textAlign: "center",
-              color: "#64748b",
+              color: "#A1A1AA",
               fontSize: 12,
-              padding: "10px 6px 8px",
-              background: "rgba(11,18,32,0.96)",
-              borderTop: "1px solid rgba(148,163,184,0.16)",
-              zIndex: 40,
+              padding: "12px 8px 10px",
+              background: "#0B0B0C",
+              borderTop: "1px solid #2A2A2E",
             }}
           >
-            © 2026 Painel de Vendas • Desenvolvido por GILSON ELIAS • Produto idealizado por CAIO CARDOSO
+            <div style={{ display: "grid", gap: 4, justifyItems: "center" }}>
+              <Logo size={24} opacity={0.7} className="h-6 opacity-70 mx-auto" alt="Claro" />
+              <div>© 2026 Painel de Vendas • Desenvolvido por GILSON ELIAS • Produto idealizado por CAIO CARDOSO</div>
+            </div>
           </footer>
         </div>
       </div>
@@ -1527,11 +1522,11 @@ export default function App() {
         >
           <Panel style={{ maxWidth: 420, width: "90%", textAlign: "center", padding: 28 }}>
             <div style={{ fontSize: 42, marginBottom: 14 }}>👤</div>
-            <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 20, color: "#f1f5f9", marginBottom: 8 }}>Excluir vendedor?</div>
-            <div style={{ color: "#94a3b8", fontSize: 14, marginBottom: 10 }}>
+            <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 20, color: "#FFFFFF", marginBottom: 8 }}>Excluir vendedor?</div>
+            <div style={{ color: "#A1A1AA", fontSize: 14, marginBottom: 10 }}>
               {sellerToDelete?.nome ? `${sellerToDelete.nome} perderá o acesso ao sistema.` : "Este vendedor perderá o acesso ao sistema."}
             </div>
-            <div style={{ color: "#64748b", fontSize: 13, marginBottom: 24 }}>As vendas já registradas serão mantidas no histórico.</div>
+            <div style={{ color: "#A1A1AA", fontSize: 13, marginBottom: 24 }}>As vendas já registradas serão mantidas no histórico.</div>
             <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
               <button style={btnSecondary} onClick={() => setSellerDeleteId(null)}>
                 Cancelar
@@ -1549,8 +1544,8 @@ export default function App() {
           <div style={{ display: "grid", gap: 12 }}>
             <div
               style={{
-                background: `${PLANO_COLORS[viewItem.plano] || "#6366f1"}15`,
-                border: `1px solid ${PLANO_COLORS[viewItem.plano] || "#6366f1"}40`,
+                background: `${PLANO_COLORS[viewItem.plano] || "#DA291C"}15`,
+                border: `1px solid ${PLANO_COLORS[viewItem.plano] || "#DA291C"}40`,
                 borderRadius: 12,
                 padding: "16px 20px",
                 display: "flex",
@@ -1566,16 +1561,16 @@ export default function App() {
                   display: "grid",
                   placeItems: "center",
                   fontSize: 24,
-                  background: `${PLANO_COLORS[viewItem.plano] || "#6366f1"}25`,
-                  border: `1px solid ${PLANO_COLORS[viewItem.plano] || "#6366f1"}66`,
-                  boxShadow: `0 10px 18px ${(PLANO_COLORS[viewItem.plano] || "#6366f1")}33`,
+                  background: `${PLANO_COLORS[viewItem.plano] || "#DA291C"}25`,
+                  border: `1px solid ${PLANO_COLORS[viewItem.plano] || "#DA291C"}66`,
+                  boxShadow: `0 10px 18px ${(PLANO_COLORS[viewItem.plano] || "#DA291C")}33`,
                 }}
               >
                 {PLANO_ICONS[viewItem.plano]}
               </span>
               <div>
-                <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 20, color: "#f1f5f9", fontWeight: 700 }}>{PLANO_LABELS[viewItem.plano] || viewItem.plano}</div>
-                <div style={{ color: "#94a3b8", fontSize: 13 }}>{viewItem.descricao || "Sem descrição"}</div>
+                <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 20, color: "#FFFFFF", fontWeight: 700 }}>{PLANO_LABELS[viewItem.plano] || viewItem.plano}</div>
+                <div style={{ color: "#A1A1AA", fontSize: 13 }}>{viewItem.descricao || "Sem descrição"}</div>
               </div>
               <div style={{ marginLeft: "auto" }}>
               </div>
@@ -1592,18 +1587,18 @@ export default function App() {
               ...COMANDA_COMMON_FIELDS.map((field) => [field.label, viewItem[field.key] || "—"]),
               ...(PLANO_EXTRAS[viewItem.plano] || []).map((extra) => [extra.label, viewItem[extra.key] || "—"]),
             ].map(([label, value]) => (
-              <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #1e293b", fontSize: 14 }}>
-                <span style={{ color: "#64748b", fontWeight: 600 }}>{label}</span>
-                <span style={{ color: "#f1f5f9" }}>{value}</span>
+              <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #2A2A2E", fontSize: 14 }}>
+                <span style={{ color: "#A1A1AA", fontWeight: 600 }}>{label}</span>
+                <span style={{ color: "#FFFFFF" }}>{value}</span>
               </div>
             ))}
 
             {Array.isArray(viewItem.historico) && viewItem.historico.length > 0 && (
-              <div style={{ marginTop: 8, borderTop: "1px solid #1e293b", paddingTop: 10 }}>
-                <div style={{ color: "#94a3b8", fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Histórico</div>
+              <div style={{ marginTop: 8, borderTop: "1px solid #2A2A2E", paddingTop: 10 }}>
+                <div style={{ color: "#A1A1AA", fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Histórico</div>
                 <div style={{ display: "grid", gap: 6 }}>
                   {viewItem.historico.slice().reverse().slice(0, 8).map((event, index) => (
-                    <div key={`${event.at || "evt"}-${index}`} style={{ fontSize: 12, color: "#cbd5e1" }}>
+                    <div key={`${event.at || "evt"}-${index}`} style={{ fontSize: 12, color: "#FFFFFF" }}>
                       {fmtDate(event.at || "")} · {event.action || "alteração"} · {event.userName || "sistema"}
                     </div>
                   ))}
@@ -1613,7 +1608,7 @@ export default function App() {
 
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 8 }}>
               <button
-                style={{ ...btnSecondary, borderColor: "#22d3ee", color: "#67e8f9" }}
+                style={{ ...btnSecondary, borderColor: "#EF4444", color: "#FFFFFF" }}
                 onClick={() => handleDownloadComanda(viewItem)}
               >
                 Baixar comanda
@@ -1650,8 +1645,8 @@ export default function App() {
         >
           <Panel style={{ maxWidth: 380, width: "90%", textAlign: "center", padding: 28 }}>
             <div style={{ fontSize: 42, marginBottom: 14 }}>🗑️</div>
-            <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 20, color: "#f1f5f9", marginBottom: 8 }}>Excluir lançamento?</div>
-            <div style={{ color: "#64748b", fontSize: 14, marginBottom: 24 }}>Esta ação não pode ser desfeita.</div>
+            <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 20, color: "#FFFFFF", marginBottom: 8 }}>Excluir lançamento?</div>
+            <div style={{ color: "#A1A1AA", fontSize: 14, marginBottom: 24 }}>Esta ação não pode ser desfeita.</div>
             <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
               <button style={btnSecondary} onClick={() => setDeleteId(null)}>
                 Cancelar
