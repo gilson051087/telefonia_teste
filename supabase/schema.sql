@@ -99,6 +99,17 @@ as $$
   select lower(trim(coalesce(p_username, '')));
 $$;
 
+create or replace function public.app_effective_user_role(p_role text, p_username text)
+returns text
+language sql
+immutable
+as $$
+  select case
+    when lower(trim(coalesce(p_username, ''))) = 'admin' then 'superadmin'
+    else lower(trim(coalesce(p_role, '')))
+  end;
+$$;
+
 create or replace function public.app_session_token()
 returns text
 language sql
@@ -129,7 +140,7 @@ stable
 security definer
 set search_path = public, extensions
 as $$
-  select u.role
+  select public.app_effective_user_role(u.role, u.username)
   from public.users u
   where u.id = public.app_current_user_id()
   limit 1;
@@ -199,7 +210,7 @@ begin
       'id', v_user.id,
       'nome', v_user.nome,
       'username', v_user.username,
-      'role', v_user.role,
+      'role', public.app_effective_user_role(v_user.role, v_user.username),
       'created_at', v_user.created_at
     )
   );
@@ -252,7 +263,7 @@ begin
       'id', v_id,
       'nome', v_nome,
       'username', v_username,
-      'role', v_role,
+      'role', public.app_effective_user_role(v_role, v_username),
       'created_at', v_created_at
     )
   );
@@ -286,10 +297,15 @@ begin
 
   if v_user_role = 'superadmin' then
     return query
-      select u.id, u.nome, u.username, u.role, u.created_at
+      select
+        u.id,
+        u.nome,
+        u.username,
+        public.app_effective_user_role(u.role, u.username),
+        u.created_at
       from public.users u
       order by
-        case u.role
+        case public.app_effective_user_role(u.role, u.username)
           when 'superadmin' then 0
           when 'admin' then 1
           else 2
@@ -297,14 +313,24 @@ begin
         u.nome asc;
   elsif v_user_role = 'admin' then
     return query
-      select u.id, u.nome, u.username, u.role, u.created_at
+      select
+        u.id,
+        u.nome,
+        u.username,
+        public.app_effective_user_role(u.role, u.username),
+        u.created_at
       from public.users u
       where u.role = 'seller'
         and u.store_id = v_user_store_id
       order by u.nome asc;
   else
     return query
-      select u.id, u.nome, u.username, u.role, u.created_at
+      select
+        u.id,
+        u.nome,
+        u.username,
+        public.app_effective_user_role(u.role, u.username),
+        u.created_at
       from public.users u
       where u.id = v_user_id;
   end if;
@@ -519,7 +545,7 @@ begin
 end;
 $$;
 
-create or replace function public.app_create_seller(p_nome text, p_username text, p_senha text)
+create or replace function public.app_create_seller(p_nome text, p_username text, p_senha text, p_admin_id text)
 returns jsonb
 language plpgsql
 security definer
@@ -530,6 +556,7 @@ declare
   v_admin_role text;
   v_requester_store_id text;
   v_target_store_id text;
+  v_target_admin public.users%rowtype;
   v_nome text;
   v_username text;
   v_new_user public.users%rowtype;
@@ -563,7 +590,22 @@ begin
   if v_admin_role = 'admin' then
     v_target_store_id := v_requester_store_id;
   else
-    v_target_store_id := coalesce(v_requester_store_id, v_requester_id);
+    if coalesce(trim(p_admin_id), '') = '' then
+      raise exception 'Informe o administrador responsavel pelo vendedor.';
+    end if;
+
+    select *
+      into v_target_admin
+    from public.users
+    where id = trim(p_admin_id)
+      and role = 'admin'
+    limit 1;
+
+    if v_target_admin.id is null then
+      raise exception 'Administrador responsavel nao encontrado.';
+    end if;
+
+    v_target_store_id := coalesce(v_target_admin.store_id, v_target_admin.id);
   end if;
 
   if coalesce(v_target_store_id, '') = '' then
@@ -590,6 +632,15 @@ begin
     'created_at', v_new_user.created_at
   );
 end;
+$$;
+
+create or replace function public.app_create_seller(p_nome text, p_username text, p_senha text)
+returns jsonb
+language sql
+security definer
+set search_path = public, extensions
+as $$
+  select public.app_create_seller(p_nome, p_username, p_senha, null::text);
 $$;
 
 create or replace function public.app_create_admin(p_nome text, p_username text, p_senha text)
@@ -744,23 +795,18 @@ using (
   public.app_current_user_role() = 'superadmin'
   or (
     public.app_current_user_role() = 'admin'
+    and vendedor_id is not null
     and exists (
       select 1
       from public.users u
-      where u.store_id = public.app_current_user_store_id()
+      where u.id = vendedor_id
+        and u.store_id = public.app_current_user_store_id()
         and u.role in ('admin', 'seller')
-        and (
-          (vendedor_id is not null and u.id = vendedor_id)
-          or (vendedor_id is null and u.nome = vendedor)
-        )
     )
   )
   or (
     public.app_current_user_role() = 'seller'
-    and (
-      vendedor_id = public.app_current_user_id()
-      or vendedor = public.app_current_user_nome()
-    )
+    and vendedor_id = public.app_current_user_id()
   )
 );
 
@@ -792,15 +838,13 @@ using (
   public.app_current_user_role() = 'superadmin'
   or (
     public.app_current_user_role() = 'admin'
+    and vendedor_id is not null
     and exists (
       select 1
       from public.users u
-      where u.store_id = public.app_current_user_store_id()
+      where u.id = vendedor_id
+        and u.store_id = public.app_current_user_store_id()
         and u.role in ('admin', 'seller')
-        and (
-          (vendedor_id is not null and u.id = vendedor_id)
-          or (vendedor_id is null and u.nome = vendedor)
-        )
     )
   )
   or (
@@ -834,15 +878,13 @@ using (
   public.app_current_user_role() = 'superadmin'
   or (
     public.app_current_user_role() = 'admin'
+    and vendedor_id is not null
     and exists (
       select 1
       from public.users u
-      where u.store_id = public.app_current_user_store_id()
+      where u.id = vendedor_id
+        and u.store_id = public.app_current_user_store_id()
         and u.role in ('admin', 'seller')
-        and (
-          (vendedor_id is not null and u.id = vendedor_id)
-          or (vendedor_id is null and u.nome = vendedor)
-        )
     )
   )
   or (
@@ -866,26 +908,42 @@ grant execute on function public.app_get_session() to anon, authenticated;
 grant execute on function public.app_list_users() to anon, authenticated;
 grant execute on function public.app_list_goals() to anon, authenticated;
 grant execute on function public.app_create_seller(text, text, text) to anon, authenticated;
+grant execute on function public.app_create_seller(text, text, text, text) to anon, authenticated;
 grant execute on function public.app_create_admin(text, text, text) to anon, authenticated;
 grant execute on function public.app_upsert_goal(text, text, text, numeric) to anon, authenticated;
 grant execute on function public.app_update_user_nome(text, text) to anon, authenticated;
 grant execute on function public.app_delete_seller(text) to anon, authenticated;
 grant execute on function public.app_change_password(text, text) to anon, authenticated;
 
-insert into public.users (id, nome, username, password_hash, role, store_id, created_at)
-values (
-  'admin-root',
-  'Administrador',
-  'admin',
-  public.app_hash_password('123456'),
-  'superadmin',
-  null,
-  timezone('utc', now())
-)
-on conflict (id) do update
-set
-  nome = excluded.nome,
-  username = excluded.username,
-  password_hash = excluded.password_hash,
-  role = excluded.role,
-  store_id = excluded.store_id;
+do $$
+declare
+  v_admin_id text;
+begin
+  select u.id
+    into v_admin_id
+  from public.users u
+  where lower(trim(coalesce(u.username, ''))) = 'admin'
+  order by u.created_at asc
+  limit 1;
+
+  if v_admin_id is null then
+    insert into public.users (id, nome, username, password_hash, role, store_id, created_at)
+    values (
+      'admin-root',
+      'Administrador',
+      'admin',
+      public.app_hash_password('123456'),
+      'superadmin',
+      null,
+      timezone('utc', now())
+    );
+  else
+    update public.users
+    set
+      nome = 'Administrador',
+      password_hash = public.app_hash_password('123456'),
+      role = 'superadmin',
+      store_id = null
+    where id = v_admin_id;
+  end if;
+end $$;

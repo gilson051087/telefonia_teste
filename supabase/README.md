@@ -24,8 +24,8 @@ Troque a senha do admin no primeiro acesso.
 
 ### Perfis de acesso
 
-- `superadmin`: cria/remove administradores e vendedores
-- `admin`: cria/remove apenas vendedores e gerencia vendas
+- `superadmin`: cria/remove administradores e pode cadastrar vendedores vinculando cada vendedor a um administrador especifico
+- `admin`: cria/remove apenas vendedores da propria loja e gerencia apenas as vendas do proprio time
 - `seller`: acessa apenas as proprias vendas
 
 ## 2. Variaveis na Vercel

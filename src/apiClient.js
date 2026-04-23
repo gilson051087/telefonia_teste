@@ -40,13 +40,29 @@ function setStoredSession(session) {
 
 function mapUser(row) {
   if (!row) return null;
+  const normalizedRole = String(row.role || "").trim().toLowerCase();
   return {
     id: row.id,
     nome: row.nome,
     username: row.username,
-    role: row.role,
+    role: normalizedRole,
     createdAt: row.created_at || row.createdAt || nowIso(),
   };
+}
+
+function sortUsersByRole(users = []) {
+  const roleWeight = {
+    superadmin: 0,
+    admin: 1,
+    seller: 2,
+  };
+
+  return [...users].sort((a, b) => {
+    const leftWeight = roleWeight[String(a?.role || "").trim().toLowerCase()] ?? 9;
+    const rightWeight = roleWeight[String(b?.role || "").trim().toLowerCase()] ?? 9;
+    if (leftWeight !== rightWeight) return leftWeight - rightWeight;
+    return String(a?.nome || "").localeCompare(String(b?.nome || ""));
+  });
 }
 
 function isMissingRpcFunction(error, functionName) {
@@ -215,10 +231,49 @@ export async function getSession() {
 }
 
 export async function listUsers() {
+  const requester = await requireCurrentUser();
   const client = ensureSupabase(true);
   const { data, error } = await client.rpc("app_list_users");
-  if (error) throw new Error(error.message || "Erro ao carregar usuarios.");
-  return (data || []).map(mapUser);
+  if (!error && Array.isArray(data)) {
+    const mapped = data.map(mapUser).filter(Boolean);
+    const shouldUseRpcResult =
+      requester.role === "seller" ||
+      requester.role === "admin" ||
+      mapped.length > 1;
+
+    if (shouldUseRpcResult) {
+      return sortUsersByRole(mapped);
+    }
+  }
+
+  // Fallback for environments with outdated/broken RPC app_list_users.
+  const { data: tableRows, error: tableError } = await client
+    .from("users")
+    .select("id, nome, username, role, created_at, store_id");
+
+  if (tableError) {
+    if (error) throw new Error(error.message || "Erro ao carregar usuarios.");
+    throw new Error(tableError.message || "Erro ao carregar usuarios.");
+  }
+
+  const normalizedRows = (tableRows || []).map((row) => ({
+    ...mapUser(row),
+    store_id: row?.store_id || null,
+  }));
+
+  if (requester.role === "superadmin") {
+    return sortUsersByRole(normalizedRows);
+  }
+
+  if (requester.role === "admin") {
+    const requesterRow = normalizedRows.find((row) => row.id === requester.id);
+    const requesterStoreId = requesterRow?.store_id || null;
+    return sortUsersByRole(
+      normalizedRows.filter((row) => row.role === "seller" && row.store_id && row.store_id === requesterStoreId)
+    );
+  }
+
+  return normalizedRows.filter((row) => row.id === requester.id);
 }
 
 export async function listGoals() {
@@ -244,6 +299,7 @@ export async function createSeller(payload) {
   const username = String(payload?.username || "").trim().toLowerCase();
   const senha = String(payload?.senha || "");
   const role = payload?.role === "admin" ? "admin" : "seller";
+  const adminId = String(payload?.adminId || "").trim();
 
   if (!nome || !username || !senha) {
     throw new Error("Preencha nome, usuario e senha.");
@@ -258,12 +314,58 @@ export async function createSeller(payload) {
     throw new Error("Apenas superadmin pode criar administradores.");
   }
 
-  const functionName = isCreatingAdmin ? "app_create_admin" : "app_create_seller";
-  const { data, error } = await rpcUserCreateWithFallback(client, functionName, nome, username, senha);
+  if (isCreatingAdmin) {
+    const { data, error } = await rpcUserCreateWithFallback(client, "app_create_admin", nome, username, senha);
 
-  if (error && isMissingRpcFunction(error, functionName)) {
+    if (error && isMissingRpcFunction(error, "app_create_admin")) {
+      throw new Error(
+        "A função RPC app_create_admin não existe no projeto Supabase atual. Execute o SQL de schema (supabase/schema.sql) no mesmo projeto apontado por REACT_APP_SUPABASE_URL e recarregue o cache do PostgREST."
+      );
+    }
+
+    if (error) throw new Error(error.message || "Erro ao cadastrar usuário.");
+    return mapUser(data);
+  }
+
+  const creatingSellerAsSuperadmin = user.role === "superadmin";
+  if (creatingSellerAsSuperadmin && !adminId) {
+    throw new Error("Selecione o administrador responsável pelo vendedor.");
+  }
+
+  const sellerAttempts = creatingSellerAsSuperadmin
+    ? [
+        { p_nome: nome, p_username: username, p_senha: senha, p_admin_id: adminId },
+        { nome, username, senha, admin_id: adminId },
+      ]
+    : [
+        { p_nome: nome, p_username: username, p_senha: senha },
+        { nome, username, senha },
+      ];
+
+  let data = null;
+  let error = null;
+  for (const params of sellerAttempts) {
+    const result = await client.rpc("app_create_seller", params);
+    if (!result.error) {
+      data = result.data;
+      error = null;
+      break;
+    }
+
+    error = result.error;
+    if (!isMissingRpcFunction(result.error, "app_create_seller")) {
+      break;
+    }
+  }
+
+  if (error && isMissingRpcFunction(error, "app_create_seller")) {
+    if (creatingSellerAsSuperadmin) {
+      throw new Error(
+        "A função RPC app_create_seller do projeto Supabase atual ainda não suporta vínculo de vendedor com administrador. Execute o SQL de schema (supabase/schema.sql), recarregue o cache do PostgREST e tente novamente."
+      );
+    }
     throw new Error(
-      `A função RPC ${functionName} não existe no projeto Supabase atual. Execute o SQL de schema (supabase/schema.sql) no mesmo projeto apontado por REACT_APP_SUPABASE_URL e recarregue o cache do PostgREST.`
+      "A função RPC app_create_seller não existe no projeto Supabase atual. Execute o SQL de schema (supabase/schema.sql) no mesmo projeto apontado por REACT_APP_SUPABASE_URL e recarregue o cache do PostgREST."
     );
   }
 
@@ -452,7 +554,7 @@ export async function deleteVenda(id) {
 }
 
 export async function migrateLegacyData(payload) {
-  await ensureAdmin();
+  const requester = await ensureAdmin();
   const client = ensureSupabase(true);
 
   const users = Array.isArray(payload?.users) ? payload.users : [];
@@ -462,20 +564,66 @@ export async function migrateLegacyData(payload) {
     const { data: existingUsers, error: usersError } = await client.rpc("app_list_users");
     if (usersError) throw new Error(usersError.message || "Erro ao migrar usuarios.");
     const usernames = new Set((existingUsers || []).map((item) => String(item.username || "").toLowerCase()));
+    const fallbackAdminId = requester.role === "superadmin"
+      ? String((existingUsers || []).find((item) => item.role === "admin")?.id || "").trim()
+      : "";
+
+    if (requester.role === "superadmin" && !fallbackAdminId) {
+      throw new Error("Crie ao menos um administrador antes de migrar vendedores legados.");
+    }
 
     for (const user of users) {
       const username = String(user.username || "").trim().toLowerCase();
       if (!username || usernames.has(username) || user.role !== "seller") continue;
+      const nome = String(user.nome || username).toUpperCase();
+      const senha = String(user.senha || "123456");
 
-      const { error } = await rpcUserCreateWithFallback(
-        client,
-        "app_create_seller",
-        String(user.nome || username).toUpperCase(),
-        username,
-        String(user.senha || "123456")
-      );
+      if (requester.role === "superadmin") {
+        const attempts = [
+          { p_nome: nome, p_username: username, p_senha: senha, p_admin_id: fallbackAdminId },
+          { nome, username, senha, admin_id: fallbackAdminId },
+        ];
 
-      if (!error) usernames.add(username);
+        let creationError = null;
+        let created = false;
+        for (const params of attempts) {
+          const result = await client.rpc("app_create_seller", params);
+          if (!result.error) {
+            created = true;
+            creationError = null;
+            break;
+          }
+
+          creationError = result.error;
+          if (!isMissingRpcFunction(result.error, "app_create_seller")) {
+            break;
+          }
+        }
+
+        if (created) {
+          usernames.add(username);
+          continue;
+        }
+
+        if (creationError && isMissingRpcFunction(creationError, "app_create_seller")) {
+          throw new Error(
+            "A função RPC app_create_seller do projeto Supabase atual ainda não suporta vínculo de vendedor com administrador. Execute o SQL de schema (supabase/schema.sql), recarregue o cache do PostgREST e tente novamente."
+          );
+        }
+
+        if (creationError) {
+          throw new Error(creationError.message || "Erro ao migrar usuarios.");
+        }
+
+        continue;
+      }
+
+      const { error } = await rpcUserCreateWithFallback(client, "app_create_seller", nome, username, senha);
+      if (!error) {
+        usernames.add(username);
+      } else if (!isMissingRpcFunction(error, "app_create_seller")) {
+        throw new Error(error.message || "Erro ao migrar usuarios.");
+      }
     }
   }
 

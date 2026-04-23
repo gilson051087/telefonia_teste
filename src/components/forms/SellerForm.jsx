@@ -1,11 +1,25 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { slugify } from "../../utils/sales";
 import { Field, btnPrimary, btnSecondary, inputStyle } from "../ui";
 
 export default function SellerForm({ users, onSave, onClose, canManageAdmins = false }) {
-  const [form, setForm] = useState({ nome: "", username: "", senha: "", role: "seller" });
+  const adminUsers = useMemo(
+    () =>
+      (users || [])
+        .filter((item) => item.role === "admin")
+        .sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""))),
+    [users]
+  );
+  const [form, setForm] = useState({ nome: "", username: "", senha: "", role: "seller", adminId: "" });
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (!canManageAdmins || form.role !== "seller") return;
+    const hasSelectedAdmin = adminUsers.some((item) => item.id === form.adminId);
+    if (hasSelectedAdmin) return;
+    setForm((current) => ({ ...current, adminId: adminUsers[0]?.id || "" }));
+  }, [canManageAdmins, form.role, form.adminId, adminUsers]);
 
   async function handleSave() {
     const nome = form.nome.trim().toUpperCase();
@@ -21,6 +35,11 @@ export default function SellerForm({ users, onSave, onClose, canManageAdmins = f
       return;
     }
 
+    if (canManageAdmins && form.role === "seller" && !form.adminId) {
+      setError("Selecione o administrador responsável pelo vendedor.");
+      return;
+    }
+
     try {
       setIsSaving(true);
       setError("");
@@ -29,6 +48,7 @@ export default function SellerForm({ users, onSave, onClose, canManageAdmins = f
         username,
         senha: form.senha,
         role: canManageAdmins ? form.role : "seller",
+        adminId: canManageAdmins && form.role === "seller" ? form.adminId : "",
       });
     } catch (err) {
       setError(err.message || "Erro ao cadastrar vendedor.");
@@ -65,12 +85,43 @@ export default function SellerForm({ users, onSave, onClose, canManageAdmins = f
         <Field label="Perfil de acesso">
           <select
             value={form.role}
-            onChange={(e) => setForm((current) => ({ ...current, role: e.target.value === "admin" ? "admin" : "seller" }))}
+            onChange={(e) =>
+              setForm((current) => {
+                const nextRole = e.target.value === "admin" ? "admin" : "seller";
+                return {
+                  ...current,
+                  role: nextRole,
+                  adminId: nextRole === "seller" ? current.adminId || adminUsers[0]?.id || "" : "",
+                };
+              })
+            }
             style={{ ...inputStyle, appearance: "none" }}
           >
             <option value="seller">Vendedor</option>
             <option value="admin">Administrador</option>
           </select>
+        </Field>
+      )}
+      {canManageAdmins && form.role === "seller" && (
+        <Field label="Administrador responsável">
+          <select
+            value={form.adminId}
+            onChange={(e) => setForm((current) => ({ ...current, adminId: e.target.value }))}
+            style={{ ...inputStyle, appearance: "none" }}
+            disabled={adminUsers.length === 0}
+          >
+            <option value="">Selecione um administrador</option>
+            {adminUsers.map((adminUser) => (
+              <option key={adminUser.id} value={adminUser.id}>
+                {String(adminUser.nome || "").toUpperCase()}
+              </option>
+            ))}
+          </select>
+          {adminUsers.length === 0 && (
+            <div style={{ color: "#A1A1AA", fontSize: 12, marginTop: 6 }}>
+              Cadastre pelo menos um administrador antes de criar vendedores.
+            </div>
+          )}
         </Field>
       )}
       <Field label="Senha">
