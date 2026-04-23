@@ -69,18 +69,19 @@ const APP_STYLES = `
     --text-strong:#FFFFFF;
     --muted:#A1A1AA;
     --brand:#DA291C;
-    --brand-dark:#B71C1C;
+    --brand-dark:#7A0F0F;
+    --brand-soft:#8E1717;
     --accent-info:#DA291C;
     --accent-success:#22C55E;
     --accent-warning:#FACC15;
     --accent-danger:#EF4444;
-    --accent-info-soft:rgba(218,41,28,0.22);
+    --accent-info-soft:rgba(218,41,28,0.15);
     --accent-success-soft:rgba(34,197,94,0.16);
     --accent-warning-soft:rgba(250,204,21,0.2);
     --accent-danger-soft:rgba(239,68,68,0.16);
-    --radius-md:10px;
-    --radius-lg:12px;
-    --shadow-soft:0 12px 24px rgba(0,0,0,0.28);
+    --radius-md:12px;
+    --radius-lg:16px;
+    --shadow-soft:0 14px 28px rgba(0,0,0,0.32);
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   body{
@@ -125,25 +126,39 @@ const APP_STYLES = `
     outline:2px solid var(--accent-info);
     outline-offset:2px;
   }
-  .touch-btn:hover{transform:translateY(-1px);}
+  input:focus,
+  select:focus,
+  textarea:focus{
+    border-color:#DA291C !important;
+    box-shadow:0 0 0 2px rgba(218,41,28,0.15);
+  }
+  .touch-btn:hover{transform:translateY(-1px) scale(1.02);}
   .touch-btn:active{transform:translateY(0);}
-  .lift-hover:hover{transform:translateY(-1px);}
+  .lift-hover:hover{transform:translateY(-1px) scale(1.02);}
   input::placeholder,
   textarea::placeholder{
     color:var(--muted);
     opacity:1;
   }
   .panel-surface{
-    background:#141416;
+    background:linear-gradient(180deg, rgba(20,20,22,0.98), rgba(16,16,18,0.98));
     border:1px solid var(--line);
-    border-radius:8px;
-    box-shadow:0 8px 16px rgba(0,0,0,0.26);
+    border-radius:var(--radius-lg);
+    box-shadow:var(--shadow-soft);
+    transition:all .2s ease;
+  }
+  button{
     transition:all .2s ease;
   }
   @media (hover:hover){
+    button:hover:not(:disabled){
+      transform:translateY(-1px) scale(1.02);
+    }
+  }
+  @media (hover:hover){
     .panel-surface:hover{
-      border-color:rgba(218,41,28,0.45);
-      box-shadow:0 10px 18px rgba(0,0,0,0.3);
+      border-color:rgba(198,40,40,0.42);
+      box-shadow:0 16px 30px rgba(0,0,0,0.36);
     }
   }
   .stat-card{
@@ -232,17 +247,17 @@ const APP_STYLES = `
     font-size:12px;
     font-weight:700;
     min-height:36px;
-    transition:all .15s ease;
+    transition:all .2s ease;
   }
-  .action-pill:hover{filter:brightness(1.04);}
-  .action-pill-info{background:rgba(218,41,28,0.16);color:#fff;border:1px solid rgba(218,41,28,0.6);}
+  .action-pill:hover{filter:brightness(1.04);transform:translateY(-1px) scale(1.02);}
+  .action-pill-info{background:rgba(20,20,22,0.96);color:#fff;border:1px solid rgba(42,42,46,1);}
   .action-pill-edit{background:rgba(20,20,22,0.96);color:#fff;border:1px solid rgba(42,42,46,1);}
   .action-pill-delete{background:rgba(20,20,22,0.96);color:#fff;border:1px solid rgba(239,68,68,0.65);}
   .filters-bar{
     display:flex;
     flex-wrap:nowrap;
     overflow-x:auto;
-    gap:10px;
+    gap:12px;
     align-items:flex-end;
   }
   .filter-field{
@@ -273,14 +288,14 @@ const APP_STYLES = `
     border:1px solid var(--line);
     border-radius:12px;
     color:var(--text);
-    min-height:44px;
+    min-height:48px;
     padding-right:42px;
     box-shadow:inset 0 1px 0 rgba(255,255,255,0.05);
     transition:all .2s ease;
   }
   input[type="date"]:hover,
   input[type="month"]:hover{
-    border-color:rgba(218,41,28,0.75);
+    border-color:#DA291C;
     box-shadow:0 0 0 2px var(--accent-info-soft);
   }
   input[type="date"]::-webkit-calendar-picker-indicator,
@@ -316,10 +331,11 @@ const APP_STYLES = `
   ::-webkit-scrollbar-thumb{background:#B71C1C;border-radius:3px;}
   select option{background:#141416;}
   input[type=number]::-webkit-inner-spin-button{opacity:0;}
-  tr:hover td{background:rgba(225,6,19,0.08)!important;}
+  tr:hover td{background:rgba(255,255,255,0.02)!important;transition:all .2s ease;}
   .app-shell{
     padding:24px 20px;
     width:100%;
+    padding-bottom:88px;
   }
   .app-content{
     max-width:1280px;
@@ -1652,12 +1668,17 @@ export default function App() {
           </div>
           <footer
             style={{
+              position: "fixed",
+              left: 0,
+              right: 0,
+              bottom: 0,
               textAlign: "center",
               color: "#A1A1AA",
               fontSize: 12,
               padding: "12px 8px 10px",
               background: "#0B0B0C",
               borderTop: "1px solid #2A2A2E",
+              zIndex: 100,
             }}
           >
             <div style={{ display: "grid", gap: 4, justifyItems: "center" }}>

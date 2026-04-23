@@ -86,14 +86,14 @@ export default function ReportsTab({
   }
 
   return (
-    <div style={{ display: "grid", gap: 18 }}>
+    <div style={{ display: "grid", gap: 22 }}>
       <div
         className="panel-surface"
         style={{
-          borderRadius: 8,
-          padding: "12px 14px",
+          borderRadius: 12,
+          padding: "14px 16px",
           borderColor: "#2A2A2E",
-          borderTop: "2px solid #DA291C",
+          borderLeft: "3px solid #DA291C",
           background: "#141416",
           color: "#FFFFFF",
           fontSize: 12,
@@ -105,10 +105,10 @@ export default function ReportsTab({
       <div
         className="panel-surface"
         style={{
-          borderRadius: 14,
-          padding: 24,
+          borderRadius: 16,
+          padding: 26,
           display: "grid",
-          gap: 16,
+          gap: 18,
         }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
@@ -124,16 +124,16 @@ export default function ReportsTab({
           </div>
         </div>
 
-        <div className="rel-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
-          <div style={{ background: "#141416", border: "1px solid #2A2A2E", borderRadius: 8, padding: 14 }}>
+        <div className="rel-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14 }}>
+          <div style={{ background: "#141416", border: "1px solid #2A2A2E", borderRadius: 12, padding: 16 }}>
             <div style={{ color: "#A1A1AA", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Mês</div>
             <div style={{ color: "#FFFFFF", fontSize: 20, fontWeight: 700 }}>{monthlyReportMonth ? fmtMonth(monthlyReportMonth) : "Selecione"}</div>
           </div>
-          <div style={{ background: "#141416", border: "1px solid #2A2A2E", borderRadius: 8, padding: 14 }}>
+          <div style={{ background: "#141416", border: "1px solid #2A2A2E", borderRadius: 12, padding: 16 }}>
             <div style={{ color: "#A1A1AA", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Vendas do mês</div>
             <div style={{ color: "#FFFFFF", fontSize: 20, fontWeight: 700 }}>{monthlyReportVendas.length}</div>
           </div>
-          <div style={{ background: "#141416", border: "1px solid #2A2A2E", borderRadius: 8, padding: 14 }}>
+          <div style={{ background: "#141416", border: "1px solid #2A2A2E", borderRadius: 12, padding: 16 }}>
             <div style={{ color: "#A1A1AA", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Total do mês</div>
             <div style={{ color: "#22C55E", fontSize: 20, fontWeight: 700 }}>{fmtBRL(monthlyReportTotal)}</div>
           </div>
@@ -168,7 +168,7 @@ export default function ReportsTab({
                       border: "none",
                       cursor: "pointer",
                       textAlign: "left",
-                      padding: "10px 16px",
+                      padding: "12px 16px",
                       background: "rgba(255,255,255,0.03)",
                       color: "#FFFFFF",
                       fontSize: 12,
@@ -176,6 +176,7 @@ export default function ReportsTab({
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "center",
+                      transition: "all 0.2s ease",
                     }}
                   >
                     <span>{PLANO_LABELS[plano] || plano} • {vendas.length} venda{vendas.length !== 1 ? "s" : ""}</span>
@@ -192,10 +193,11 @@ export default function ReportsTab({
                             display: "grid",
                             gridTemplateColumns: "1fr 2fr 1fr 1.2fr",
                             gap: 12,
-                            padding: "10px 16px",
+                            padding: "12px 16px",
                             borderTop: index === 0 ? "none" : "1px solid #2A2A2E",
                             color: "#FFFFFF",
                             fontSize: 13,
+                            transition: "all 0.2s ease",
                           }}
                         >
                           <span>{fmtDate(venda.data)}</span>
@@ -214,10 +216,10 @@ export default function ReportsTab({
       <div
         className="panel-surface"
         style={{
-          borderRadius: 14,
-          padding: 24,
+          borderRadius: 16,
+          padding: 26,
           display: "grid",
-          gap: 16,
+          gap: 18,
         }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
@@ -233,16 +235,16 @@ export default function ReportsTab({
           </div>
         </div>
 
-        <div className="rel-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
-          <div style={{ background: "#141416", border: "1px solid #2A2A2E", borderRadius: 8, padding: 14 }}>
+        <div className="rel-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14 }}>
+          <div style={{ background: "#141416", border: "1px solid #2A2A2E", borderRadius: 12, padding: 16 }}>
             <div style={{ color: "#A1A1AA", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Data</div>
             <div style={{ color: "#FFFFFF", fontSize: 20, fontWeight: 700 }}>{dailyReportDate ? fmtDate(dailyReportDate) : "Selecione"}</div>
           </div>
-          <div style={{ background: "#141416", border: "1px solid #2A2A2E", borderRadius: 8, padding: 14 }}>
+          <div style={{ background: "#141416", border: "1px solid #2A2A2E", borderRadius: 12, padding: 16 }}>
             <div style={{ color: "#A1A1AA", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Vendas do dia</div>
             <div style={{ color: "#FFFFFF", fontSize: 20, fontWeight: 700 }}>{dailyReportVendas.length}</div>
           </div>
-          <div style={{ background: "#141416", border: "1px solid #2A2A2E", borderRadius: 8, padding: 14 }}>
+          <div style={{ background: "#141416", border: "1px solid #2A2A2E", borderRadius: 12, padding: 16 }}>
             <div style={{ color: "#A1A1AA", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Total do dia</div>
             <div style={{ color: "#22C55E", fontSize: 20, fontWeight: 700 }}>{fmtBRL(dailyReportTotal)}</div>
           </div>
@@ -262,7 +264,7 @@ export default function ReportsTab({
                     border: "none",
                     cursor: "pointer",
                     textAlign: "left",
-                    padding: "10px 16px",
+                    padding: "12px 16px",
                     background: "rgba(255,255,255,0.03)",
                     color: "#FFFFFF",
                     fontSize: 12,
@@ -270,6 +272,7 @@ export default function ReportsTab({
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
+                    transition: "all 0.2s ease",
                   }}
                 >
                   <span>{PLANO_LABELS[plano] || plano} • {vendas.length} venda{vendas.length !== 1 ? "s" : ""}</span>
@@ -286,10 +289,11 @@ export default function ReportsTab({
                           display: "grid",
                           gridTemplateColumns: "1fr 2fr 1fr 1.2fr",
                           gap: 12,
-                          padding: "10px 16px",
+                          padding: "12px 16px",
                           borderTop: index === 0 ? "none" : "1px solid #2A2A2E",
                           color: "#FFFFFF",
                           fontSize: 13,
+                          transition: "all 0.2s ease",
                         }}
                       >
                         <span>{fmtDate(venda.dataCompetencia || venda.data)}</span>
@@ -304,8 +308,8 @@ export default function ReportsTab({
         </div>
       </div>
 
-      <div className="rel-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 18 }}>
-        <div className="panel-surface" style={{ borderRadius: 14, padding: 24 }}>
+      <div className="rel-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 20 }}>
+        <div className="panel-surface" style={{ borderRadius: 16, padding: 26 }}>
           <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 18, color: "#FFFFFF", marginBottom: 2 }}>Receita por mês</div>
           <div style={{ fontSize: 12, color: "#A1A1AA", marginBottom: 18 }}>Colunas por serviço em cada mês + linha de total mensal.</div>
           <ResponsiveContainer width="100%" height={320}>
@@ -336,7 +340,7 @@ export default function ReportsTab({
           </ResponsiveContainer>
         </div>
 
-        <div className="panel-surface" style={{ borderRadius: 14, padding: 24 }}>
+        <div className="panel-surface" style={{ borderRadius: 16, padding: 26 }}>
           <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 18, color: "#FFFFFF", marginBottom: 2 }}>Por produto</div>
           <div style={{ fontSize: 12, color: "#A1A1AA", marginBottom: 10 }}>Distribuição de receita</div>
           <ResponsiveContainer width="100%" height={160}>

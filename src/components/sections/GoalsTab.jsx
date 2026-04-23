@@ -115,13 +115,13 @@ export default function GoalsTab({
   }
 
   return (
-    <div style={{ display: "grid", gap: 14 }}>
+    <div style={{ display: "grid", gap: 18 }}>
       <div
         className="panel-surface"
         style={{
-          padding: "16px 18px",
+          padding: "20px 22px",
           display: "grid",
-          gap: 12,
+          gap: 14,
         }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
@@ -162,16 +162,16 @@ export default function GoalsTab({
             </select>
           </div>
         )}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
-          <div style={{ border: "1px solid #2A2A2E", borderRadius: 8, padding: "10px 12px", background: "#141416" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+          <div style={{ border: "1px solid #2A2A2E", borderRadius: 12, padding: "12px 14px", background: "#141416" }}>
             <div style={{ color: "#A1A1AA", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>Metas atingidas</div>
             <div style={{ color: "#FFFFFF", fontFamily: "'Crimson Pro',serif", fontSize: 28, lineHeight: 1 }}>{reachedCount}/{items.length || 0}</div>
           </div>
-          <div style={{ border: "1px solid #2A2A2E", borderRadius: 8, padding: "10px 12px", background: "#141416" }}>
+          <div style={{ border: "1px solid #2A2A2E", borderRadius: 12, padding: "12px 14px", background: "#141416" }}>
             <div style={{ color: "#FFFFFF", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>Progresso médio</div>
             <div style={{ color: "#FFFFFF", fontFamily: "'Crimson Pro',serif", fontSize: 28, lineHeight: 1 }}>{Math.round(avgProgress)}%</div>
           </div>
-          <div style={{ border: "1px solid #2A2A2E", borderRadius: 8, padding: "10px 12px", background: "#141416" }}>
+          <div style={{ border: "1px solid #2A2A2E", borderRadius: 12, padding: "12px 14px", background: "#141416" }}>
             <div style={{ color: "#FFFFFF", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>Pendências</div>
             <div style={{ color: "#FFFFFF", fontFamily: "'Crimson Pro',serif", fontSize: 28, lineHeight: 1 }}>{pendingCount}</div>
             <div style={{ color: "#FACC15", fontSize: 11 }}>
@@ -181,7 +181,7 @@ export default function GoalsTab({
         </div>
       </div>
 
-      <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
+      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
         {items.map((item) => {
           const progress = getProgressPercent(item);
           const isMet = item.remaining <= 0;
@@ -195,11 +195,12 @@ export default function GoalsTab({
               className="panel-surface"
               style={{
                 border: "1px solid #2A2A2E",
-                borderRadius: 8,
-                padding: "12px 13px",
+                borderRadius: 12,
+                padding: "14px 14px",
                 background: "#141416",
                 display: "grid",
-                gap: 10,
+                gap: 12,
+                transition: "all 0.2s ease",
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>

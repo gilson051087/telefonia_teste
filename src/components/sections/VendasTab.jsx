@@ -56,12 +56,12 @@ export default function VendasTab({
           justifyContent: "space-between",
           alignItems: "center",
           gap: 16,
-          marginBottom: 14,
+          marginBottom: 18,
           flexWrap: "wrap",
           background: "#141416",
           border: "1px solid #2A2A2E",
-          borderRadius: 8,
-          padding: "16px 18px",
+          borderRadius: 12,
+          padding: "18px 20px",
         }}
       >
         <div>
@@ -74,9 +74,7 @@ export default function VendasTab({
           style={{
             ...btnPrimary,
             padding: "12px 22px",
-            background: "#DA291C",
-            border: "1px solid #DA291C",
-            boxShadow: "0 8px 16px rgba(218,41,28,0.22)",
+            boxShadow: "0 10px 30px rgba(218,41,28,0.2)",
             fontSize: 15,
             gap: 10,
           }}
@@ -86,40 +84,15 @@ export default function VendasTab({
         </button>
       </div>
 
-      <button
-        onClick={onOpenNew}
-        className="touch-btn lift-hover"
-        aria-label="Nova venda rápida"
-        title="Nova venda rápida"
-        style={{
-          ...btnPrimary,
-          position: "fixed",
-          right: 18,
-          bottom: 18,
-          zIndex: 85,
-          borderRadius: 999,
-          width: 62,
-          height: 62,
-          minHeight: 62,
-          padding: 0,
-          fontSize: 28,
-          background: "#DA291C",
-          border: "1px solid rgba(218,41,28,0.68)",
-          boxShadow: "0 10px 22px rgba(218,41,28,0.3)",
-        }}
-      >
-        ➕
-      </button>
-
       {installationReminders.length > 0 && (
         <div
           style={{
-            marginBottom: 14,
+            marginBottom: 18,
             border: "1px solid #2A2A2E",
-            borderTop: "2px solid #DA291C",
-            borderRadius: 8,
+            borderLeft: "3px solid #DA291C",
+            borderRadius: 12,
             background: "#141416",
-            padding: "12px 14px",
+            padding: "14px 16px",
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
@@ -134,14 +107,15 @@ export default function VendasTab({
                 key={item.id}
                 style={{
                   border: "1px solid #2A2A2E",
-                  borderRadius: 8,
-                  padding: "9px 10px",
+                  borderRadius: 10,
+                  padding: "11px 12px",
                   background: "rgba(20,20,22,0.75)",
                   display: "flex",
                   justifyContent: "space-between",
                   gap: 10,
                   alignItems: "center",
                   flexWrap: "wrap",
+                  transition: "all 0.2s ease",
                 }}
               >
                 <div style={{ color: "#FFFFFF", fontSize: 13 }}>
@@ -163,9 +137,9 @@ export default function VendasTab({
         style={{
           background: "#141416",
           border: "1px solid #2A2A2E",
-          borderRadius: 8,
-          padding: "14px 18px",
-          marginBottom: 14,
+          borderRadius: 12,
+          padding: "16px 18px",
+          marginBottom: 18,
         }}
       >
         <div className="filter-field filter-search-top" style={{ position: "relative" }}>
@@ -268,7 +242,7 @@ export default function VendasTab({
           </div>
         )}
         <div className="filters-actions">
-          <button onClick={onClearFilters} className="touch-btn" style={{ ...btnSecondary, padding: "11px 14px" }}>
+          <button onClick={onClearFilters} className="touch-btn" style={{ ...btnSecondary, padding: "11px 14px", background: "transparent", border: "1px solid #2A2A2E" }}>
             Limpar filtros
           </button>
           <div className="filter-count">{filtered.length} registro{filtered.length !== 1 ? "s" : ""}</div>
@@ -284,7 +258,7 @@ export default function VendasTab({
           </button>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, minHeight: 0, overflowY: "visible", paddingRight: 2, alignItems: "stretch", paddingBottom: 84 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, minHeight: 0, overflowY: "visible", paddingRight: 2, alignItems: "stretch", paddingBottom: 18 }}>
           {grouped.map((group) => {
             const color = PLANO_COLORS[group.plano] || "#DA291C";
             const icon = PLANO_ICONS[group.plano] || "📦";
@@ -301,9 +275,10 @@ export default function VendasTab({
                   height: "auto",
                   background: "#141416",
                   border: "1px solid rgba(42,42,46,0.85)",
-                  borderRadius: 8,
+                  borderRadius: 12,
                   overflow: "hidden",
                   boxShadow: isOpen ? "0 10px 20px rgba(0,0,0,0.3)" : "0 6px 14px rgba(0,0,0,0.28)",
+                  transition: "all 0.2s ease",
                 }}
               >
                 <button
@@ -312,7 +287,7 @@ export default function VendasTab({
                   aria-expanded={isOpen}
                   style={{
                     width: "100%",
-                    padding: "14px 16px",
+                    padding: "16px 18px",
                     borderBottom: isOpen ? "1px solid #2A2A2E" : "none",
                     display: "flex",
                     alignItems: "center",
@@ -322,6 +297,7 @@ export default function VendasTab({
                     background: "rgba(20,20,22,0.95)",
                     border: "none",
                     cursor: "pointer",
+                    transition: "all 0.2s ease",
                   }}
                 >
                   <div style={{ color, fontWeight: 800, letterSpacing: "0.01em", display: "grid", gap: 5, minWidth: 220, flex: "1 1 280px" }}>
@@ -361,7 +337,7 @@ export default function VendasTab({
                     overscrollBehavior: "contain",
                     WebkitOverflowScrolling: "touch",
                     scrollbarWidth: "thin",
-                    padding: "4px 10px 10px",
+                    padding: "8px 12px 12px",
                   }}
                 >
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 920 }}>
@@ -393,13 +369,13 @@ export default function VendasTab({
                     </thead>
                     <tbody>
                       {group.items.map((venda, index) => (
-                        <tr key={venda.id} style={{ borderBottom: "1px solid rgba(42,42,46,0.8)", background: index % 2 === 0 ? "rgba(20,20,22,0.16)" : "rgba(20,20,22,0.34)" }}>
-                          <td style={{ padding: "11px 12px", fontWeight: 700, color: "#FFFFFF" }}>{venda.cliente}</td>
-                          <td style={{ padding: "11px 12px", color: "#A1A1AA", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{venda.descricao || "-"}</td>
-                          <td style={{ padding: "11px 12px", fontWeight: 700, color: "#DA291C", fontFamily: "'Crimson Pro',serif", fontSize: 16 }}>{fmtBRL(venda.valor)}</td>
-                          <td style={{ padding: "11px 12px", color: "#A1A1AA" }}>{fmtDate(venda.data)}</td>
-                          <td style={{ padding: "11px 12px", color: "#FFFFFF" }}>{venda.vendedor ? String(venda.vendedor).toUpperCase() : "-"}</td>
-                          <td style={{ padding: "11px 12px" }}>
+                        <tr key={venda.id} style={{ borderBottom: "1px solid rgba(42,42,46,0.8)", background: index % 2 === 0 ? "rgba(20,20,22,0.16)" : "rgba(20,20,22,0.34)", transition: "all 0.2s ease" }}>
+                          <td style={{ padding: "14px 12px", fontWeight: 700, color: "#FFFFFF" }}>{venda.cliente}</td>
+                          <td style={{ padding: "14px 12px", color: "#A1A1AA", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{venda.descricao || "-"}</td>
+                          <td style={{ padding: "14px 12px", fontWeight: 700, color: "#DA291C", fontFamily: "'Crimson Pro',serif", fontSize: 16 }}>{fmtBRL(venda.valor)}</td>
+                          <td style={{ padding: "14px 12px", color: "#A1A1AA" }}>{fmtDate(venda.data)}</td>
+                          <td style={{ padding: "14px 12px", color: "#FFFFFF" }}>{venda.vendedor ? String(venda.vendedor).toUpperCase() : "-"}</td>
+                          <td style={{ padding: "14px 12px" }}>
                             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                               <button title="Ver detalhes" onClick={() => onView(venda)} className="action-pill action-pill-info">
                                 👁 Ver
@@ -420,7 +396,7 @@ export default function VendasTab({
 
                 <div className="mobile-cards" style={{ display: "none", gap: 10, padding: 12 }}>
                   {group.items.map((venda) => (
-                    <div key={venda.id} style={{ border: "1px solid rgba(42,42,46,0.9)", borderRadius: 8, padding: 14, background: "#141416", boxShadow: "0 8px 16px rgba(0,0,0,0.3)" }}>
+                    <div key={venda.id} style={{ border: "1px solid rgba(42,42,46,0.9)", borderRadius: 10, padding: 15, background: "#141416", boxShadow: "0 8px 16px rgba(0,0,0,0.3)", transition: "all 0.2s ease" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 10, alignItems: "flex-start" }}>
                           <div style={{ fontWeight: 700, color: "#FFFFFF", fontSize: 15 }}>{venda.cliente}</div>
                         </div>

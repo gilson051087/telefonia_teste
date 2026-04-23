@@ -57,16 +57,16 @@ export default function AppHeader({ currentUser, tab, onTabChange, onOpenSellerM
               key={key}
               onClick={() => onTabChange(key)}
               style={{
-                background: tab === key ? "linear-gradient(135deg, rgba(218,41,28,0.28), rgba(183,28,28,0.38))" : "transparent",
+                background: tab === key ? "linear-gradient(135deg, rgba(198,40,40,0.24), rgba(169,27,27,0.34))" : "transparent",
                 color: tab === key ? "#ffffff" : "#A1A1AA",
-                border: tab === key ? "1px solid #DA291C" : "1px solid transparent",
+                border: tab === key ? "1px solid var(--brand,#C62828)" : "1px solid transparent",
                 borderRadius: 9,
                 padding: "8px 14px",
                 fontFamily: "'DM Sans',sans-serif",
                 fontWeight: 700,
                 fontSize: 12,
                 cursor: "pointer",
-                boxShadow: tab === key ? "0 8px 18px rgba(218,41,28,0.22)" : "none",
+                boxShadow: tab === key ? "0 8px 18px rgba(198,40,40,0.22)" : "none",
                 transition: "all .16s ease",
               }}
             >
@@ -93,10 +93,6 @@ export default function AppHeader({ currentUser, tab, onTabChange, onOpenSellerM
               ...btnSecondary,
               padding: "9px 14px",
               borderRadius: 10,
-              background: "linear-gradient(135deg,#DA291C,#B71C1C)",
-              border: "1px solid #DA291C",
-              color: "#ffffff",
-              boxShadow: "0 10px 24px rgba(218,41,28,0.25)",
             }}
           >
             Minha conta

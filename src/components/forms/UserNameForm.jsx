@@ -38,7 +38,7 @@ export default function UserNameForm({ user, onSave, onClose }) {
       <div style={{ color: "#A1A1AA", fontSize: 12, marginBottom: 12 }}>
         Login: <strong>{user?.username || "-"}</strong>
       </div>
-      {error && <div style={{ color: "#DA291C", fontSize: 13, marginBottom: 14 }}>{error}</div>}
+      {error && <div style={{ color: "#DA291C", fontSize: 13, marginBottom: 14, borderLeft: "3px solid #DA291C", paddingLeft: 10 }}>{error}</div>}
       <div className="modal-actions" style={{ display: "flex", gap: 12, justifyContent: "flex-end", marginTop: 8 }}>
         <button style={btnSecondary} onClick={onClose}>
           Cancelar

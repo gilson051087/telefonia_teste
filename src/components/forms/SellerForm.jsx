@@ -133,7 +133,7 @@ export default function SellerForm({ users, onSave, onClose, canManageAdmins = f
           placeholder="Crie uma senha"
         />
       </Field>
-      {error && <div style={{ color: "#DA291C", fontSize: 13, marginBottom: 14 }}>{error}</div>}
+      {error && <div style={{ color: "#DA291C", fontSize: 13, marginBottom: 14, borderLeft: "3px solid #DA291C", paddingLeft: 10 }}>{error}</div>}
       <div className="modal-actions" style={{ display: "flex", gap: 12, justifyContent: "flex-end", marginTop: 8 }}>
         <button style={btnSecondary} onClick={onClose}>
           Cancelar

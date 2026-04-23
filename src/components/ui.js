@@ -19,34 +19,37 @@ const btn = (extra = {}) => ({
 });
 
 export const btnPrimary = btn({
-  background: "var(--brand,#DA291C)",
+  background: "linear-gradient(135deg, #DA291C, #7A0F0F)",
   color: "#fff",
-  boxShadow: "0 8px 18px rgba(218,41,28,0.2)",
+  border: "1px solid #DA291C",
+  boxShadow: "0 10px 30px rgba(218,41,28,0.2)",
 });
 
 export const btnSecondary = btn({
-  background: "transparent",
+  background: "linear-gradient(180deg, rgba(20,20,22,0.95), rgba(16,16,18,0.95))",
   color: "var(--text,#FFFFFF)",
   border: "1px solid var(--line,#2A2A2E)",
 });
 
 export const btnDanger = btn({
-  background: "var(--accent-danger,#EF4444)",
+  background: "linear-gradient(135deg, #dc2626, #b91c1c)",
+  border: "1px solid #ef4444",
   color: "#fff",
 });
 
 export const inputStyle = {
-  background: "#141416",
+  background: "linear-gradient(180deg, rgba(20,20,22,0.95), rgba(16,16,18,0.95))",
   border: "1px solid var(--line,#2A2A2E)",
   borderRadius: 12,
   color: "var(--text,#FFFFFF)",
-  padding: "12px 14px",
-  minHeight: 44,
+  padding: "13px 14px",
+  minHeight: 48,
   fontFamily: "'DM Sans',sans-serif",
   fontSize: 14,
   width: "100%",
   boxSizing: "border-box",
   outline: "none",
+  transition: "border-color .2s ease, box-shadow .2s ease",
 };
 
 export const labelStyle = {
@@ -68,10 +71,11 @@ export function Badge({ color, children }) {
         border: `1px solid ${badgeColor}`,
         color: "#fff",
         borderRadius: 999,
-        padding: "3px 10px",
-        fontSize: 11,
+        padding: "4px 10px",
+        fontSize: 10,
         fontWeight: 700,
         whiteSpace: "nowrap",
+        boxShadow: "0 2px 10px rgba(218,41,28,0.3)",
       }}
     >
       {children}
@@ -87,33 +91,33 @@ export function StatCard({ icon, label, value, sub, color = PLANO_COLORS["Plano 
         fontSize: "clamp(34px, 4.8vw, 52px)",
         fontFamily: "'Crimson Pro',Georgia,serif",
         color: "#ffffff",
-        fontWeight: 700,
+        fontWeight: 800,
         lineHeight: 1,
         letterSpacing: "0.01em",
         textShadow: "0 2px 0 rgba(0,0,0,0.42), 0 8px 16px rgba(218,41,28,0.2)",
       }
     : {
-        fontSize: "clamp(16px, 2vw, 24px)",
+        fontSize: "clamp(18px, 2.1vw, 26px)",
         fontFamily: "'Crimson Pro',Georgia,serif",
         color: "var(--text,#FFFFFF)",
-        fontWeight: 700,
+        fontWeight: 800,
       };
   return (
     <div
       className="panel-surface stat-card lift-hover"
       style={{
-        padding: featured ? "clamp(14px, 1.8vw, 24px) clamp(14px, 2vw, 28px)" : "clamp(4px, 0.55vw, 8px) clamp(8px, 0.9vw, 12px)",
+        padding: featured ? "clamp(18px, 2vw, 28px) clamp(18px, 2.3vw, 30px)" : "16px 16px",
         position: "relative",
         overflow: "hidden",
         display: featured ? "grid" : isCompactCard ? "grid" : "block",
         alignContent: featured ? "start" : isCompactCard ? "center" : "normal",
         justifyItems: featured ? "start" : isCompactCard ? "center" : "start",
-        gap: featured ? 8 : isCompactCard ? 2 : 0,
+        gap: featured ? 10 : isCompactCard ? 6 : 0,
         textAlign: featured ? "left" : isCompactCard ? "center" : "left",
         borderColor: featured ? `${color}66` : undefined,
         boxShadow: featured ? `0 10px 22px ${featuredGlow}` : undefined,
         background: featured
-          ? "linear-gradient(135deg, #DA291C 0%, #C61F15 55%, #B71C1C 100%)"
+          ? "linear-gradient(135deg, #DA291C, #7A0F0F)"
           : "#141416",
         gridColumn: featured ? "1 / -1" : undefined,
       }}
@@ -137,9 +141,9 @@ export function StatCard({ icon, label, value, sub, color = PLANO_COLORS["Plano 
       {icon ? (
         <div
           style={{
-            fontSize: featured ? "clamp(16px, 1.4vw, 22px)" : "clamp(12px, 1vw, 15px)",
+            fontSize: featured ? "clamp(16px, 1.4vw, 22px)" : "16px",
             lineHeight: 1,
-            marginBottom: featured ? 6 : 4,
+            marginBottom: featured ? 6 : 6,
             transform: featured ? "scaleX(0.72)" : "none",
             transformOrigin: featured ? "left center" : "center center",
             display: "inline-block",
@@ -153,12 +157,12 @@ export function StatCard({ icon, label, value, sub, color = PLANO_COLORS["Plano 
       ) : null}
       <div
         style={{
-          fontSize: featured ? "clamp(14px, 1.2vw, 18px)" : "clamp(9px, 0.8vw, 11px)",
+          fontSize: featured ? "clamp(14px, 1.2vw, 18px)" : "11px",
           color: featured ? "#FFFFFF" : "var(--muted,#A1A1AA)",
-          fontWeight: 700,
+          fontWeight: 600,
           textTransform: "uppercase",
           letterSpacing: "0.06em",
-          marginBottom: featured ? 6 : 4,
+          marginBottom: featured ? 6 : 6,
           maxWidth: isCompactCard ? 140 : "none",
           lineHeight: 1.25,
           position: "relative",

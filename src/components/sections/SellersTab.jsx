@@ -23,12 +23,12 @@ export default function SellersTab({ userSummaries, currentCycleMonth, onOpenSel
   const sellerSummaries = userSummaries.filter((item) => item.role === "seller");
   const adminCount = userSummaries.filter((item) => item.role === "admin").length;
   return (
-    <div style={{ display: "grid", gap: 18 }}>
+    <div style={{ display: "grid", gap: 20 }}>
       <div
         className="panel-surface"
         style={{
           borderRadius: 16,
-          padding: 22,
+          padding: 24,
           display: "flex",
           justifyContent: "space-between",
           gap: 16,
@@ -49,7 +49,7 @@ export default function SellersTab({ userSummaries, currentCycleMonth, onOpenSel
         </button>
       </div>
 
-      <div className="kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14 }}>
+      <div className="kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16 }}>
         <StatCard icon="👥" label={canManageAdmins ? "Usuários" : "Vendedores"} value={userSummaries.length} color="#DA291C" />
         <StatCard icon="🛠️" label={canManageAdmins ? "Administradores" : "Vendedores ativos"} value={canManageAdmins ? adminCount : sellerSummaries.length} color="#DA291C" />
         <StatCard icon="📋" label="Vendas da Equipe" value={sellerSummaries.reduce((sum, seller) => sum + seller.vendas, 0)} color="#DA291C" />
@@ -68,16 +68,16 @@ export default function SellersTab({ userSummaries, currentCycleMonth, onOpenSel
           </button>
         </div>
       ) : (
-        <div style={{ display: "grid", gap: 14 }}>
+        <div style={{ display: "grid", gap: 16 }}>
           {userSummaries.map((seller) => (
             <div
               key={seller.id}
               className="panel-surface seller-summary-card"
               style={{
                 borderRadius: 16,
-                padding: 18,
+                padding: 20,
                 display: "grid",
-                gap: 14,
+                gap: 16,
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
@@ -102,20 +102,20 @@ export default function SellersTab({ userSummaries, currentCycleMonth, onOpenSel
                 </div>
               </div>
 
-              <div className="rel-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
-                <div style={{ background: "#141416", border: "1px solid #2A2A2E", borderRadius: 8, padding: 14 }}>
+              <div className="rel-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 14 }}>
+                <div style={{ background: "#141416", border: "1px solid #2A2A2E", borderRadius: 12, padding: 16 }}>
                   <div style={{ color: "#A1A1AA", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Total</div>
                   <div style={{ color: "#FFFFFF", fontSize: 22, fontWeight: 700 }}>{seller.vendas}</div>
                 </div>
-                <div style={{ background: "#141416", border: "1px solid #2A2A2E", borderRadius: 8, padding: 14 }}>
+                <div style={{ background: "#141416", border: "1px solid #2A2A2E", borderRadius: 12, padding: 16 }}>
                   <div style={{ color: "#A1A1AA", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Ativas</div>
                   <div style={{ color: "#22C55E", fontSize: 22, fontWeight: 700 }}>{seller.ativas}</div>
                 </div>
-                <div style={{ background: "#141416", border: "1px solid #2A2A2E", borderRadius: 8, padding: 14 }}>
+                <div style={{ background: "#141416", border: "1px solid #2A2A2E", borderRadius: 12, padding: 16 }}>
                   <div style={{ color: "#A1A1AA", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Pendentes</div>
                   <div style={{ color: "#FACC15", fontSize: 22, fontWeight: 700 }}>{seller.pendentes}</div>
                 </div>
-                <div style={{ background: "#141416", border: "1px solid #2A2A2E", borderRadius: 8, padding: 14 }}>
+                <div style={{ background: "#141416", border: "1px solid #2A2A2E", borderRadius: 12, padding: 16 }}>
                   <div style={{ color: "#A1A1AA", fontSize: 11, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>Receita ativa</div>
                   <div style={{ color: "#FFFFFF", fontSize: 22, fontWeight: 700 }}>{fmtBRL(seller.receita)}</div>
                 </div>

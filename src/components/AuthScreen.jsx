@@ -112,14 +112,14 @@ export default function AuthScreen({ onLogin }) {
           width:100%;
           display:grid;
           justify-items:center;
-          gap:22px;
+          gap:18px;
         }
         .login-card{
-          width:min(100%, 720px);
-          border-radius:18px;
+          width:min(100%, 560px);
+          border-radius:24px;
           border:1px solid #2A2A2E;
           background:#141416;
-          box-shadow:0 10px 40px rgba(0,0,0,0.6);
+          box-shadow:0 18px 46px rgba(0,0,0,0.56);
           position:relative;
           overflow:hidden;
         }
@@ -133,58 +133,75 @@ export default function AuthScreen({ onLogin }) {
         .login-card-body{
           position:relative;
           z-index:1;
-          padding:58px 78px 40px;
+          padding:34px 34px 30px;
           display:grid;
-          gap:0;
+          gap:14px;
         }
-        .login-logo{margin-bottom:22px;}
+        .login-brand{
+          display:flex;
+          align-items:center;
+          gap:12px;
+          margin-bottom:6px;
+        }
+        .login-logo{margin:0;}
+        .login-brand-text{
+          font-size:11px;
+          color:#A1A1AA;
+          text-transform:uppercase;
+          letter-spacing:0.12em;
+          font-weight:700;
+        }
         .login-chip{
           display:inline-flex;
           align-items:center;
           width:max-content;
           border:1px solid rgba(218,41,28,0.5);
           border-radius:999px;
-          padding:9px 20px;
+          padding:7px 13px;
           background:rgba(218,41,28,0.12);
-          font-size:13px;
-          font-weight:800;
+          font-size:11px;
+          font-weight:700;
           letter-spacing:0.04em;
           text-transform:uppercase;
           color:#FFFFFF;
-          margin-bottom:22px;
+          margin-bottom:2px;
         }
         .login-title{
           margin:0;
           font-family:'Crimson Pro',serif;
-          font-size:58px;
-          line-height:1;
+          font-size:46px;
+          line-height:1.02;
           color:#FFFFFF;
-          font-weight:800;
-          margin-bottom:14px;
+          font-weight:700;
+          margin-bottom:2px;
         }
         .login-subtitle{
           margin:0;
           color:#A1A1AA;
-          font-size:19px;
-          line-height:1.42;
-          margin-bottom:42px;
+          font-size:15px;
+          line-height:1.5;
+          margin-bottom:8px;
+        }
+        .login-form{
+          display:grid;
+          gap:14px;
         }
         .login-field{
           display:grid;
-          gap:9px;
-          margin-bottom:22px;
+          gap:7px;
+          margin:0;
         }
         .login-label{
-          font-size:17px;
+          font-size:12px;
           text-transform:uppercase;
           letter-spacing:0.08em;
-          font-weight:800;
-          color:#FFFFFF;
+          font-weight:700;
+          color:#D4D4D8;
         }
         .login-input-wrap{
-          height:66px;
+          height:54px;
           position:relative;
-          border-radius:14px;
+          border-radius:12px;
           border:1px solid #2A2A2E;
           background:#0B0B0C;
           transition:border-color .2s ease, box-shadow .2s ease;
@@ -199,14 +216,14 @@ export default function AuthScreen({ onLogin }) {
           top:50%;
           transform:translateY(-50%);
           color:#DA291C;
-          width:23px;
-          height:23px;
+          width:18px;
+          height:18px;
           display:grid;
           place-items:center;
         }
-        .login-input-icon{left:18px;}
+        .login-input-icon{left:14px;}
         .login-pass-toggle{
-          right:18px;
+          right:14px;
           color:#8b8b95;
           background:transparent;
           border:0;
@@ -218,8 +235,8 @@ export default function AuthScreen({ onLogin }) {
           border:0 !important;
           background:transparent !important;
           color:#FFFFFF !important;
-          font-size:18px !important;
-          padding:0 56px !important;
+          font-size:15px !important;
+          padding:0 44px !important;
         }
         .login-input::placeholder{color:#8B8B95;}
 
@@ -229,24 +246,24 @@ export default function AuthScreen({ onLogin }) {
           color:#FFFFFF;
           border-radius:12px;
           padding:11px 12px;
-          text-align:center;
-          font-size:13px;
-          margin-bottom:14px;
+          text-align:left;
+          font-size:12px;
+          margin-top:-2px;
         }
         .login-submit{
           width:100%;
-          min-height:72px;
-          border-radius:16px !important;
+          min-height:54px;
+          border-radius:12px !important;
           border:1px solid #DA291C !important;
           background:linear-gradient(135deg, #DA291C, #B71C1C) !important;
-          font-size:22px;
-          font-weight:800 !important;
+          font-size:16px;
+          font-weight:700 !important;
           box-shadow:0 4px 20px rgba(218,41,28,0.3) !important;
           display:flex !important;
           align-items:center !important;
           justify-content:center !important;
-          gap:14px;
-          margin-top:8px;
+          gap:10px;
+          margin-top:2px;
           transition:filter .2s ease, box-shadow .2s ease;
         }
         .login-submit:hover:not(:disabled){
@@ -254,23 +271,23 @@ export default function AuthScreen({ onLogin }) {
           box-shadow:0 8px 24px rgba(218,41,28,0.34) !important;
         }
         .login-submit-arrow{
-          font-size:32px;
+          font-size:22px;
           font-weight:400;
           line-height:1;
         }
 
-        .login-restricted{
-          margin-top:28px;
+        .login-meta{
+          margin-top:8px;
           display:flex;
           align-items:center;
           justify-content:center;
-          gap:11px;
+          gap:9px;
           color:#A1A1AA;
-          font-size:18px;
+          font-size:12px;
         }
-        .login-restricted-icon{
-          width:26px;
-          height:26px;
+        .login-meta-icon{
+          width:16px;
+          height:16px;
           color:#DA291C;
           display:grid;
           place-items:center;
@@ -281,7 +298,7 @@ export default function AuthScreen({ onLogin }) {
           align-items:center;
           justify-content:center;
           gap:18px;
-          width:min(100%, 980px);
+          width:min(100%, 760px);
         }
         .login-footer-line{
           height:1px;
@@ -292,7 +309,7 @@ export default function AuthScreen({ onLogin }) {
         }
         .login-footer-copy{
           color:#9a9aa3;
-          font-size:17px;
+          font-size:13px;
           text-align:center;
         }
 
@@ -304,16 +321,15 @@ export default function AuthScreen({ onLogin }) {
             top:160px;
             opacity:0.22;
           }
-          .login-card-body{padding:32px 24px 24px;}
-          .login-logo{margin-bottom:16px;}
-          .login-title{font-size:44px; margin-bottom:10px;}
-          .login-subtitle{font-size:17px; margin-bottom:26px;}
-          .login-label{font-size:14px;}
-          .login-input-wrap{height:58px;}
-          .login-input{font-size:17px !important;}
-          .login-submit{min-height:60px; font-size:20px;}
-          .login-submit-arrow{font-size:28px;}
-          .login-restricted{margin-top:18px; font-size:15px;}
+          .login-card{border-radius:18px;}
+          .login-card-body{padding:24px 18px 20px; gap:12px;}
+          .login-title{font-size:36px;}
+          .login-subtitle{font-size:14px;}
+          .login-input-wrap{height:50px;}
+          .login-input{font-size:14px !important;}
+          .login-submit{min-height:50px; font-size:15px;}
+          .login-submit-arrow{font-size:20px;}
+          .login-meta{font-size:11px;}
           .login-footer{gap:12px;}
           .login-footer-copy{font-size:13px;}
         }
@@ -325,53 +341,58 @@ export default function AuthScreen({ onLogin }) {
       <div className="login-content-wrap">
         <section className="login-card">
           <div className="login-card-body">
-            <Logo size={74} className="login-logo" alt="Claro Painel de Vendas" />
-
-            <span className="login-chip">Sistema de vendas</span>
-            <h2 className="login-title">Bem-vindo!</h2>
-            <p className="login-subtitle">Use seu login para acessar o painel de vendas.</p>
-
-            <div className="login-field">
-              <label htmlFor="login-username" className="login-label">Login</label>
-              <div className="login-input-wrap">
-                <span className="login-input-icon" aria-hidden>
-                  <UserIcon />
-                </span>
-                <input
-                  id="login-username"
-                  value={loginForm.username}
-                  onChange={(e) => setLoginForm((current) => ({ ...current, username: e.target.value }))}
-                  onKeyDown={handleKeyDown}
-                  className="login-input"
-                  style={{
-                    ...inputStyle,
-                  }}
-                  placeholder="Digite seu login"
-                />
-              </div>
+            <div className="login-brand">
+              <Logo size={48} className="login-logo" alt="Claro Painel de Vendas" />
+              <div className="login-brand-text">Painel Comercial</div>
             </div>
 
-            <div className="login-field">
-              <label htmlFor="login-password" className="login-label">Senha</label>
-              <div className="login-input-wrap">
-                <span className="login-input-icon" aria-hidden>
-                  <LockIcon />
-                </span>
-                <input
-                  id="login-password"
-                  type="password"
-                  value={loginForm.senha}
-                  onChange={(e) => setLoginForm((current) => ({ ...current, senha: e.target.value }))}
-                  onKeyDown={handleKeyDown}
-                  className="login-input"
-                  style={{
-                    ...inputStyle,
-                  }}
-                  placeholder="Digite sua senha"
-                />
-                <button type="button" className="login-pass-toggle" aria-label="Exibir senha">
-                  <EyeIcon />
-                </button>
+            <span className="login-chip">Acesso restrito</span>
+            <h2 className="login-title">Entrar</h2>
+            <p className="login-subtitle">Use suas credenciais para acessar o painel de vendas.</p>
+
+            <div className="login-form">
+              <div className="login-field">
+                <label htmlFor="login-username" className="login-label">Login</label>
+                <div className="login-input-wrap">
+                  <span className="login-input-icon" aria-hidden>
+                    <UserIcon />
+                  </span>
+                  <input
+                    id="login-username"
+                    value={loginForm.username}
+                    onChange={(e) => setLoginForm((current) => ({ ...current, username: e.target.value }))}
+                    onKeyDown={handleKeyDown}
+                    className="login-input"
+                    style={{
+                      ...inputStyle,
+                    }}
+                    placeholder="Digite seu login"
+                  />
+                </div>
+              </div>
+
+              <div className="login-field">
+                <label htmlFor="login-password" className="login-label">Senha</label>
+                <div className="login-input-wrap">
+                  <span className="login-input-icon" aria-hidden>
+                    <LockIcon />
+                  </span>
+                  <input
+                    id="login-password"
+                    type="password"
+                    value={loginForm.senha}
+                    onChange={(e) => setLoginForm((current) => ({ ...current, senha: e.target.value }))}
+                    onKeyDown={handleKeyDown}
+                    className="login-input"
+                    style={{
+                      ...inputStyle,
+                    }}
+                    placeholder="Digite sua senha"
+                  />
+                  <button type="button" className="login-pass-toggle" aria-label="Exibir senha">
+                    <EyeIcon />
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -390,8 +411,8 @@ export default function AuthScreen({ onLogin }) {
               <span className="login-submit-arrow" aria-hidden>→</span>
             </button>
 
-            <div className="login-restricted">
-              <span className="login-restricted-icon" aria-hidden>
+            <div className="login-meta">
+              <span className="login-meta-icon" aria-hidden>
                 <ShieldIcon />
               </span>
               <span>Sistema interno - uso restrito</span>

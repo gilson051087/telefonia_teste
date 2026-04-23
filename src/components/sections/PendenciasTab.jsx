@@ -11,9 +11,9 @@ export default function PendenciasTab({
 }) {
   function renderList(items) {
     return (
-      <div style={{ display: "grid", gap: 8 }}>
+      <div style={{ display: "grid", gap: 10 }}>
         {items.map((item) => (
-          <div key={item.id} style={{ border: "1px solid #2A2A2E", borderRadius: 12, padding: "10px 12px", background: "rgba(20,20,22,0.62)", display: "grid", gap: 8 }}>
+          <div key={item.id} style={{ border: "1px solid #2A2A2E", borderRadius: 12, padding: "12px 14px", background: "rgba(20,20,22,0.62)", display: "grid", gap: 10, transition: "all 0.2s ease" }}>
             <div style={{ color: "#FFFFFF", fontSize: 13 }}>
               <strong style={{ color: "#FFFFFF" }}>{item.cliente}</strong> · {PLANO_LABELS[item.plano] || item.plano} · {item.tipoPlano}
               <span style={{ color: "#A1A1AA" }}> · Inst.: {fmtDate(item.dataInstalacao)}</span>
@@ -36,8 +36,8 @@ export default function PendenciasTab({
   }
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
-      <div className="panel-surface" style={{ padding: 18, display: "grid", gap: 10 }}>
+    <div style={{ display: "grid", gap: 18 }}>
+      <div className="panel-surface" style={{ padding: 22, display: "grid", gap: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 22, color: "#FFFFFF" }}>Pendências de Instalação</div>
           <Badge color={installationPending.length ? "#DA291C" : "#22C55E"}>
