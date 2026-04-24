@@ -14,6 +14,7 @@ import {
   login as apiLogin,
   logout as apiLogout,
   migrateLegacyData,
+  setSellerAdmins as apiSetSellerAdmins,
   upsertGoalTarget,
   updateUserName as apiUpdateUserName,
   updateVenda,
@@ -22,6 +23,7 @@ import AppHeader from "./components/AppHeader";
 import AuthScreen from "./components/AuthScreen";
 import Logo from "./components/Logo";
 import PasswordForm from "./components/forms/PasswordForm";
+import SellerAdminsForm from "./components/forms/SellerAdminsForm";
 import SellerForm from "./components/forms/SellerForm";
 import UserNameForm from "./components/forms/UserNameForm";
 import VendaForm from "./components/forms/VendaForm";
@@ -567,6 +569,7 @@ export default function App() {
   const [modal, setModal] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
   const [sellerDeleteId, setSellerDeleteId] = useState(null);
+  const [sellerAdminsEditId, setSellerAdminsEditId] = useState(null);
   const [userEditId, setUserEditId] = useState(null);
   const [viewItem, setViewItem] = useState(null);
   const [tab, setTab] = useState("vendas");
@@ -1434,6 +1437,13 @@ export default function App() {
     pushToast("Nome atualizado com sucesso.", "success");
   }
 
+  async function handleSellerAdminsUpdate(nextAdminIds) {
+    if (!sellerAdminsEditId) return;
+    await apiSetSellerAdmins(sellerAdminsEditId, nextAdminIds);
+    setSellerAdminsEditId(null);
+    pushToast("Vendedor movido para os administradores selecionados.", "success");
+  }
+
   async function handlePasswordChange(currentSenha, newSenha) {
     await apiChangePassword(currentSenha, newSenha);
     setModal(null);
@@ -1455,6 +1465,7 @@ export default function App() {
     setViewItem(null);
     setDeleteId(null);
     setSellerDeleteId(null);
+    setSellerAdminsEditId(null);
     setUserEditId(null);
     setGoalOwnerId("");
   }
@@ -1569,6 +1580,7 @@ export default function App() {
   }
 
   const sellerToDelete = users.find((seller) => seller.id === sellerDeleteId) || null;
+  const sellerToManageAdmins = users.find((seller) => seller.id === sellerAdminsEditId) || null;
   const userToEdit = users.find((item) => item.id === userEditId) || null;
 
   return (
@@ -1685,6 +1697,7 @@ export default function App() {
               onOpenSellerModal={() => setModal("seller")}
               onDeleteSeller={setSellerDeleteId}
               onEditUser={setUserEditId}
+              onManageSellerAdmins={setSellerAdminsEditId}
               canManageAdmins={canManageAdmins}
             />
           )}
@@ -1735,6 +1748,17 @@ export default function App() {
       {userEditId && currentUser.role !== "seller" && userToEdit && (
         <Modal title="Editar Nome do Usuário" onClose={() => setUserEditId(null)}>
           <UserNameForm user={userToEdit} onSave={handleUserNameUpdate} onClose={() => setUserEditId(null)} />
+        </Modal>
+      )}
+
+      {sellerAdminsEditId && canManageAdmins && sellerToManageAdmins && sellerToManageAdmins.role === "seller" && (
+        <Modal title="Mover Vendedor para Administradores" onClose={() => setSellerAdminsEditId(null)}>
+          <SellerAdminsForm
+            seller={sellerToManageAdmins}
+            users={users}
+            onSave={handleSellerAdminsUpdate}
+            onClose={() => setSellerAdminsEditId(null)}
+          />
         </Modal>
       )}
 

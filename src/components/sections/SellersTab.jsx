@@ -19,7 +19,7 @@ function getRoleColor(role) {
   return "#EF4444";
 }
 
-export default function SellersTab({ userSummaries, currentCycleMonth, onOpenSellerModal, onDeleteSeller, onEditUser, canManageAdmins = false }) {
+export default function SellersTab({ userSummaries, currentCycleMonth, onOpenSellerModal, onDeleteSeller, onEditUser, onManageSellerAdmins, canManageAdmins = false }) {
   const sellerSummaries = userSummaries.filter((item) => item.role === "seller");
   const adminCount = userSummaries.filter((item) => item.role === "admin").length;
   return (
@@ -94,6 +94,11 @@ export default function SellersTab({ userSummaries, currentCycleMonth, onOpenSel
                   <button onClick={() => onEditUser(seller.id)} style={{ ...btnSecondary, padding: "8px 14px", fontSize: 12 }}>
                     Editar nome
                   </button>
+                  {canManageAdmins && seller.role === "seller" && (
+                    <button onClick={() => onManageSellerAdmins?.(seller.id)} style={{ ...btnSecondary, padding: "8px 14px", fontSize: 12 }}>
+                      Mover para admins
+                    </button>
+                  )}
                   {seller.role !== "superadmin" && (
                     <button onClick={() => onDeleteSeller(seller.id)} style={{ ...btnDanger, padding: "8px 14px", fontSize: 12 }}>
                       Excluir

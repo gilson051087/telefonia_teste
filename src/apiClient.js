@@ -444,6 +444,46 @@ export async function deleteSeller(id) {
   throw new Error(legacy.error.message || "Erro ao excluir usuário.");
 }
 
+export async function setSellerAdmins(sellerId, adminIds) {
+  const requester = await ensureAdmin();
+  if (requester.role !== "superadmin") {
+    throw new Error("Apenas superadmin pode mover vendedor entre administradores.");
+  }
+
+  const client = ensureSupabase(true);
+  const normalizedSellerId = String(sellerId || "").trim();
+  const normalizedAdminIds = Array.from(new Set((Array.isArray(adminIds) ? adminIds : []).map((id) => String(id || "").trim()).filter(Boolean)));
+
+  if (!normalizedSellerId) {
+    throw new Error("Vendedor inválido.");
+  }
+
+  if (normalizedAdminIds.length === 0) {
+    throw new Error("Selecione ao menos um administrador.");
+  }
+
+  const attempts = [
+    { p_seller_id: normalizedSellerId, p_admin_ids: normalizedAdminIds },
+    { seller_id: normalizedSellerId, admin_ids: normalizedAdminIds },
+  ];
+
+  let lastError = null;
+  for (const params of attempts) {
+    const result = await client.rpc("app_set_seller_admins", params);
+    if (!result.error) return result.data || null;
+    lastError = result.error;
+    if (!isMissingRpcFunction(result.error, "app_set_seller_admins")) break;
+  }
+
+  if (lastError && isMissingRpcFunction(lastError, "app_set_seller_admins")) {
+    throw new Error(
+      "A função RPC app_set_seller_admins não existe no projeto Supabase atual. Execute o SQL de schema (supabase/schema.sql) no mesmo projeto apontado por REACT_APP_SUPABASE_URL e recarregue o cache do PostgREST."
+    );
+  }
+
+  throw new Error(lastError?.message || "Erro ao mover vendedor para administradores.");
+}
+
 export async function upsertGoalTarget(payload) {
   await requireCurrentUser();
   const client = ensureSupabase(true);

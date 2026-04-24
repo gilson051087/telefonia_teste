@@ -207,11 +207,17 @@ as $$
             and sal.admin_id = p_admin_id
         )
         or exists (
+          -- backward compatibility: when seller has no explicit links yet, keep legacy store-based access.
           select 1
           from public.users a
           where a.id = p_admin_id
             and a.role = 'admin'
             and a.store_id = s.store_id
+            and not exists (
+              select 1
+              from public.seller_admin_links sal_any
+              where sal_any.seller_id = s.id
+            )
         )
       )
   );
@@ -520,14 +526,12 @@ as $$
 declare
   v_requester_id text;
   v_requester_role text;
-  v_requester_store_id text;
   v_target public.users%rowtype;
   v_old_nome text;
   v_nome text;
 begin
   v_requester_id := public.app_current_user_id();
   v_requester_role := public.app_current_user_role();
-  v_requester_store_id := public.app_current_user_store_id();
 
   if v_requester_id is null then
     raise exception 'Sessao nao encontrada.';
@@ -560,9 +564,9 @@ begin
     if v_target.id = v_requester_id then
       null;
     elsif v_target.role <> 'seller' then
-      raise exception 'Admin pode alterar apenas vendedores da propria loja.';
-    elsif v_target.store_id <> v_requester_store_id then
-      raise exception 'Sem permissao para alterar vendedor de outra loja.';
+      raise exception 'Admin pode alterar apenas vendedores vinculados.';
+    elsif not public.app_admin_has_seller_access(v_requester_id, v_target.id) then
+      raise exception 'Sem permissao para alterar este vendedor.';
     end if;
   end if;
 
@@ -601,7 +605,6 @@ declare
   v_admin_role text;
   v_requester_store_id text;
   v_target_store_id text;
-  v_admin_store_id text;
   v_admin_id text;
   v_normalized_admin_ids text[];
   v_nome text;
@@ -661,19 +664,13 @@ begin
     end if;
 
     foreach v_admin_id in array v_normalized_admin_ids loop
-      select coalesce(store_id, id)
-        into v_admin_store_id
-      from public.users
-      where id = v_admin_id
-        and role = 'admin'
-      limit 1;
-
-      if coalesce(v_admin_store_id, '') = '' then
+      if not exists (
+        select 1
+        from public.users
+        where id = v_admin_id
+          and role = 'admin'
+      ) then
         raise exception 'Administrador informado nao encontrado.';
-      end if;
-
-      if v_admin_store_id <> v_target_store_id then
-        raise exception 'Todos os administradores selecionados devem pertencer a mesma loja.';
       end if;
     end loop;
   end if;
@@ -747,8 +744,7 @@ declare
   v_requester_id text;
   v_requester_role text;
   v_seller_role text;
-  v_seller_store_id text;
-  v_admin_store_id text;
+  v_primary_admin_store_id text;
   v_admin_id text;
   v_normalized_admin_ids text[];
 begin
@@ -763,8 +759,8 @@ begin
     raise exception 'Apenas superadmin pode atualizar os administradores do vendedor.';
   end if;
 
-  select role, store_id
-    into v_seller_role, v_seller_store_id
+  select role
+    into v_seller_role
   from public.users
   where id = p_seller_id
   limit 1;
@@ -787,21 +783,31 @@ begin
   end if;
 
   foreach v_admin_id in array v_normalized_admin_ids loop
-    select coalesce(store_id, id)
-      into v_admin_store_id
-    from public.users
-    where id = v_admin_id
-      and role = 'admin'
-    limit 1;
-
-    if coalesce(v_admin_store_id, '') = '' then
+    if not exists (
+      select 1
+      from public.users
+      where id = v_admin_id
+        and role = 'admin'
+    ) then
       raise exception 'Administrador informado nao encontrado.';
     end if;
-
-    if v_admin_store_id <> v_seller_store_id then
-      raise exception 'Todos os administradores selecionados devem pertencer a mesma loja do vendedor.';
-    end if;
   end loop;
+
+  select coalesce(store_id, id)
+    into v_primary_admin_store_id
+  from public.users
+  where id = v_normalized_admin_ids[1]
+    and role = 'admin'
+  limit 1;
+
+  if coalesce(v_primary_admin_store_id, '') = '' then
+    raise exception 'Administrador principal nao encontrado.';
+  end if;
+
+  update public.users
+  set store_id = v_primary_admin_store_id
+  where id = p_seller_id
+    and role = 'seller';
 
   delete from public.seller_admin_links where seller_id = p_seller_id;
 
@@ -812,7 +818,8 @@ begin
 
   return jsonb_build_object(
     'seller_id', p_seller_id,
-    'admin_ids', v_normalized_admin_ids
+    'admin_ids', v_normalized_admin_ids,
+    'primary_admin_store_id', v_primary_admin_store_id
   );
 end;
 $$;
@@ -969,8 +976,6 @@ using (
   public.app_current_user_role() = 'superadmin'
   or (
     public.app_current_user_role() = 'admin'
-    and vendedor_id is not null
-    and public.app_admin_has_seller_access(public.app_current_user_id(), vendedor_id)
   )
   or (
     public.app_current_user_role() = 'seller'
@@ -984,8 +989,6 @@ with check (
   public.app_current_user_role() = 'superadmin'
   or (
     public.app_current_user_role() = 'admin'
-    and vendedor_id is not null
-    and public.app_admin_has_seller_access(public.app_current_user_id(), vendedor_id)
     and exists (
       select 1
       from public.users u
@@ -1007,8 +1010,6 @@ using (
   public.app_current_user_role() = 'superadmin'
   or (
     public.app_current_user_role() = 'admin'
-    and vendedor_id is not null
-    and public.app_admin_has_seller_access(public.app_current_user_id(), vendedor_id)
   )
   or (
     public.app_current_user_role() = 'seller'
@@ -1019,8 +1020,6 @@ with check (
   public.app_current_user_role() = 'superadmin'
   or (
     public.app_current_user_role() = 'admin'
-    and vendedor_id is not null
-    and public.app_admin_has_seller_access(public.app_current_user_id(), vendedor_id)
     and exists (
       select 1
       from public.users u
@@ -1042,8 +1041,6 @@ using (
   public.app_current_user_role() = 'superadmin'
   or (
     public.app_current_user_role() = 'admin'
-    and vendedor_id is not null
-    and public.app_admin_has_seller_access(public.app_current_user_id(), vendedor_id)
   )
   or (
     public.app_current_user_role() = 'seller'
