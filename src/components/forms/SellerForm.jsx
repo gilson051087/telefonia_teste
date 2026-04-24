@@ -10,16 +10,27 @@ export default function SellerForm({ users, onSave, onClose, canManageAdmins = f
         .sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""))),
     [users]
   );
-  const [form, setForm] = useState({ nome: "", username: "", senha: "", role: "seller", adminId: "" });
+  const [form, setForm] = useState({ nome: "", username: "", senha: "", role: "seller", adminIds: [] });
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (!canManageAdmins || form.role !== "seller") return;
-    const hasSelectedAdmin = adminUsers.some((item) => item.id === form.adminId);
+    const hasSelectedAdmin = (form.adminIds || []).some((adminId) => adminUsers.some((item) => item.id === adminId));
     if (hasSelectedAdmin) return;
-    setForm((current) => ({ ...current, adminId: adminUsers[0]?.id || "" }));
-  }, [canManageAdmins, form.role, form.adminId, adminUsers]);
+    setForm((current) => ({ ...current, adminIds: adminUsers[0]?.id ? [adminUsers[0].id] : [] }));
+  }, [canManageAdmins, form.role, form.adminIds, adminUsers]);
+
+  function toggleAdminSelection(adminId) {
+    setForm((current) => {
+      const currentIds = Array.isArray(current.adminIds) ? current.adminIds : [];
+      const hasAdmin = currentIds.includes(adminId);
+      return {
+        ...current,
+        adminIds: hasAdmin ? currentIds.filter((id) => id !== adminId) : [...currentIds, adminId],
+      };
+    });
+  }
 
   async function handleSave() {
     const nome = form.nome.trim().toUpperCase();
@@ -35,8 +46,10 @@ export default function SellerForm({ users, onSave, onClose, canManageAdmins = f
       return;
     }
 
-    if (canManageAdmins && form.role === "seller" && !form.adminId) {
-      setError("Selecione o administrador responsável pelo vendedor.");
+    const selectedAdminIds = Array.from(new Set((form.adminIds || []).filter((adminId) => adminUsers.some((item) => item.id === adminId))));
+
+    if (canManageAdmins && form.role === "seller" && selectedAdminIds.length === 0) {
+      setError("Selecione pelo menos um administrador responsável pelo vendedor.");
       return;
     }
 
@@ -48,7 +61,8 @@ export default function SellerForm({ users, onSave, onClose, canManageAdmins = f
         username,
         senha: form.senha,
         role: canManageAdmins ? form.role : "seller",
-        adminId: canManageAdmins && form.role === "seller" ? form.adminId : "",
+        adminId: canManageAdmins && form.role === "seller" ? selectedAdminIds[0] || "" : "",
+        adminIds: canManageAdmins && form.role === "seller" ? selectedAdminIds : [],
       });
     } catch (err) {
       setError(err.message || "Erro ao cadastrar vendedor.");
@@ -88,10 +102,13 @@ export default function SellerForm({ users, onSave, onClose, canManageAdmins = f
             onChange={(e) =>
               setForm((current) => {
                 const nextRole = e.target.value === "admin" ? "admin" : "seller";
+                const defaultAdminIds = current.adminIds?.length
+                  ? current.adminIds
+                  : (adminUsers[0]?.id ? [adminUsers[0].id] : []);
                 return {
                   ...current,
                   role: nextRole,
-                  adminId: nextRole === "seller" ? current.adminId || adminUsers[0]?.id || "" : "",
+                  adminIds: nextRole === "seller" ? defaultAdminIds : [],
                 };
               })
             }
@@ -103,20 +120,47 @@ export default function SellerForm({ users, onSave, onClose, canManageAdmins = f
         </Field>
       )}
       {canManageAdmins && form.role === "seller" && (
-        <Field label="Administrador responsável">
-          <select
-            value={form.adminId}
-            onChange={(e) => setForm((current) => ({ ...current, adminId: e.target.value }))}
-            style={{ ...inputStyle, appearance: "none" }}
-            disabled={adminUsers.length === 0}
+        <Field label="Administradores responsáveis">
+          <div
+            style={{
+              border: "1px solid #2A2A2E",
+              borderRadius: 10,
+              padding: 10,
+              maxHeight: 190,
+              overflowY: "auto",
+              background: "#141416",
+            }}
           >
-            <option value="">Selecione um administrador</option>
-            {adminUsers.map((adminUser) => (
-              <option key={adminUser.id} value={adminUser.id}>
-                {String(adminUser.nome || "").toUpperCase()}
-              </option>
-            ))}
-          </select>
+            {adminUsers.map((adminUser) => {
+              const checked = (form.adminIds || []).includes(adminUser.id);
+              return (
+                <label
+                  key={adminUser.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "8px 6px",
+                    cursor: "pointer",
+                    color: checked ? "#FFFFFF" : "#D4D4D8",
+                    borderRadius: 8,
+                    background: checked ? "rgba(218,41,28,0.12)" : "transparent",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggleAdminSelection(adminUser.id)}
+                    disabled={adminUsers.length === 0}
+                  />
+                  <span>{String(adminUser.nome || "").toUpperCase()}</span>
+                </label>
+              );
+            })}
+          </div>
+          <div style={{ color: "#A1A1AA", fontSize: 12, marginTop: 6 }}>
+            Selecione um ou mais administradores para este vendedor.
+          </div>
           {adminUsers.length === 0 && (
             <div style={{ color: "#A1A1AA", fontSize: 12, marginTop: 6 }}>
               Cadastre pelo menos um administrador antes de criar vendedores.

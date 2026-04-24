@@ -39,6 +39,28 @@ import "./App.css";
 const getTodayDate = () => new Date().toISOString().split("T")[0];
 const getTodayMonth = () => new Date().toISOString().slice(0, 7);
 const INSTALLATION_COMPETENCE_PLANOS = new Set(["Internet Residencial", "TV"]);
+const THEME_VARIANTS = {
+  A: {
+    bg: "#0B0B0C",
+    bgSoft: "#101012",
+    panel: "#141416",
+    panelAlt: "#1A1A1D",
+    panelStrong: "#18181B",
+    line: "#2A2A2E",
+    muted: "#B0B0BA",
+  },
+  B: {
+    bg: "#0A0A0B",
+    bgSoft: "#111114",
+    panel: "#151519",
+    panelAlt: "#1C1C20",
+    panelStrong: "#1A1A1E",
+    line: "#303036",
+    muted: "#B8B8C2",
+  },
+};
+const ACTIVE_THEME = "A";
+const THEME = THEME_VARIANTS[ACTIVE_THEME];
 const GOAL_FIELDS = [
   { key: "bandaLarga", label: "Banda Larga", type: "count", icon: "📶" },
   { key: "grossTotal", label: "Gross Total", type: "count", icon: "📦" },
@@ -59,15 +81,16 @@ const normalizeSearchText = (value = "") =>
 const APP_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=DM+Sans:wght@400;500;600&display=swap');
   :root{
-    --bg:#0B0B0C;
-    --bg-soft:#101012;
-    --panel:#141416;
-    --panel-strong:#141416;
-    --line:#2A2A2E;
+    --bg:${THEME.bg};
+    --bg-soft:${THEME.bgSoft};
+    --panel:${THEME.panel};
+    --panel-alt:${THEME.panelAlt};
+    --panel-strong:${THEME.panelStrong};
+    --line:${THEME.line};
     --line-strong:#DA291C;
     --text:#FFFFFF;
     --text-strong:#FFFFFF;
-    --muted:#A1A1AA;
+    --muted:${THEME.muted};
     --brand:#DA291C;
     --brand-dark:#7A0F0F;
     --brand-soft:#8E1717;
@@ -141,7 +164,7 @@ const APP_STYLES = `
     opacity:1;
   }
   .panel-surface{
-    background:linear-gradient(180deg, rgba(20,20,22,0.98), rgba(16,16,18,0.98));
+    background:linear-gradient(180deg, var(--panel), var(--panel-strong));
     border:1px solid var(--line);
     border-radius:var(--radius-lg);
     box-shadow:var(--shadow-soft);

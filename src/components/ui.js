@@ -26,7 +26,7 @@ export const btnPrimary = btn({
 });
 
 export const btnSecondary = btn({
-  background: "linear-gradient(180deg, rgba(20,20,22,0.95), rgba(16,16,18,0.95))",
+  background: "linear-gradient(180deg, var(--panel,#141416), var(--panel-strong,#18181B))",
   color: "var(--text,#FFFFFF)",
   border: "1px solid var(--line,#2A2A2E)",
 });
@@ -38,7 +38,7 @@ export const btnDanger = btn({
 });
 
 export const inputStyle = {
-  background: "linear-gradient(180deg, rgba(20,20,22,0.95), rgba(16,16,18,0.95))",
+  background: "linear-gradient(180deg, var(--panel,#141416), var(--panel-strong,#18181B))",
   border: "1px solid var(--line,#2A2A2E)",
   borderRadius: 12,
   color: "var(--text,#FFFFFF)",
@@ -97,16 +97,19 @@ export function StatCard({ icon, label, value, sub, color = PLANO_COLORS["Plano 
         textShadow: "0 2px 0 rgba(0,0,0,0.42), 0 8px 16px rgba(218,41,28,0.2)",
       }
     : {
-        fontSize: "clamp(18px, 2.1vw, 26px)",
+        fontSize: "clamp(16px, 1.7vw, 22px)",
         fontFamily: "'Crimson Pro',Georgia,serif",
         color: "var(--text,#FFFFFF)",
         fontWeight: 800,
+        lineHeight: 1.1,
+        whiteSpace: "normal",
+        overflowWrap: "anywhere",
       };
   return (
     <div
       className="panel-surface stat-card lift-hover"
       style={{
-        padding: featured ? "clamp(18px, 2vw, 28px) clamp(18px, 2.3vw, 30px)" : "16px 16px",
+        padding: featured ? "clamp(18px, 2vw, 28px) clamp(18px, 2.3vw, 30px)" : "14px 14px",
         position: "relative",
         overflow: "hidden",
         display: featured ? "grid" : isCompactCard ? "grid" : "block",

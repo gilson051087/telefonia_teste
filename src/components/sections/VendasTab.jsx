@@ -66,7 +66,6 @@ export default function VendasTab({
       >
         <div>
           <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 28, color: "#FFFFFF", marginBottom: 4 }}>Lançamentos de vendas</div>
-          <div style={{ color: "#A1A1AA", fontSize: 14 }}>As vendas ficam separadas por categoria de plano.</div>
         </div>
         <button
           onClick={onOpenNew}

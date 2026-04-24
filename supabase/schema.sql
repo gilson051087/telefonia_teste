@@ -74,6 +74,13 @@ create table if not exists public.app_goal_targets (
   constraint app_goal_targets_goal_value_check check (goal_value is null or goal_value >= 0)
 );
 
+create table if not exists public.seller_admin_links (
+  seller_id text not null references public.users(id) on delete cascade,
+  admin_id text not null references public.users(id) on delete cascade,
+  created_at timestamptz not null default timezone('utc', now()),
+  primary key (seller_id, admin_id)
+);
+
 create index if not exists idx_users_username on public.users (username);
 create index if not exists idx_users_store_id on public.users (store_id);
 create index if not exists idx_vendas_vendedor_id on public.vendas (vendedor_id);
@@ -81,6 +88,14 @@ create index if not exists idx_vendas_created_at on public.vendas (created_at de
 create index if not exists idx_app_sessions_user_id on public.app_sessions (user_id);
 create index if not exists idx_app_sessions_expires_at on public.app_sessions (expires_at);
 create index if not exists idx_app_goal_targets_user_month on public.app_goal_targets (user_id, cycle_month);
+create index if not exists idx_seller_admin_links_admin_id on public.seller_admin_links (admin_id);
+
+insert into public.seller_admin_links (seller_id, admin_id, created_at)
+select s.id, a.id, timezone('utc', now())
+from public.users s
+join public.users a on a.role = 'admin' and a.store_id = s.store_id
+where s.role = 'seller'
+on conflict (seller_id, admin_id) do nothing;
 
 create or replace function public.app_hash_password(p_password text)
 returns text
@@ -170,6 +185,36 @@ as $$
   from public.users u
   where u.id = public.app_current_user_id()
   limit 1;
+$$;
+
+create or replace function public.app_admin_has_seller_access(p_admin_id text, p_seller_id text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, extensions
+as $$
+  select exists (
+    select 1
+    from public.users s
+    where s.id = p_seller_id
+      and s.role = 'seller'
+      and (
+        exists (
+          select 1
+          from public.seller_admin_links sal
+          where sal.seller_id = s.id
+            and sal.admin_id = p_admin_id
+        )
+        or exists (
+          select 1
+          from public.users a
+          where a.id = p_admin_id
+            and a.role = 'admin'
+            and a.store_id = s.store_id
+        )
+      )
+  );
 $$;
 
 create or replace function public.app_login(p_senha text, p_username text)
@@ -321,7 +366,7 @@ begin
         u.created_at
       from public.users u
       where u.role = 'seller'
-        and u.store_id = v_user_store_id
+        and public.app_admin_has_seller_access(v_user_id, u.id)
       order by u.nome asc;
   else
     return query
@@ -545,7 +590,7 @@ begin
 end;
 $$;
 
-create or replace function public.app_create_seller(p_nome text, p_username text, p_senha text, p_admin_id text)
+create or replace function public.app_create_seller(p_nome text, p_username text, p_senha text, p_admin_ids text[])
 returns jsonb
 language plpgsql
 security definer
@@ -556,7 +601,9 @@ declare
   v_admin_role text;
   v_requester_store_id text;
   v_target_store_id text;
-  v_target_admin public.users%rowtype;
+  v_admin_store_id text;
+  v_admin_id text;
+  v_normalized_admin_ids text[];
   v_nome text;
   v_username text;
   v_new_user public.users%rowtype;
@@ -589,23 +636,46 @@ begin
 
   if v_admin_role = 'admin' then
     v_target_store_id := v_requester_store_id;
+    v_normalized_admin_ids := array[v_requester_id];
   else
-    if coalesce(trim(p_admin_id), '') = '' then
-      raise exception 'Informe o administrador responsavel pelo vendedor.';
+    select array_agg(distinct trim(item))
+      into v_normalized_admin_ids
+    from unnest(coalesce(p_admin_ids, array[]::text[])) item
+    where coalesce(trim(item), '') <> '';
+
+    if coalesce(array_length(v_normalized_admin_ids, 1), 0) = 0 then
+      raise exception 'Informe ao menos um administrador responsavel pelo vendedor.';
     end if;
 
-    select *
-      into v_target_admin
+    v_admin_id := v_normalized_admin_ids[1];
+
+    select coalesce(store_id, id)
+      into v_target_store_id
     from public.users
-    where id = trim(p_admin_id)
+    where id = v_admin_id
       and role = 'admin'
     limit 1;
 
-    if v_target_admin.id is null then
+    if coalesce(v_target_store_id, '') = '' then
       raise exception 'Administrador responsavel nao encontrado.';
     end if;
 
-    v_target_store_id := coalesce(v_target_admin.store_id, v_target_admin.id);
+    foreach v_admin_id in array v_normalized_admin_ids loop
+      select coalesce(store_id, id)
+        into v_admin_store_id
+      from public.users
+      where id = v_admin_id
+        and role = 'admin'
+      limit 1;
+
+      if coalesce(v_admin_store_id, '') = '' then
+        raise exception 'Administrador informado nao encontrado.';
+      end if;
+
+      if v_admin_store_id <> v_target_store_id then
+        raise exception 'Todos os administradores selecionados devem pertencer a mesma loja.';
+      end if;
+    end loop;
   end if;
 
   if coalesce(v_target_store_id, '') = '' then
@@ -624,6 +694,13 @@ begin
   )
   returning * into v_new_user;
 
+  if coalesce(array_length(v_normalized_admin_ids, 1), 0) > 0 then
+    insert into public.seller_admin_links (seller_id, admin_id, created_at)
+    select v_new_user.id, admin_id_item, timezone('utc', now())
+    from unnest(v_normalized_admin_ids) admin_id_item
+    on conflict (seller_id, admin_id) do nothing;
+  end if;
+
   return jsonb_build_object(
     'id', v_new_user.id,
     'nome', v_new_user.nome,
@@ -634,13 +711,110 @@ begin
 end;
 $$;
 
+create or replace function public.app_create_seller(p_nome text, p_username text, p_senha text, p_admin_id text)
+returns jsonb
+language sql
+security definer
+set search_path = public, extensions
+as $$
+  select public.app_create_seller(
+    p_nome,
+    p_username,
+    p_senha,
+    case
+      when coalesce(trim(p_admin_id), '') = '' then null::text[]
+      else array[trim(p_admin_id)]
+    end
+  );
+$$;
+
 create or replace function public.app_create_seller(p_nome text, p_username text, p_senha text)
 returns jsonb
 language sql
 security definer
 set search_path = public, extensions
 as $$
-  select public.app_create_seller(p_nome, p_username, p_senha, null::text);
+  select public.app_create_seller(p_nome, p_username, p_senha, null::text[]);
+$$;
+
+create or replace function public.app_set_seller_admins(p_seller_id text, p_admin_ids text[])
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_requester_id text;
+  v_requester_role text;
+  v_seller_role text;
+  v_seller_store_id text;
+  v_admin_store_id text;
+  v_admin_id text;
+  v_normalized_admin_ids text[];
+begin
+  v_requester_id := public.app_current_user_id();
+  v_requester_role := public.app_current_user_role();
+
+  if v_requester_id is null then
+    raise exception 'Sessao nao encontrada.';
+  end if;
+
+  if v_requester_role <> 'superadmin' then
+    raise exception 'Apenas superadmin pode atualizar os administradores do vendedor.';
+  end if;
+
+  select role, store_id
+    into v_seller_role, v_seller_store_id
+  from public.users
+  where id = p_seller_id
+  limit 1;
+
+  if v_seller_role is null then
+    raise exception 'Vendedor nao encontrado.';
+  end if;
+
+  if v_seller_role <> 'seller' then
+    raise exception 'O usuario informado nao e vendedor.';
+  end if;
+
+  select array_agg(distinct trim(item))
+    into v_normalized_admin_ids
+  from unnest(coalesce(p_admin_ids, array[]::text[])) item
+  where coalesce(trim(item), '') <> '';
+
+  if coalesce(array_length(v_normalized_admin_ids, 1), 0) = 0 then
+    raise exception 'Informe ao menos um administrador.';
+  end if;
+
+  foreach v_admin_id in array v_normalized_admin_ids loop
+    select coalesce(store_id, id)
+      into v_admin_store_id
+    from public.users
+    where id = v_admin_id
+      and role = 'admin'
+    limit 1;
+
+    if coalesce(v_admin_store_id, '') = '' then
+      raise exception 'Administrador informado nao encontrado.';
+    end if;
+
+    if v_admin_store_id <> v_seller_store_id then
+      raise exception 'Todos os administradores selecionados devem pertencer a mesma loja do vendedor.';
+    end if;
+  end loop;
+
+  delete from public.seller_admin_links where seller_id = p_seller_id;
+
+  insert into public.seller_admin_links (seller_id, admin_id, created_at)
+  select p_seller_id, admin_id_item, timezone('utc', now())
+  from unnest(v_normalized_admin_ids) admin_id_item
+  on conflict (seller_id, admin_id) do nothing;
+
+  return jsonb_build_object(
+    'seller_id', p_seller_id,
+    'admin_ids', v_normalized_admin_ids
+  );
+end;
 $$;
 
 create or replace function public.app_create_admin(p_nome text, p_username text, p_senha text)
@@ -707,19 +881,18 @@ security definer
 set search_path = public, extensions
 as $$
 declare
+  v_requester_id text;
   v_requester_role text;
-  v_requester_store_id text;
   v_target_role text;
-  v_target_store_id text;
 begin
+  v_requester_id := public.app_current_user_id();
   v_requester_role := public.app_current_user_role();
-  v_requester_store_id := public.app_current_user_store_id();
   if v_requester_role not in ('superadmin', 'admin') then
     raise exception 'Acesso restrito ao administrador.';
   end if;
 
-  select role, store_id
-    into v_target_role, v_target_store_id
+  select role
+    into v_target_role
   from public.users
   where id = p_id
   limit 1;
@@ -736,7 +909,7 @@ begin
     raise exception 'Apenas superadmin pode excluir administradores.';
   end if;
 
-  if v_requester_role = 'admin' and v_target_store_id <> v_requester_store_id then
+  if v_requester_role = 'admin' and not public.app_admin_has_seller_access(v_requester_id, p_id) then
     raise exception 'Sem permissao para excluir usuario de outra loja.';
   end if;
 
@@ -783,6 +956,7 @@ alter table public.users enable row level security;
 alter table public.vendas enable row level security;
 alter table public.app_sessions enable row level security;
 alter table public.app_goal_targets enable row level security;
+alter table public.seller_admin_links enable row level security;
 
 drop policy if exists vendas_select_policy on public.vendas;
 drop policy if exists vendas_insert_policy on public.vendas;
@@ -796,13 +970,7 @@ using (
   or (
     public.app_current_user_role() = 'admin'
     and vendedor_id is not null
-    and exists (
-      select 1
-      from public.users u
-      where u.id = vendedor_id
-        and u.store_id = public.app_current_user_store_id()
-        and u.role in ('admin', 'seller')
-    )
+    and public.app_admin_has_seller_access(public.app_current_user_id(), vendedor_id)
   )
   or (
     public.app_current_user_role() = 'seller'
@@ -816,12 +984,13 @@ with check (
   public.app_current_user_role() = 'superadmin'
   or (
     public.app_current_user_role() = 'admin'
+    and vendedor_id is not null
+    and public.app_admin_has_seller_access(public.app_current_user_id(), vendedor_id)
     and exists (
       select 1
       from public.users u
       where u.id = vendedor_id
-        and u.store_id = public.app_current_user_store_id()
-        and u.role in ('admin', 'seller')
+        and u.role = 'seller'
         and u.nome = vendedor
     )
   )
@@ -839,13 +1008,7 @@ using (
   or (
     public.app_current_user_role() = 'admin'
     and vendedor_id is not null
-    and exists (
-      select 1
-      from public.users u
-      where u.id = vendedor_id
-        and u.store_id = public.app_current_user_store_id()
-        and u.role in ('admin', 'seller')
-    )
+    and public.app_admin_has_seller_access(public.app_current_user_id(), vendedor_id)
   )
   or (
     public.app_current_user_role() = 'seller'
@@ -856,12 +1019,13 @@ with check (
   public.app_current_user_role() = 'superadmin'
   or (
     public.app_current_user_role() = 'admin'
+    and vendedor_id is not null
+    and public.app_admin_has_seller_access(public.app_current_user_id(), vendedor_id)
     and exists (
       select 1
       from public.users u
       where u.id = vendedor_id
-        and u.store_id = public.app_current_user_store_id()
-        and u.role in ('admin', 'seller')
+        and u.role = 'seller'
         and u.nome = vendedor
     )
   )
@@ -879,13 +1043,7 @@ using (
   or (
     public.app_current_user_role() = 'admin'
     and vendedor_id is not null
-    and exists (
-      select 1
-      from public.users u
-      where u.id = vendedor_id
-        and u.store_id = public.app_current_user_store_id()
-        and u.role in ('admin', 'seller')
-    )
+    and public.app_admin_has_seller_access(public.app_current_user_id(), vendedor_id)
   )
   or (
     public.app_current_user_role() = 'seller'
@@ -899,16 +1057,20 @@ revoke all on table public.users from anon, authenticated;
 revoke all on table public.vendas from anon, authenticated;
 revoke all on table public.app_sessions from anon, authenticated;
 revoke all on table public.app_goal_targets from anon, authenticated;
+revoke all on table public.seller_admin_links from anon, authenticated;
 
 grant select, insert, update, delete on table public.vendas to anon, authenticated;
 
 grant execute on function public.app_login(text, text) to anon, authenticated;
 grant execute on function public.app_logout() to anon, authenticated;
 grant execute on function public.app_get_session() to anon, authenticated;
+grant execute on function public.app_admin_has_seller_access(text, text) to anon, authenticated;
 grant execute on function public.app_list_users() to anon, authenticated;
 grant execute on function public.app_list_goals() to anon, authenticated;
 grant execute on function public.app_create_seller(text, text, text) to anon, authenticated;
 grant execute on function public.app_create_seller(text, text, text, text) to anon, authenticated;
+grant execute on function public.app_create_seller(text, text, text, text[]) to anon, authenticated;
+grant execute on function public.app_set_seller_admins(text, text[]) to anon, authenticated;
 grant execute on function public.app_create_admin(text, text, text) to anon, authenticated;
 grant execute on function public.app_upsert_goal(text, text, text, numeric) to anon, authenticated;
 grant execute on function public.app_update_user_nome(text, text) to anon, authenticated;

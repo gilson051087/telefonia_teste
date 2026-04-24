@@ -231,49 +231,17 @@ export async function getSession() {
 }
 
 export async function listUsers() {
-  const requester = await requireCurrentUser();
+  await requireCurrentUser();
   const client = ensureSupabase(true);
   const { data, error } = await client.rpc("app_list_users");
-  if (!error && Array.isArray(data)) {
-    const mapped = data.map(mapUser).filter(Boolean);
-    const shouldUseRpcResult =
-      requester.role === "seller" ||
-      requester.role === "admin" ||
-      mapped.length > 1;
-
-    if (shouldUseRpcResult) {
-      return sortUsersByRole(mapped);
-    }
-  }
-
-  // Fallback for environments with outdated/broken RPC app_list_users.
-  const { data: tableRows, error: tableError } = await client
-    .from("users")
-    .select("id, nome, username, role, created_at, store_id");
-
-  if (tableError) {
-    if (error) throw new Error(error.message || "Erro ao carregar usuarios.");
-    throw new Error(tableError.message || "Erro ao carregar usuarios.");
-  }
-
-  const normalizedRows = (tableRows || []).map((row) => ({
-    ...mapUser(row),
-    store_id: row?.store_id || null,
-  }));
-
-  if (requester.role === "superadmin") {
-    return sortUsersByRole(normalizedRows);
-  }
-
-  if (requester.role === "admin") {
-    const requesterRow = normalizedRows.find((row) => row.id === requester.id);
-    const requesterStoreId = requesterRow?.store_id || null;
-    return sortUsersByRole(
-      normalizedRows.filter((row) => row.role === "seller" && row.store_id && row.store_id === requesterStoreId)
+  if (error && isMissingRpcFunction(error, "app_list_users")) {
+    throw new Error(
+      "A função RPC app_list_users não existe no projeto Supabase atual. Execute o SQL de schema (supabase/schema.sql) no mesmo projeto apontado por REACT_APP_SUPABASE_URL e recarregue o cache do PostgREST."
     );
   }
 
-  return normalizedRows.filter((row) => row.id === requester.id);
+  if (error) throw new Error(error.message || "Erro ao carregar usuarios.");
+  return sortUsersByRole((data || []).map(mapUser).filter(Boolean));
 }
 
 export async function listGoals() {
@@ -299,7 +267,14 @@ export async function createSeller(payload) {
   const username = String(payload?.username || "").trim().toLowerCase();
   const senha = String(payload?.senha || "");
   const role = payload?.role === "admin" ? "admin" : "seller";
-  const adminId = String(payload?.adminId || "").trim();
+  const adminIds = Array.from(
+    new Set(
+      (Array.isArray(payload?.adminIds) ? payload.adminIds : [payload?.adminId])
+        .map((value) => String(value || "").trim())
+        .filter(Boolean)
+    )
+  );
+  const primaryAdminId = adminIds[0] || "";
 
   if (!nome || !username || !senha) {
     throw new Error("Preencha nome, usuario e senha.");
@@ -328,14 +303,16 @@ export async function createSeller(payload) {
   }
 
   const creatingSellerAsSuperadmin = user.role === "superadmin";
-  if (creatingSellerAsSuperadmin && !adminId) {
-    throw new Error("Selecione o administrador responsável pelo vendedor.");
+  if (creatingSellerAsSuperadmin && !primaryAdminId) {
+    throw new Error("Selecione pelo menos um administrador responsável pelo vendedor.");
   }
 
   const sellerAttempts = creatingSellerAsSuperadmin
     ? [
-        { p_nome: nome, p_username: username, p_senha: senha, p_admin_id: adminId },
-        { nome, username, senha, admin_id: adminId },
+        { p_nome: nome, p_username: username, p_senha: senha, p_admin_ids: adminIds },
+        { nome, username, senha, admin_ids: adminIds },
+        { p_nome: nome, p_username: username, p_senha: senha, p_admin_id: primaryAdminId },
+        { nome, username, senha, admin_id: primaryAdminId },
       ]
     : [
         { p_nome: nome, p_username: username, p_senha: senha },
@@ -344,11 +321,13 @@ export async function createSeller(payload) {
 
   let data = null;
   let error = null;
+  let usedLegacyAdminParam = false;
   for (const params of sellerAttempts) {
     const result = await client.rpc("app_create_seller", params);
     if (!result.error) {
       data = result.data;
       error = null;
+      usedLegacyAdminParam = Object.prototype.hasOwnProperty.call(params, "p_admin_id") || Object.prototype.hasOwnProperty.call(params, "admin_id");
       break;
     }
 
@@ -370,6 +349,33 @@ export async function createSeller(payload) {
   }
 
   if (error) throw new Error(error.message || "Erro ao cadastrar usuário.");
+
+  if (creatingSellerAsSuperadmin && adminIds.length > 1 && usedLegacyAdminParam && data?.id) {
+    const linkAttempts = [
+      { p_seller_id: data.id, p_admin_ids: adminIds },
+      { seller_id: data.id, admin_ids: adminIds },
+    ];
+
+    let linkError = null;
+    for (const params of linkAttempts) {
+      const result = await client.rpc("app_set_seller_admins", params);
+      if (!result.error) {
+        linkError = null;
+        break;
+      }
+      linkError = result.error;
+      if (!isMissingRpcFunction(result.error, "app_set_seller_admins")) break;
+    }
+
+    if (linkError && isMissingRpcFunction(linkError, "app_set_seller_admins")) {
+      throw new Error(
+        "O projeto Supabase atual ainda não suporta múltiplos administradores por vendedor. Execute o schema atualizado (supabase/schema.sql), recarregue o cache do PostgREST e tente novamente."
+      );
+    }
+
+    if (linkError) throw new Error(linkError.message || "Erro ao vincular vendedor aos administradores selecionados.");
+  }
+
   return mapUser(data);
 }
 
