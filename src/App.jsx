@@ -32,6 +32,7 @@ import SellersTab from "./components/sections/SellersTab";
 import VendasTab from "./components/sections/VendasTab";
 import PendenciasTab from "./components/sections/PendenciasTab";
 import GoalsTab from "./components/sections/GoalsTab";
+import { AppIcon } from "./components/icons";
 import { Modal, Panel, StatCard, ToastStack, btnDanger, btnPrimary, btnSecondary } from "./components/ui";
 import { COMANDA_COMMON_FIELDS, PLANOS, PLANO_COLORS, PLANO_EXTRAS, PLANO_ICONS, PLANO_LABELS, STORAGE_KEYS, MONTH_NAMES, getRemunerationValue } from "./constants/sales";
 import { exportExcelReport, exportVendaComanda, fmtBRL, fmtDate, fmtMonth, loadUsers, loadVendas, normalizeLegacyVenda, slugify } from "./utils/sales";
@@ -64,12 +65,12 @@ const THEME_VARIANTS = {
 const ACTIVE_THEME = "A";
 const THEME = THEME_VARIANTS[ACTIVE_THEME];
 const GOAL_FIELDS = [
-  { key: "bandaLarga", label: "Banda Larga", type: "count", icon: "📶" },
-  { key: "grossTotal", label: "Gross Total", type: "count", icon: "📦" },
-  { key: "posPagoTitular", label: "Pos pago titular", type: "count", icon: "📱" },
-  { key: "residencial", label: "Residencial", type: "count", icon: "🏠" },
-  { key: "receita", label: "Receita", type: "currency", icon: "💰" },
-  { key: "tv", label: "Tv", type: "count", icon: "📺" },
+  { key: "bandaLarga", label: "Banda Larga", type: "count", icon: "wifi" },
+  { key: "grossTotal", label: "Gross Total", type: "count", icon: "package" },
+  { key: "posPagoTitular", label: "Pos pago titular", type: "count", icon: "phone" },
+  { key: "residencial", label: "Residencial", type: "count", icon: "wifi" },
+  { key: "receita", label: "Receita", type: "currency", icon: "chart" },
+  { key: "tv", label: "Tv", type: "count", icon: "tv" },
 ];
 const DEFAULT_GOAL_VALUES = GOAL_FIELDS.reduce((acc, field) => ({ ...acc, [field.key]: 0 }), {});
 const GOAL_OWNER_ALL_ADMINS = "__all_admins__";
@@ -182,7 +183,7 @@ const APP_STYLES = `
   }
   @media (hover:hover){
     .panel-surface:hover{
-      border-color:rgba(198,40,40,0.42);
+      border-color:#323238;
       box-shadow:0 16px 30px rgba(0,0,0,0.36);
     }
   }
@@ -273,6 +274,10 @@ const APP_STYLES = `
     font-weight:700;
     min-height:36px;
     transition:all .2s ease;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
   }
   .action-pill:hover{filter:brightness(1.04);transform:translateY(-1px) scale(1.02);}
   .action-pill-info{background:rgba(20,20,22,0.96);color:#fff;border:1px solid rgba(42,42,46,1);}
@@ -329,7 +334,7 @@ const APP_STYLES = `
     opacity:.95;
     border-radius:8px;
     padding:4px;
-    background:rgba(218,41,28,0.1);
+    background:#141416;
     filter:brightness(1.2) contrast(1.1);
   }
   input[type="date"]::-webkit-datetime-edit,
@@ -968,6 +973,7 @@ export default function App() {
     : 30;
   const isCurrentMonthCycle = currentCycleMonth === getTodayMonth();
   const elapsedDays = isCurrentMonthCycle ? Math.max(1, Math.min(daysInGoalMonth, Number(cycleDate.slice(8, 10)) || 1)) : daysInGoalMonth;
+  const remainingGoalDays = isCurrentMonthCycle ? Math.max(1, daysInGoalMonth - elapsedDays) : 0;
   const projectedGoalProgress = GOAL_FIELDS.reduce((acc, field) => {
     const done = Number(goalProgress[field.key]) || 0;
     const projected = elapsedDays > 0 ? (done / elapsedDays) * daysInGoalMonth : done;
@@ -1134,11 +1140,11 @@ export default function App() {
     })
     .sort((a, b) => a.nome.localeCompare(b.nome));
 
-  const handleDownloadComanda = useCallback((venda) => {
+  const handleDownloadComanda = useCallback((venda, comandaVendas = []) => {
     if (!venda) return;
     const baseDate = venda.data || new Date().toISOString().split("T")[0];
     const safeClient = slugify(venda.cliente || "cliente").slice(0, 50) || "cliente";
-    exportVendaComanda(`comanda-venda-${baseDate}-${safeClient}.xls`, venda);
+    exportVendaComanda(`comanda-venda-${baseDate}-${safeClient}.xls`, venda, comandaVendas);
   }, []);
 
   const handleInstallationStatusUpdate = useCallback(
@@ -1205,8 +1211,20 @@ export default function App() {
         setVendas((current) => current.map((item) => (item.id === modal.edit.id ? normalizeLegacyVenda(updated) : item)));
         broadcastVendaSync();
       } else {
+        const controleExtrasList = Array.isArray(controleAdicionais) ? controleAdicionais : [];
+        const comandaDependentes =
+          baseData.plano === "Plano Controle"
+            ? controleExtrasList.map((item) => ({
+                tipo: item?.tipoPlano || "",
+                numero: item?.numero || "",
+                portabilidade: item?.tipoNumeroPortado === "portabilidade" ? item?.portabilidade || "" : item?.numero || "",
+                iccid: item?.iccid || "",
+              }))
+            : baseData.comandaDependentes;
+
         const created = await createVenda({
           ...baseData,
+          comandaDependentes,
           historico: appendHistory({}, {
             action: "criacao",
             userId: currentUser?.id || "",
@@ -1245,7 +1263,6 @@ export default function App() {
         const hasTvExtra = Boolean(baseData.comandaTvAtiva || baseData.comandaTvPlano);
         const hasAparelhoExtra = Boolean(baseData.comandaAparelhoAtiva || baseData.comandaAparelhoValor);
         const hasAcessoriosExtra = Boolean(baseData.comandaAcessoriosAtiva || baseData.comandaAcessoriosValor);
-        const controleExtrasList = Array.isArray(controleAdicionais) ? controleAdicionais : [];
 
         const movelPlano = baseData.comandaMovelPlano || "Plano Controle";
         if (hasMovelExtra && baseData.plano !== movelPlano && baseData.comandaMovelServico) {
@@ -1363,7 +1380,7 @@ export default function App() {
         pushToast("Venda registrada com sucesso.", "success");
         const shouldExportComanda = window.confirm("Venda registrada com sucesso. Deseja gerar a planilha de comanda desta venda?");
         if (shouldExportComanda) {
-          handleDownloadComanda(createdVenda);
+          handleDownloadComanda(createdVenda, createdItems);
           pushToast("Comanda gerada para download.", "success");
         }
       }
@@ -1495,7 +1512,7 @@ export default function App() {
         ["Vendedor", reportSellerName],
         ["Quantidade de vendas", dailyReportVendas.length],
       ],
-      headers: ["Data", "Cliente", "CPF", "Plano", "Tipo de Plano", "Valor", "Vendedor", "Descrição"],
+      headers: ["Data", "Cliente", "CPF/CNPJ", "Plano", "Tipo de Plano", "Valor", "Vendedor", "Descrição"],
       rows,
       totalLabel: "Total do dia",
       totalValue: dailyReportTotal,
@@ -1528,7 +1545,7 @@ export default function App() {
         ["Vendedor", reportSellerName],
         ["Quantidade de vendas", monthlyReportVendas.length],
       ],
-      headers: ["Data", "Cliente", "CPF", "Plano", "Tipo de Plano", "Valor", "Vendedor", "Descrição"],
+      headers: ["Data", "Cliente", "CPF/CNPJ", "Plano", "Tipo de Plano", "Valor", "Vendedor", "Descrição"],
       rows,
       totalLabel: "Total do mês",
       totalValue: monthlyReportTotal,
@@ -1607,11 +1624,11 @@ export default function App() {
                 <StatCard label="Receita Total" value={fmtBRL(totalVal)} color="#DA291C" featured />
               </div>
               <div className="kpi-row">
-                <StatCard icon="📲" label="Ticket Celular (5%)" value={fmtBRL(ticketCelular)} sub={`${ticketCelularVendas.length} vendas`} color="#DA291C" />
-                <StatCard icon="🎧" label="Ticket Acessórios (15%)" value={fmtBRL(ticketAcessorios)} sub={`${ticketAcessoriosVendas.length} vendas`} color="#DA291C" />
-                <StatCard icon="📊" label="Controle + Pós + TV + Internet" value={fmtBRL(ticketPlanosPrincipaisTotal)} sub={`${ticketPlanosPrincipaisVendas.length} vendas`} color="#DA291C" />
-                <StatCard icon="📱" label="Planos Móveis" value={cycleScopedVendas.filter((venda) => ["Plano Controle", "Plano Pós-Pago"].includes(venda.plano)).length} color="#DA291C" />
-                <StatCard icon="🌐" label="Internet + TV" value={cycleScopedVendas.filter((venda) => ["Internet Residencial", "Internet Movel Mais", "TV"].includes(venda.plano) && venda.status === "Ativa").length} color="#DA291C" />
+                <StatCard icon={<AppIcon name="device" size={18} />} label="Ticket Celular (5%)" value={fmtBRL(ticketCelular)} sub={`${ticketCelularVendas.length} vendas`} color="#DA291C" />
+                <StatCard icon={<AppIcon name="headset" size={18} />} label="Ticket Acessórios (15%)" value={fmtBRL(ticketAcessorios)} sub={`${ticketAcessoriosVendas.length} vendas`} color="#DA291C" />
+                <StatCard icon={<AppIcon name="chart" size={18} />} label="Controle + Pós + TV + Internet" value={fmtBRL(ticketPlanosPrincipaisTotal)} sub={`${ticketPlanosPrincipaisVendas.length} vendas`} color="#DA291C" />
+                <StatCard icon={<AppIcon name="phone" size={18} />} label="Planos Móveis" value={cycleScopedVendas.filter((venda) => ["Plano Controle", "Plano Pós-Pago"].includes(venda.plano)).length} color="#DA291C" />
+                <StatCard icon={<AppIcon name="wifi" size={18} />} label="Internet + TV" value={cycleScopedVendas.filter((venda) => ["Internet Residencial", "Internet Movel Mais", "TV"].includes(venda.plano) && venda.status === "Ativa").length} color="#DA291C" />
               </div>
             </div>
           )}
@@ -1682,6 +1699,7 @@ export default function App() {
               onGoalTargetChange={handleGoalTargetChange}
               projectedGoalProgress={projectedGoalProgress}
               elapsedDays={elapsedDays}
+              remainingDays={remainingGoalDays}
               ownerName={goalOwnerDisplayName}
               ownerOptions={goalOwnerOptions}
               selectedOwnerId={goalOwnerId}
@@ -1767,8 +1785,8 @@ export default function App() {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.75)",
-            backdropFilter: "blur(5px)",
+            background: "rgba(5,5,6,0.78)",
+            backdropFilter: "blur(8px)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -1821,7 +1839,7 @@ export default function App() {
                   boxShadow: `0 10px 18px ${(PLANO_COLORS[viewItem.plano] || "#DA291C")}33`,
                 }}
               >
-                {PLANO_ICONS[viewItem.plano]}
+                <AppIcon name={PLANO_ICONS[viewItem.plano] || "package"} size={24} />
               </span>
               <div>
                 <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 20, color: "#FFFFFF", fontWeight: 700 }}>{PLANO_LABELS[viewItem.plano] || viewItem.plano}</div>
@@ -1833,7 +1851,7 @@ export default function App() {
 
             {[
               ["Cliente", viewItem.cliente],
-              ["CPF", viewItem.cpf || "—"],
+              ["CPF/CNPJ", viewItem.cpf || "—"],
               ["Vendedor", viewItem.vendedor ? String(viewItem.vendedor).toUpperCase() : "—"],
               ["Valor", fmtBRL(viewItem.valor)],
               ["Data", fmtDate(viewItem.data)],
@@ -1898,10 +1916,35 @@ export default function App() {
             zIndex: 1000,
           }}
         >
-          <Panel style={{ maxWidth: 380, width: "90%", textAlign: "center", padding: 28 }}>
-            <div style={{ fontSize: 42, marginBottom: 14 }}>🗑️</div>
+          <Panel
+            style={{
+              maxWidth: 390,
+              width: "90%",
+              textAlign: "center",
+              padding: 28,
+              background: "linear-gradient(180deg, #18181B, #101012)",
+              border: "1px solid rgba(218,41,28,0.48)",
+              boxShadow: "0 22px 60px rgba(0,0,0,0.62), 0 0 0 1px rgba(255,255,255,0.02), 0 0 34px rgba(218,41,28,0.12)",
+            }}
+          >
+            <div
+              style={{
+                width: 58,
+                height: 58,
+                margin: "0 auto 14px",
+                display: "grid",
+                placeItems: "center",
+                color: "#FFFFFF",
+                borderRadius: 999,
+                background: "linear-gradient(135deg, rgba(218,41,28,0.95), rgba(122,15,15,0.95))",
+                border: "1px solid rgba(255,255,255,0.14)",
+                boxShadow: "0 12px 26px rgba(218,41,28,0.26)",
+              }}
+            >
+              <AppIcon name="trash" size={30} strokeWidth={1.8} />
+            </div>
             <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 20, color: "#FFFFFF", marginBottom: 8 }}>Excluir lançamento?</div>
-            <div style={{ color: "#A1A1AA", fontSize: 14, marginBottom: 24 }}>Esta ação não pode ser desfeita.</div>
+            <div style={{ color: "#D4D4D8", fontSize: 14, marginBottom: 24 }}>Esta ação não pode ser desfeita.</div>
             <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
               <button style={btnSecondary} onClick={() => setDeleteId(null)}>
                 Cancelar

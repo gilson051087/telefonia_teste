@@ -1,13 +1,14 @@
 import { btnSecondary } from "./ui";
 import Logo from "./Logo";
+import { AppIcon } from "./icons";
 
 export default function AppHeader({ currentUser, tab, onTabChange, onOpenSellerModal, onOpenPasswordModal, onLogout, canManageUsers = false, manageButtonLabel = "+ Vendedor" }) {
   const tabs = [
-    ["vendas", "📋 Vendas"],
-    ["pendencias", "⏱ Pendências"],
-    ["relatorios", "📊 Relatórios"],
-    ["metas", "🎯 Metas"],
-    ...(currentUser.role !== "seller" ? [["vendedores", "👥 Vendedores"]] : []),
+    ["vendas", "sales", "Vendas"],
+    ["pendencias", "clock", "Pendências"],
+    ["relatorios", "chart", "Relatórios"],
+    ["metas", "target", "Metas"],
+    ...(currentUser.role !== "seller" ? [["vendedores", "users", "Vendedores"]] : []),
   ];
 
   return (
@@ -52,7 +53,7 @@ export default function AppHeader({ currentUser, tab, onTabChange, onOpenSellerM
             border: "1px solid #2A2A2E",
           }}
         >
-          {tabs.map(([key, label]) => (
+          {tabs.map(([key, icon, label]) => (
             <button
               key={key}
               onClick={() => onTabChange(key)}
@@ -68,8 +69,12 @@ export default function AppHeader({ currentUser, tab, onTabChange, onOpenSellerM
                 cursor: "pointer",
                 boxShadow: tab === key ? "0 8px 18px rgba(198,40,40,0.22)" : "none",
                 transition: "all .16s ease",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 7,
               }}
             >
+              <AppIcon name={icon} size={15} strokeWidth={2.1} />
               {label}
             </button>
           ))}

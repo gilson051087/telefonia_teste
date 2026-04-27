@@ -74,12 +74,28 @@ export function loadUsers() {
 }
 
 export function maskCPF(value) {
-  return value
+  const digits = String(value || "").replace(/\D/g, "").slice(0, 11);
+  return digits
     .replace(/\D/g, "")
     .replace(/(\d{3})(\d)/, "$1.$2")
     .replace(/(\d{3})(\d)/, "$1.$2")
     .replace(/(\d{3})(\d{1,2})$/, "$1-$2")
     .slice(0, 14);
+}
+
+export function maskCNPJ(value) {
+  const digits = String(value || "").replace(/\D/g, "").slice(0, 14);
+  return digits
+    .replace(/(\d{2})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1/$2")
+    .replace(/(\d{4})(\d{1,2})$/, "$1-$2")
+    .slice(0, 18);
+}
+
+export function maskCpfCnpj(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  return digits.length > 11 ? maskCNPJ(digits) : maskCPF(digits);
 }
 
 export function maskCEP(value) {
@@ -120,6 +136,30 @@ export function isValidCPF(value) {
   const first = calcCheckDigit(digits.slice(0, 9), 10);
   const second = calcCheckDigit(digits.slice(0, 10), 11);
   return first === Number(digits[9]) && second === Number(digits[10]);
+}
+
+export function isValidCNPJ(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (!digits) return true;
+  if (digits.length !== 14) return false;
+  if (/^(\d)\1{13}$/.test(digits)) return false;
+
+  function calcCheckDigit(base, weights) {
+    const total = base.split("").reduce((sum, digit, index) => sum + Number(digit) * weights[index], 0);
+    const remainder = total % 11;
+    return remainder < 2 ? 0 : 11 - remainder;
+  }
+
+  const first = calcCheckDigit(digits.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const second = calcCheckDigit(digits.slice(0, 13), [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  return first === Number(digits[12]) && second === Number(digits[13]);
+}
+
+export function isValidCpfCnpj(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (!digits) return true;
+  if (digits.length <= 11) return isValidCPF(digits);
+  return isValidCNPJ(digits);
 }
 
 function parseNumericValue(value, fallback = 0) {
@@ -299,21 +339,74 @@ function normalizeForMatch(value) {
     .trim();
 }
 
-export function exportVendaComanda(filename, venda = {}) {
-  const plano = venda.plano || "";
-  const servico = venda.tipoPlano || "";
+function isMobilePlano(plano) {
   const planoLower = normalizeForMatch(plano);
-
-  const isPlanoMovel =
+  return (
     planoLower === "plano controle" ||
     planoLower === "plano pos-pago" ||
     planoLower === "internet movel mais" ||
-    planoLower === "seguro movel celular";
+    planoLower === "seguro movel celular"
+  );
+}
+
+function sameVenda(left = {}, right = {}) {
+  if (!left || !right) return false;
+  if (left.id && right.id) return left.id === right.id;
+  return left === right;
+}
+
+function uniqueVendas(vendas = []) {
+  const seenIds = new Set();
+  const unique = [];
+
+  vendas.forEach((item) => {
+    if (!item) return;
+    const key = item.id || `${item.plano || ""}|${item.tipoPlano || ""}|${item.numero || ""}|${item.iccid || ""}`;
+    if (seenIds.has(key)) return;
+    seenIds.add(key);
+    unique.push(item);
+  });
+
+  return unique;
+}
+
+function uniqueComandaDependentes(dependentes = []) {
+  const seen = new Set();
+  const unique = [];
+
+  dependentes.forEach((item) => {
+    if (!item || !(item.tipo || item.numero || item.portabilidade || item.iccid)) return;
+    const key = `${item.tipo || ""}|${item.numero || ""}|${item.portabilidade || ""}|${item.iccid || ""}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    unique.push(item);
+  });
+
+  return unique;
+}
+
+export function exportVendaComanda(filename, venda = {}, relatedVendas = []) {
+  const vendasComanda = uniqueVendas([venda, ...(Array.isArray(relatedVendas) ? relatedVendas : [])]);
+  const findVendaByPlano = (matcher) => vendasComanda.find((item) => matcher(normalizeForMatch(item?.plano), item));
+  const plano = venda.plano || "";
+  const planoLower = normalizeForMatch(plano);
+
+  const isPlanoMovel = isMobilePlano(plano);
   const isPlanoInternet = planoLower === "internet residencial";
   const isPlanoTv = planoLower === "tv";
   const isPlanoAparelho = planoLower === "aparelho celular";
   const isPlanoAcessorio = planoLower === "acessorios";
   const isPlanoSeguro = planoLower === "seguro movel celular";
+  const vendaMovel = isPlanoMovel
+    ? venda
+    : findVendaByPlano((itemPlano) =>
+        ["plano controle", "plano pos-pago", "internet movel mais", "seguro movel celular"].includes(itemPlano)
+      );
+  const vendaInternet = isPlanoInternet ? venda : findVendaByPlano((itemPlano) => itemPlano === "internet residencial");
+  const vendaTv = isPlanoTv ? venda : findVendaByPlano((itemPlano) => itemPlano === "tv");
+  const vendaAparelho = isPlanoAparelho ? venda : findVendaByPlano((itemPlano) => itemPlano === "aparelho celular");
+  const vendaAcessorio = isPlanoAcessorio ? venda : findVendaByPlano((itemPlano) => itemPlano === "acessorios");
+  const vendaSeguro = isPlanoSeguro ? venda : findVendaByPlano((itemPlano) => itemPlano === "seguro movel celular");
   const hasComandaMovelExtra = Boolean(
     venda.comandaMovelAtiva ||
     venda.comandaMovelServico ||
@@ -358,20 +451,46 @@ export function exportVendaComanda(filename, venda = {}) {
   const cep = venda.cep || "";
   const dataNascimento = formatDateBr(venda.dataNascimento || "");
 
-  const titularServico = isPlanoMovel ? servico || plano : hasComandaMovelExtra ? venda.comandaMovelServico || "" : "";
-  const numeroProvisorio = isPlanoMovel ? venda.numero || "" : hasComandaMovelExtra ? venda.comandaMovelNumero || "" : "";
+  const titularServico = vendaMovel ? vendaMovel.tipoPlano || vendaMovel.plano || "" : hasComandaMovelExtra ? venda.comandaMovelServico || "" : "";
+  const numeroProvisorio = vendaMovel ? vendaMovel.numero || "" : hasComandaMovelExtra ? venda.comandaMovelNumero || "" : "";
   const numeroPortado =
-    isPlanoMovel
-      ? venda.portabilidade || venda.numero || ""
+    vendaMovel
+      ? vendaMovel.portabilidade || vendaMovel.numero || ""
       : hasComandaMovelExtra
         ? venda.comandaMovelPortabilidade || venda.comandaMovelNumero || ""
         : "";
-  const titularIccid = isPlanoMovel ? venda.iccid || "" : hasComandaMovelExtra ? venda.comandaMovelIccid || "" : "";
-  const comandaDependentes = Array.isArray(venda.comandaDependentes)
-    ? venda.comandaDependentes
-        .filter((item) => item && (item.tipo || item.numero || item.portabilidade || item.iccid))
-        .slice(0, 5)
+  const titularIccid = vendaMovel ? vendaMovel.iccid || "" : hasComandaMovelExtra ? venda.comandaMovelIccid || "" : "";
+  const mobileVendasExtras = vendasComanda
+    .filter((item) => item && isMobilePlano(item.plano) && !sameVenda(item, vendaMovel))
+    .map((item) => ({
+      tipo: item.tipoPlano || item.plano || "",
+      numero: item.numero || "",
+      portabilidade: item.portabilidade || item.numero || "",
+      iccid: item.iccid || "",
+    }));
+  const controleDependentes = Array.isArray(venda.controleAdicionais)
+    ? venda.controleAdicionais.map((item) => ({
+        tipo: item?.tipoPlano || "",
+        numero: item?.numero || "",
+        portabilidade: item?.tipoNumeroPortado === "portabilidade" ? item?.portabilidade || "" : item?.numero || "",
+        iccid: item?.iccid || "",
+      }))
     : [];
+  const posPagoDependentes = Array.isArray(venda.posPagoDependentes)
+    ? venda.posPagoDependentes.map((item) => ({
+        tipo: item?.tipo || "",
+        numero: item?.numero || "",
+        portabilidade: item?.portabilidade || item?.numero || "",
+        iccid: item?.iccid || "",
+      }))
+    : [];
+  const storedComandaDependentes = Array.isArray(venda.comandaDependentes) ? venda.comandaDependentes : [];
+  const comandaDependentes = uniqueComandaDependentes([
+    ...mobileVendasExtras,
+    ...storedComandaDependentes,
+    ...controleDependentes,
+    ...posPagoDependentes,
+  ]).slice(0, 5);
   const dependentesRowsXml = Array.from({ length: 5 }, (_, index) => {
     const dependente = comandaDependentes[index] || {};
     return buildComandaRow([
@@ -383,26 +502,26 @@ export function exportVendaComanda(filename, venda = {}) {
       buildComandaCell(dependente.iccid || "", { style: "ComandaValueCenter" }),
     ]);
   }).join("");
-  const modelo = isPlanoAparelho ? venda.modelo || "" : hasComandaAparelhoExtra ? venda.comandaAparelhoModelo || "" : "";
-  const imei = isPlanoAparelho ? venda.imei || "" : hasComandaAparelhoExtra ? venda.comandaAparelhoImei || "" : "";
-  const valorPre = isPlanoAparelho ? parseNumericValue(venda.valor) : hasComandaAparelhoExtra ? parseNumericValue(venda.comandaAparelhoValor) : 0;
+  const modelo = vendaAparelho ? vendaAparelho.modelo || vendaAparelho.tipoPlano || "" : hasComandaAparelhoExtra ? venda.comandaAparelhoModelo || "" : "";
+  const imei = vendaAparelho ? vendaAparelho.imei || "" : hasComandaAparelhoExtra ? venda.comandaAparelhoImei || "" : "";
+  const valorPre = vendaAparelho ? parseNumericValue(vendaAparelho.valor) : hasComandaAparelhoExtra ? parseNumericValue(venda.comandaAparelhoValor) : 0;
 
-  const seguroTipoSelecionado = venda.comandaSeguroTipo || (isPlanoSeguro ? servico || plano : "");
+  const seguroTipoSelecionado = venda.comandaSeguroTipo || (vendaSeguro ? vendaSeguro.tipoPlano || vendaSeguro.plano || "" : "");
   const seguroTexto = seguroTipoSelecionado ? `SIM - ${seguroTipoSelecionado}` : "";
 
-  const internetPlano = isPlanoInternet ? servico : hasComandaInternetExtra ? venda.comandaInternetPlano || "" : "";
-  const internetDataInstalacao = isPlanoInternet ? formatDateBr(venda.dataInstalacao || "") : formatDateBr(venda.comandaInternetDataInstalacao || "");
-  const internetContrato = isPlanoInternet ? venda.contrato || "" : hasComandaInternetExtra ? venda.comandaInternetContrato || "" : "";
+  const internetPlano = vendaInternet ? vendaInternet.tipoPlano || "" : hasComandaInternetExtra ? venda.comandaInternetPlano || "" : "";
+  const internetDataInstalacao = vendaInternet ? formatDateBr(vendaInternet.dataInstalacao || "") : formatDateBr(venda.comandaInternetDataInstalacao || "");
+  const internetContrato = vendaInternet ? vendaInternet.contrato || "" : hasComandaInternetExtra ? venda.comandaInternetContrato || "" : "";
   const internetBox = "";
-  const internetPeriodo = isPlanoInternet ? venda.periodo || "" : hasComandaInternetExtra ? venda.comandaInternetPeriodo || "" : "";
-  const internetHfcGpon = isPlanoInternet ? venda.hfcGpon || venda.tecnologia || "" : hasComandaInternetExtra ? venda.comandaInternetHfcGpon || "" : "";
-  const tvPlano = isPlanoTv ? servico : hasComandaTvExtra ? venda.comandaTvPlano || "" : "";
-  const tvDataInstalacao = isPlanoTv ? formatDateBr(venda.dataInstalacao || "") : formatDateBr(venda.comandaTvDataInstalacao || "");
-  const tvContrato = isPlanoTv ? venda.contrato || "" : hasComandaTvExtra ? venda.comandaTvContrato || "" : "";
-  const tvBox = isPlanoTv ? venda.boxImediata || "" : hasComandaTvExtra ? venda.comandaTvBoxImediata || "" : "";
+  const internetPeriodo = vendaInternet ? vendaInternet.periodo || "" : hasComandaInternetExtra ? venda.comandaInternetPeriodo || "" : "";
+  const internetHfcGpon = vendaInternet ? vendaInternet.hfcGpon || vendaInternet.tecnologia || "" : hasComandaInternetExtra ? venda.comandaInternetHfcGpon || "" : "";
+  const tvPlano = vendaTv ? vendaTv.tipoPlano || "" : hasComandaTvExtra ? venda.comandaTvPlano || "" : "";
+  const tvDataInstalacao = vendaTv ? formatDateBr(vendaTv.dataInstalacao || "") : formatDateBr(venda.comandaTvDataInstalacao || "");
+  const tvContrato = vendaTv ? vendaTv.contrato || "" : hasComandaTvExtra ? venda.comandaTvContrato || "" : "";
+  const tvBox = vendaTv ? vendaTv.boxImediata || "" : hasComandaTvExtra ? venda.comandaTvBoxImediata || "" : "";
 
-  const acessoriosQuantidade = isPlanoAcessorio ? parseNumericValue(venda.qty, 1) : hasComandaAcessoriosExtra ? parseNumericValue(venda.comandaAcessoriosQuantidade, 1) : "";
-  const acessoriosReceita = isPlanoAcessorio ? parseNumericValue(venda.valor) : hasComandaAcessoriosExtra ? parseNumericValue(venda.comandaAcessoriosValor) : null;
+  const acessoriosQuantidade = vendaAcessorio ? parseNumericValue(vendaAcessorio.qty, 1) : hasComandaAcessoriosExtra ? parseNumericValue(venda.comandaAcessoriosQuantidade, 1) : "";
+  const acessoriosReceita = vendaAcessorio ? parseNumericValue(vendaAcessorio.valor) : hasComandaAcessoriosExtra ? parseNumericValue(venda.comandaAcessoriosValor) : null;
 
   const xml = `<?xml version="1.0"?>
   <?mso-application progid="Excel.Sheet"?>
@@ -489,7 +608,7 @@ export function exportVendaComanda(filename, venda = {}) {
         ${buildComandaRow([buildComandaCell("COMANDA DE VENDAS - MUELLER PR", { style: "ComandaTitle", mergeAcross: 5 })])}
         ${buildComandaRow([buildComandaCell("Vendedor", { style: "ComandaLabel" }), buildComandaCell(vendedor, { mergeAcross: 1 }), buildComandaCell("Data da venda", { style: "ComandaLabel" }), buildComandaCell(dataVenda, { style: "ComandaValueCenter", mergeAcross: 1 })])}
         ${buildComandaRow([buildComandaCell("Ordem de venda", { style: "ComandaLabel" }), buildComandaCell(ordemVenda, { mergeAcross: 1 }), buildComandaCell("Nome do cliente", { style: "ComandaLabel" }), buildComandaCell(cliente, { mergeAcross: 1 })])}
-        ${buildComandaRow([buildComandaCell("", { mergeAcross: 2 }), buildComandaCell("CPF do cliente", { style: "ComandaLabel" }), buildComandaCell(cpf, { mergeAcross: 1 })])}
+        ${buildComandaRow([buildComandaCell("", { mergeAcross: 2 }), buildComandaCell("CPF/CNPJ do cliente", { style: "ComandaLabel" }), buildComandaCell(cpf, { mergeAcross: 1 })])}
         ${buildComandaRow([buildComandaCell("CEP", { style: "ComandaLabel" }), buildComandaCell(cep, { mergeAcross: 1 }), buildComandaCell("Data de nascimento", { style: "ComandaLabel" }), buildComandaCell(dataNascimento, { style: "ComandaValueCenter", mergeAcross: 1 })])}
         ${buildComandaRow([buildComandaCell("", { mergeAcross: 2 }), buildComandaCell("OBSERVACAO VENDA", { style: "ComandaLabel" }), buildComandaCell(observacao, { mergeAcross: 2 })])}
         ${buildComandaRow([])}

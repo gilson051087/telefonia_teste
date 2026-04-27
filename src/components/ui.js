@@ -19,16 +19,16 @@ const btn = (extra = {}) => ({
 });
 
 export const btnPrimary = btn({
-  background: "linear-gradient(135deg, #DA291C, #7A0F0F)",
+  background: "#DA291C",
   color: "#fff",
   border: "1px solid #DA291C",
-  boxShadow: "0 10px 30px rgba(218,41,28,0.2)",
+  boxShadow: "0 4px 20px rgba(218,41,28,0.25)",
 });
 
 export const btnSecondary = btn({
-  background: "linear-gradient(180deg, var(--panel,#141416), var(--panel-strong,#18181B))",
-  color: "var(--text,#FFFFFF)",
-  border: "1px solid var(--line,#2A2A2E)",
+  background: "transparent",
+  color: "#A1A1AA",
+  border: "1px solid #232327",
 });
 
 export const btnDanger = btn({
@@ -38,8 +38,8 @@ export const btnDanger = btn({
 });
 
 export const inputStyle = {
-  background: "linear-gradient(180deg, var(--panel,#141416), var(--panel-strong,#18181B))",
-  border: "1px solid var(--line,#2A2A2E)",
+  background: "#0B0B0C",
+  border: "1px solid #232327",
   borderRadius: 12,
   color: "var(--text,#FFFFFF)",
   padding: "13px 14px",
@@ -147,9 +147,10 @@ export function StatCard({ icon, label, value, sub, color = PLANO_COLORS["Plano 
             fontSize: featured ? "clamp(16px, 1.4vw, 22px)" : "16px",
             lineHeight: 1,
             marginBottom: featured ? 6 : 6,
-            transform: featured ? "scaleX(0.72)" : "none",
             transformOrigin: featured ? "left center" : "center center",
-            display: "inline-block",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
             filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.4))",
             position: "relative",
             zIndex: 1,
@@ -209,24 +210,24 @@ export function Modal({ title, onClose, children, wide }) {
       <div
         className="modal-panel"
         style={{
-          background: "linear-gradient(180deg,rgba(20,20,22,0.98),rgba(16,16,18,0.98))",
-          border: "1px solid var(--line,#2A2A2E)",
-          borderRadius: 18,
+          background: "#141416",
+          border: "1px solid #232327",
+          borderRadius: 12,
           width: "100%",
           maxWidth: wide ? 680 : 560,
           maxHeight: "92vh",
           overflowY: "auto",
-          boxShadow: "0 30px 70px rgba(0,0,0,0.7)",
+          boxShadow: "0 24px 58px rgba(0,0,0,0.58)",
           animation: "fadeUp 0.2s ease",
         }}
       >
-        <div className="modal-head" style={{ padding: "24px 28px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div className="modal-head" style={{ padding: "26px 30px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <h2 style={{ fontFamily: "'Crimson Pro',serif", fontSize: 22, color: "var(--text,#FFFFFF)", margin: 0 }}>{title}</h2>
           <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--muted,#A1A1AA)", fontSize: 24, cursor: "pointer", lineHeight: 1 }}>
             ×
           </button>
         </div>
-        <div className="modal-body" style={{ padding: 28 }}>{children}</div>
+        <div className="modal-body" style={{ padding: 30 }}>{children}</div>
       </div>
     </div>
   );

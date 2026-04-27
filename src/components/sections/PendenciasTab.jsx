@@ -19,7 +19,7 @@ export default function PendenciasTab({
               <span style={{ color: "#A1A1AA" }}> · Inst.: {fmtDate(item.dataInstalacao)}</span>
             </div>
             <div style={{ color: "#A1A1AA", fontSize: 12 }}>
-              CPF: {item.cpf || "—"} · Contrato: {item.contrato || "—"}
+              CPF/CNPJ: {item.cpf || "—"} · Contrato: {item.contrato || "—"}
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button onClick={() => onMarkInstalled(item.id)} style={{ ...btnPrimary, minHeight: 34, padding: "7px 12px", fontSize: 12 }}>

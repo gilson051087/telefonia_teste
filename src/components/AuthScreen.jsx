@@ -29,6 +29,17 @@ function EyeIcon() {
   );
 }
 
+function EyeOffIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        fill="currentColor"
+        d="M3.28 2.22 21.78 20.72l-1.06 1.06-3.18-3.18A12.17 12.17 0 0 1 12 20c-5.2 0-9.27-3.45-10.8-7a12.06 12.06 0 0 1 4.13-4.9L2.22 3.28l1.06-1.06zm3.21 7.04A9.96 9.96 0 0 0 3.45 13C4.8 15.5 8 18 12 18c1.6 0 3.05-.4 4.3-1.04l-2-2A4.2 4.2 0 0 1 9.04 9.7L6.49 7.14zm4.18 4.18a2.5 2.5 0 0 0 3.33.89l-3.33-3.33a2.5 2.5 0 0 0 0 2.44zM12 6c5.2 0 9.27 3.45 10.8 7a11.7 11.7 0 0 1-2.88 3.72l-1.42-1.42A9.76 9.76 0 0 0 20.55 13C19.2 10.5 16 8 12 8c-.72 0-1.41.08-2.07.24L8.38 6.69A11.97 11.97 0 0 1 12 6zm.16 2.8a4.2 4.2 0 0 1 4.04 4.04l-4.04-4.04z"
+      />
+    </svg>
+  );
+}
+
 function ShieldIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -44,6 +55,7 @@ export default function AuthScreen({ onLogin }) {
   const [loginForm, setLoginForm] = useState({ username: "", senha: "" });
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   function handleKeyDown(event) {
     if (event.key === "Enter") {
@@ -228,7 +240,13 @@ export default function AuthScreen({ onLogin }) {
           background:transparent;
           border:0;
           padding:0;
-          cursor:default;
+          cursor:pointer;
+          border-radius:999px;
+          transition:color .2s ease, transform .2s ease;
+        }
+        .login-pass-toggle:hover{
+          color:#FFFFFF;
+          transform:translateY(-50%) scale(1.08);
         }
         .login-input{
           height:100%;
@@ -379,7 +397,7 @@ export default function AuthScreen({ onLogin }) {
                   </span>
                   <input
                     id="login-password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={loginForm.senha}
                     onChange={(e) => setLoginForm((current) => ({ ...current, senha: e.target.value }))}
                     onKeyDown={handleKeyDown}
@@ -389,8 +407,14 @@ export default function AuthScreen({ onLogin }) {
                     }}
                     placeholder="Digite sua senha"
                   />
-                  <button type="button" className="login-pass-toggle" aria-label="Exibir senha">
-                    <EyeIcon />
+                  <button
+                    type="button"
+                    className="login-pass-toggle"
+                    aria-label={showPassword ? "Ocultar senha" : "Exibir senha"}
+                    aria-pressed={showPassword}
+                    onClick={() => setShowPassword((current) => !current)}
+                  >
+                    {showPassword ? <EyeOffIcon /> : <EyeIcon />}
                   </button>
                 </div>
               </div>

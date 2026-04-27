@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { COMANDA_COMMON_FIELDS, PLANOS, PLANO_COLORS, PLANO_EXTRAS, PLANO_ICONS, PLANO_LABELS, REMUNERATION_OPTIONS_BY_PLANO, getRemunerationValue } from "../../constants/sales";
-import { isValidCPF, maskCEP, maskCPF, maskICCID, maskPhone, normalizePlanoName } from "../../utils/sales";
+import { COMANDA_COMMON_FIELDS, PLANOS, PLANO_EXTRAS, PLANO_ICONS, PLANO_LABELS, REMUNERATION_OPTIONS_BY_PLANO, getRemunerationValue } from "../../constants/sales";
+import { isValidCpfCnpj, maskCEP, maskCpfCnpj, maskICCID, maskPhone, normalizePlanoName } from "../../utils/sales";
+import { AppIcon } from "../icons";
 import { Field, btnPrimary, btnSecondary, inputStyle, labelStyle } from "../ui";
 
 export default function VendaForm({ initial, onSave, onClose, currentUser, sellers, onFeedback }) {
@@ -343,7 +344,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
   function validate() {
     const next = {};
     if (!form.cliente.trim()) next.cliente = "Obrigatório";
-    if (form.cpf && !isValidCPF(form.cpf)) next.cpf = "CPF inválido";
+    if (form.cpf && !isValidCpfCnpj(form.cpf)) next.cpf = "CPF/CNPJ inválido";
     if (!form.plano) next.plano = "Obrigatório";
     if (remunerationOptions.length > 0 && !form.tipoPlano) next.tipoPlano = "Obrigatório";
     if (usesInstallationStatus && !form.statusInstalacao) next.statusInstalacao = "Obrigatório";
@@ -372,7 +373,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
 
     if (step === 2) {
       if (!form.cliente.trim()) next.cliente = "Obrigatório";
-      if (form.cpf && !isValidCPF(form.cpf)) next.cpf = "CPF inválido";
+      if (form.cpf && !isValidCpfCnpj(form.cpf)) next.cpf = "CPF/CNPJ inválido";
       if (!form.vendedorId && currentUser.role !== "seller") next.vendedor = "Selecione um vendedor";
       return next;
     }
@@ -443,7 +444,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
       value={form[key] || ""}
       placeholder={placeholder}
       onChange={(e) => setField(key, e.target.value)}
-      style={{ ...inputStyle, borderColor: errors[key] ? "#EF4444" : "#2A2A2E" }}
+      style={{ ...inputStyle, borderColor: errors[key] ? "#EF4444" : "#232327" }}
     />
   );
 
@@ -475,7 +476,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
             return next;
           });
         }}
-        style={{ ...inputStyle, borderColor: error ? "#EF4444" : "#2A2A2E" }}
+        style={{ ...inputStyle, borderColor: error ? "#EF4444" : "#232327" }}
       />
     );
   };
@@ -511,7 +512,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
               }
               setField(config.key, nextValue);
             }}
-            style={{ ...inputStyle, appearance: "none", borderColor: errors[config.key] ? "#EF4444" : "#2A2A2E" }}
+            style={{ ...inputStyle, appearance: "none", borderColor: errors[config.key] ? "#EF4444" : "#232327" }}
           >
             <option value="">{config.placeholderSelect || "Selecione"}</option>
             {(config.options || []).map((option) => (
@@ -528,7 +529,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
             value={formatBirthDateForInput(form[config.key] || "")}
             placeholder="DD/MM/AAAA"
             onChange={(e) => setField(config.key, maskBirthDate(e.target.value))}
-            style={{ ...inputStyle, borderColor: errors[config.key] ? "#EF4444" : "#2A2A2E" }}
+            style={{ ...inputStyle, borderColor: errors[config.key] ? "#EF4444" : "#232327" }}
           />
         ) : config.type === "date" ? (
           renderMaskedIsoDateInput(config.key, errors[config.key])
@@ -541,7 +542,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
               const rawValue = config.numericOnly ? e.target.value.replace(/\D/g, "") : e.target.value;
               setField(config.key, applyMask ? applyMask(rawValue) : rawValue);
             }}
-            style={{ ...inputStyle, borderColor: errors[config.key] ? "#EF4444" : "#2A2A2E" }}
+            style={{ ...inputStyle, borderColor: errors[config.key] ? "#EF4444" : "#232327" }}
           />
         )}
       </Field>
@@ -562,7 +563,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
           <select
             value={form[key] || ""}
             onChange={(e) => setField(key, e.target.value)}
-            style={{ ...inputStyle, appearance: "none", borderColor: "#2A2A2E" }}
+            style={{ ...inputStyle, appearance: "none", borderColor: "#232327" }}
           >
             <option value="">{placeholder || "Selecione"}</option>
             {options.map((option) => (
@@ -579,7 +580,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
             value={form[key] || ""}
             placeholder={placeholder}
             onChange={(e) => setField(key, applyMask ? applyMask(e.target.value) : e.target.value)}
-            style={{ ...inputStyle, borderColor: "#2A2A2E" }}
+            style={{ ...inputStyle, borderColor: "#232327" }}
           />
         )}
       </Field>
@@ -590,20 +591,20 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
     <div>
       <div
         style={{
-          border: "1px solid #2A2A2E",
-          background: "linear-gradient(135deg, rgba(218,41,28,0.16), rgba(183,28,28,0.18))",
-          borderRadius: 14,
-          padding: "9px 12px",
-          marginBottom: 12,
-          color: "#FFFFFF",
-          fontSize: 12,
+          border: "1px solid #232327",
+          background: "#141416",
+          borderRadius: 12,
+          padding: "11px 14px",
+          marginBottom: 16,
+          color: "#A1A1AA",
+          fontSize: 16,
           lineHeight: 1.35,
         }}
       >
         Escolha plano e cliente para continuar.
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 18 }}>
         {[
           ["1", "Escolha do Plano"],
           ["2", "Dados do cliente"],
@@ -611,7 +612,6 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
         ].map(([idx, label]) => {
           const step = Number(idx);
           const isActive = wizardPage === step;
-          const isDone = wizardPage > step;
           return (
           <div key={idx} style={{ display: "grid", gap: 6 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -622,18 +622,19 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
                   borderRadius: 999,
                   display: "grid",
                   placeItems: "center",
-                  background: isActive || isDone ? "#DA291C" : "rgba(20,20,22,0.85)",
-                  border: isActive || isDone ? "1px solid #B71C1C" : "1px solid #2A2A2E",
-                  color: isActive || isDone ? "#FFFFFF" : "#A1A1AA",
-                  fontSize: 11,
+                  background: isActive ? "#F4F4F5" : "#141416",
+                  border: isActive ? "1px solid #F4F4F5" : "1px solid #232327",
+                  color: isActive ? "#0B0B0C" : "#A1A1AA",
+                  fontSize: 14,
                   fontWeight: 800,
+                  boxShadow: isActive ? "0 0 0 3px rgba(255,255,255,0.06)" : "none",
                 }}
               >
                 {idx}
               </span>
-              <div style={{ height: 2, flex: 1, background: isDone ? "rgba(218,41,28,0.6)" : "rgba(42,42,46,0.95)", borderRadius: 999 }} />
+              <div style={{ height: 2, flex: 1, background: "#232327", borderRadius: 999 }} />
             </div>
-            <div style={{ color: isActive || isDone ? "#FFFFFF" : "#A1A1AA", fontSize: 12, fontWeight: 700 }}>{label}</div>
+            <div style={{ color: isActive ? "#FFFFFF" : "#A1A1AA", fontSize: 16, fontWeight: 700 }}>{label}</div>
           </div>
         )})}
       </div>
@@ -648,10 +649,10 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
               onClick={() => setField("plano", plano)}
               className="plan-choice"
               style={{
-                background: currentPlano === plano ? `${PLANO_COLORS[plano]}22` : "#2A2A2E",
-                border: `1.5px solid ${currentPlano === plano ? PLANO_COLORS[plano] : "#2A2A2E"}`,
+                background: currentPlano === plano ? "rgba(255,255,255,0.03)" : "#141416",
+                border: `1.5px solid ${currentPlano === plano ? "#F4F4F5" : "#232327"}`,
                 borderRadius: 12,
-                padding: "10px 8px",
+                padding: "12px 10px",
                 cursor: "pointer",
                 display: "flex",
                 flexDirection: "column",
@@ -668,21 +669,22 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
                   display: "grid",
                   placeItems: "center",
                   fontSize: 15,
-                  background: `radial-gradient(circle at 30% 30%, ${PLANO_COLORS[plano]}66, ${PLANO_COLORS[plano]}22)`,
-                  border: `1px solid ${PLANO_COLORS[plano]}66`,
-                  boxShadow: `0 8px 14px ${PLANO_COLORS[plano]}33`,
+                  color: currentPlano === plano ? "#FFFFFF" : "#A1A1AA",
+                  background: currentPlano === plano ? "rgba(255,255,255,0.06)" : "#0B0B0C",
+                  border: `1px solid ${currentPlano === plano ? "rgba(255,255,255,0.16)" : "#232327"}`,
+                  boxShadow: "none",
                 }}
               >
-                {PLANO_ICONS[plano]}
+                <AppIcon name={PLANO_ICONS[plano] || "package"} size={15} />
               </span>
-              <span style={{ fontSize: 11, color: currentPlano === plano ? PLANO_COLORS[plano] : "#A1A1AA", fontWeight: 700, textAlign: "center", lineHeight: 1.15 }}>
+              <span style={{ fontSize: 11, color: currentPlano === plano ? "#FFFFFF" : "#A1A1AA", fontWeight: 700, textAlign: "center", lineHeight: 1.15 }}>
                 {PLANO_LABELS[plano]}
               </span>
             </button>
           ))}
         </div>
         {(usesPortabilitySelector || highlightedExtraFields.length > 0) && (
-          <div style={{ marginTop: 12, border: "1px solid #2A2A2E", borderRadius: 12, padding: 12, background: "rgba(20,20,22,0.35)" }}>
+          <div style={{ marginTop: 12, border: "1px solid #232327", borderRadius: 12, padding: 12, background: "rgba(20,20,22,0.35)" }}>
             <div style={{ color: "#FFFFFF", fontSize: 12, fontWeight: 700, marginBottom: 10 }}>Campos principais do plano</div>
             {usesPortabilitySelector && (
               <div style={{ marginBottom: 12 }}>
@@ -690,7 +692,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
                   <select
                     value={form.tipoNumeroPortado || "numero-cliente"}
                     onChange={(e) => setField("tipoNumeroPortado", e.target.value)}
-                    style={{ ...inputStyle, appearance: "none", borderColor: "#2A2A2E", maxWidth: 320 }}
+                    style={{ ...inputStyle, appearance: "none", borderColor: "#232327", maxWidth: 320 }}
                   >
                     <option value="numero-cliente">Habilitação Nova</option>
                     <option value="portabilidade">Portabilidade</option>
@@ -723,12 +725,12 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
           </Field>
         </div>
 
-        <Field label="CPF" error={errors.cpf}>
+        <Field label="CPF/CNPJ" error={errors.cpf}>
           <input
             type="text"
             value={form.cpf || ""}
-            placeholder="000.000.000-00"
-            onChange={(e) => setField("cpf", maskCPF(e.target.value))}
+            placeholder="CPF ou CNPJ"
+            onChange={(e) => setField("cpf", maskCpfCnpj(e.target.value))}
             style={{ ...inputStyle, borderColor: errors.cpf ? "#EF4444" : undefined }}
           />
         </Field>
@@ -772,7 +774,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
               value={form.valor || ""}
               placeholder="0,00"
               onChange={(e) => setField("valor", e.target.value)}
-              style={{ ...inputStyle, borderColor: errors.valor ? "#EF4444" : "#2A2A2E", opacity: isRemunerationLocked ? 0.8 : 1 }}
+              style={{ ...inputStyle, borderColor: errors.valor ? "#EF4444" : "#232327", opacity: isRemunerationLocked ? 0.8 : 1 }}
               step="0.01"
               readOnly={isRemunerationLocked}
             />
@@ -786,8 +788,8 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
       )}
 
       {wizardPage === 3 && extras.length > 0 && (
-        <div style={{ borderTop: "1px solid #2A2A2E", margin: "6px 0 16px", paddingTop: 16 }}>
-          <div style={{ fontSize: 11, color: PLANO_COLORS[currentPlano], fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ borderTop: "1px solid #232327", margin: "8px 0 18px", paddingTop: 18 }}>
+          <div style={{ fontSize: 11, color: "#FFFFFF", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}>
             <span
               style={{
                 width: 24,
@@ -796,11 +798,12 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
                 display: "grid",
                 placeItems: "center",
                 fontSize: 13,
-                background: `${PLANO_COLORS[currentPlano]}22`,
-                border: `1px solid ${PLANO_COLORS[currentPlano]}66`,
+                color: "#A1A1AA",
+                background: "#141416",
+                border: "1px solid #232327",
               }}
             >
-              {PLANO_ICONS[currentPlano]}
+              <AppIcon name={PLANO_ICONS[currentPlano] || "package"} size={13} />
             </span>
             Dados do {PLANO_LABELS[currentPlano]}
           </div>
@@ -810,7 +813,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
             </div>
           )}
           {!initial && canAddPosPagoDependentes && (
-            <div style={{ marginTop: 12, borderTop: "1px dashed #2A2A2E", paddingTop: 12 }}>
+            <div style={{ marginTop: 12, borderTop: "1px dashed #232327", paddingTop: 12 }}>
               <div style={{ color: "#FFFFFF", fontSize: 12, fontWeight: 700, marginBottom: 8 }}>Dependentes do pós-pago</div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
                 <button
@@ -838,7 +841,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
               {dependentesList.length > 0 && (
                 <div style={{ display: "grid", gap: 10 }}>
                   {dependentesList.map((dependente, index) => (
-                    <div key={`dep-${index}`} style={{ border: "1px solid #2A2A2E", borderRadius: 10, padding: 10, background: "rgba(20,20,22,0.5)" }}>
+                    <div key={`dep-${index}`} style={{ border: "1px solid #232327", borderRadius: 10, padding: 10, background: "rgba(20,20,22,0.5)" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 8, alignItems: "center" }}>
                         <div style={{ color: "#FFFFFF", fontSize: 12, fontWeight: 700 }}>Dependente {index + 1}</div>
                         <button
@@ -853,7 +856,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
                         <span
                           style={{
                             display: "inline-block",
-                            border: "1px solid #2A2A2E",
+                            border: "1px solid #232327",
                             borderRadius: 999,
                             padding: "4px 10px",
                             fontSize: 12,
@@ -871,7 +874,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
                             value={dependente?.numero || ""}
                             placeholder="Ex: (41) 99999-0000"
                             onChange={(e) => handleDependenteFieldChange(index, "numero", e.target.value)}
-                            style={{ ...inputStyle, borderColor: "#2A2A2E" }}
+                            style={{ ...inputStyle, borderColor: "#232327" }}
                           />
                         </Field>
                         <Field label="Portabilidade">
@@ -880,16 +883,16 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
                             value={dependente?.portabilidade || ""}
                             placeholder="Ex: (41) 98888-7777"
                             onChange={(e) => handleDependenteFieldChange(index, "portabilidade", e.target.value)}
-                            style={{ ...inputStyle, borderColor: "#2A2A2E" }}
+                            style={{ ...inputStyle, borderColor: "#232327" }}
                           />
                         </Field>
                         <Field label="ICCID">
                           <input
                             type="text"
                             value={dependente?.iccid || ""}
-                            placeholder="Ex: 8955..."
+                            placeholder="Ex: 8955053164"
                             onChange={(e) => handleDependenteFieldChange(index, "iccid", e.target.value)}
-                            style={{ ...inputStyle, borderColor: "#2A2A2E" }}
+                            style={{ ...inputStyle, borderColor: "#232327" }}
                           />
                         </Field>
                       </div>
@@ -903,7 +906,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
             </div>
           )}
           {!initial && isCurrentControle && (
-            <div style={{ marginTop: 12, borderTop: "1px dashed #2A2A2E", paddingTop: 12 }}>
+            <div style={{ marginTop: 12, borderTop: "1px dashed #232327", paddingTop: 12 }}>
               <div style={{ color: "#FFFFFF", fontSize: 12, fontWeight: 700, marginBottom: 8 }}>Linhas extras de Controle no mesmo lançamento</div>
               <button
                 type="button"
@@ -916,7 +919,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
               {controleAdicionaisList.length > 0 && (
                 <div style={{ display: "grid", gap: 10 }}>
                   {controleAdicionaisList.map((item, index) => (
-                    <div key={`controle-extra-${index}`} style={{ border: "1px solid #2A2A2E", borderRadius: 10, padding: 10, background: "rgba(20,20,22,0.5)" }}>
+                    <div key={`controle-extra-${index}`} style={{ border: "1px solid #232327", borderRadius: 10, padding: 10, background: "rgba(20,20,22,0.5)" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 8, alignItems: "center" }}>
                         <div style={{ color: "#FFFFFF", fontSize: 12, fontWeight: 700 }}>Linha extra {index + 1}</div>
                         <button type="button" onClick={() => removeControleAdicional(index)} style={{ ...btnSecondary, padding: "6px 10px", fontSize: 11 }}>
@@ -928,7 +931,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
                           <select
                             value={item?.tipoPlano || ""}
                             onChange={(e) => handleControleAdicionalFieldChange(index, "tipoPlano", e.target.value)}
-                            style={{ ...inputStyle, appearance: "none", borderColor: "#2A2A2E" }}
+                            style={{ ...inputStyle, appearance: "none", borderColor: "#232327" }}
                           >
                             <option value="">Selecione</option>
                             {(REMUNERATION_OPTIONS_BY_PLANO["Plano Controle"] || []).map((option) => (
@@ -944,14 +947,14 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
                             value={item?.numero || ""}
                             placeholder="Ex: (41) 99999-0000"
                             onChange={(e) => handleControleAdicionalFieldChange(index, "numero", e.target.value)}
-                            style={{ ...inputStyle, borderColor: "#2A2A2E" }}
+                            style={{ ...inputStyle, borderColor: "#232327" }}
                           />
                         </Field>
                         <Field label="Numero portado">
                           <select
                             value={item?.tipoNumeroPortado || "numero-cliente"}
                             onChange={(e) => handleControleAdicionalFieldChange(index, "tipoNumeroPortado", e.target.value)}
-                            style={{ ...inputStyle, appearance: "none", borderColor: "#2A2A2E" }}
+                            style={{ ...inputStyle, appearance: "none", borderColor: "#232327" }}
                           >
                             <option value="numero-cliente">Habilitação Nova</option>
                             <option value="portabilidade">Portabilidade</option>
@@ -963,7 +966,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
                             value={item?.portabilidade || ""}
                             placeholder="Ex: (41) 98888-7777"
                             onChange={(e) => handleControleAdicionalFieldChange(index, "portabilidade", e.target.value)}
-                            style={{ ...inputStyle, borderColor: "#2A2A2E", opacity: item?.tipoNumeroPortado === "portabilidade" ? 1 : 0.7 }}
+                            style={{ ...inputStyle, borderColor: "#232327", opacity: item?.tipoNumeroPortado === "portabilidade" ? 1 : 0.7 }}
                             disabled={item?.tipoNumeroPortado !== "portabilidade"}
                           />
                         </Field>
@@ -971,9 +974,9 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
                           <input
                             type="text"
                             value={item?.iccid || ""}
-                            placeholder="Ex: 8955..."
+                            placeholder="Ex: 8955053164"
                             onChange={(e) => handleControleAdicionalFieldChange(index, "iccid", e.target.value)}
-                            style={{ ...inputStyle, borderColor: "#2A2A2E" }}
+                            style={{ ...inputStyle, borderColor: "#232327" }}
                           />
                         </Field>
                       </div>
@@ -989,7 +992,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
 
       {wizardPage === 3 && (
       <>
-      <div style={{ borderTop: "1px solid #2A2A2E", margin: "10px 0 16px", paddingTop: 16 }}>
+      <div style={{ borderTop: "1px solid #232327", margin: "10px 0 16px", paddingTop: 16 }}>
         <div style={{ fontSize: 11, color: "#FFFFFF", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 12 }}>
           Dados da comanda
         </div>
@@ -998,8 +1001,8 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
         </div>
       </div>
 
-      <div style={{ borderTop: "1px solid #2A2A2E", margin: "10px 0 16px", paddingTop: 16 }}>
-        <div style={{ fontSize: 11, color: "#EF4444", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>
+      <div style={{ borderTop: "1px solid #232327", margin: "10px 0 16px", paddingTop: 16 }}>
+        <div style={{ fontSize: 11, color: "#FFFFFF", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>
           Comanda unificada (opcional)
         </div>
         <div style={{ color: "#A1A1AA", fontSize: 12, marginBottom: 12 }}>Ative apenas os serviços extras que quer incluir na mesma comanda.</div>
@@ -1028,8 +1031,8 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
                   })
                 }
                 style={{
-                  border: `1px solid ${active ? "#EF4444" : "#2A2A2E"}`,
-                  background: active ? "rgba(218,41,28,0.15)" : "rgba(20,20,22,0.7)",
+                  border: `1px solid ${active ? "#F4F4F5" : "#232327"}`,
+                  background: active ? "rgba(255,255,255,0.03)" : "#141416",
                   color: active ? "#FFFFFF" : "#A1A1AA",
                   borderRadius: 999,
                   padding: "6px 12px",
@@ -1045,7 +1048,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
         </div>
 
         {!isCurrentMovel && form.comandaMovelAtiva && (
-          <div style={{ marginBottom: 12, borderTop: "1px solid #2A2A2E", paddingTop: 12 }}>
+          <div style={{ marginBottom: 12, borderTop: "1px solid #232327", paddingTop: 12 }}>
             <div style={{ color: "#FFFFFF", fontSize: 12, fontWeight: 700, marginBottom: 8 }}>Móvel</div>
             <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
               <Field label="Plano móvel">
@@ -1060,7 +1063,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
                       comandaMovelServico: options[0]?.label || "",
                     }));
                   }}
-                  style={{ ...inputStyle, appearance: "none", borderColor: "#2A2A2E" }}
+                  style={{ ...inputStyle, appearance: "none", borderColor: "#232327" }}
                 >
                   {comandaMovelPlanoOptions.map((option) => (
                     <option key={option} value={option}>
@@ -1072,13 +1075,13 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
               {renderComandaInput("comandaMovelServico", "Serviço móvel", "text", "Selecione", comandaMovelServicoOptions)}
               {renderComandaInput("comandaMovelNumero", "Número do cliente", "text", "Ex: (41) 99999-0000")}
               {renderComandaInput("comandaMovelPortabilidade", "Número portado (se houver)", "text", "Ex: (41) 98888-7777")}
-              {renderComandaInput("comandaMovelIccid", "ICCID", "text", "Ex: 8955...")}
+              {renderComandaInput("comandaMovelIccid", "ICCID", "text", "Ex: 8955053164")}
             </div>
           </div>
         )}
 
         {!isCurrentInternet && form.comandaInternetAtiva && (
-          <div style={{ marginBottom: 12, borderTop: "1px solid #2A2A2E", paddingTop: 12 }}>
+          <div style={{ marginBottom: 12, borderTop: "1px solid #232327", paddingTop: 12 }}>
             <div style={{ color: "#FFFFFF", fontSize: 12, fontWeight: 700, marginBottom: 8 }}>Internet</div>
             <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
               {renderComandaInput("comandaInternetPlano", "Plano de internet", "text", "Selecione", internetPlanOptions)}
@@ -1091,7 +1094,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
         )}
 
         {!isCurrentTv && form.comandaTvAtiva && (
-          <div style={{ marginBottom: 12, borderTop: "1px solid #2A2A2E", paddingTop: 12 }}>
+          <div style={{ marginBottom: 12, borderTop: "1px solid #232327", paddingTop: 12 }}>
             <div style={{ color: "#FFFFFF", fontSize: 12, fontWeight: 700, marginBottom: 8 }}>TV</div>
             <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
               {renderComandaInput("comandaTvPlano", "Plano de TV", "text", "Selecione", tvPlanOptions)}
@@ -1103,7 +1106,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
         )}
 
         {!isCurrentAparelho && form.comandaAparelhoAtiva && (
-          <div style={{ marginBottom: 12, borderTop: "1px solid #2A2A2E", paddingTop: 12 }}>
+          <div style={{ marginBottom: 12, borderTop: "1px solid #232327", paddingTop: 12 }}>
             <div style={{ color: "#FFFFFF", fontSize: 12, fontWeight: 700, marginBottom: 8 }}>Aparelho</div>
             <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
               {renderComandaInput("comandaAparelhoModelo", "Modelo", "text", "Ex: MOTOROLA G35")}
@@ -1114,7 +1117,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
         )}
 
         {!isCurrentAcessorios && form.comandaAcessoriosAtiva && (
-          <div style={{ marginBottom: 4, borderTop: "1px solid #2A2A2E", paddingTop: 12 }}>
+          <div style={{ marginBottom: 4, borderTop: "1px solid #232327", paddingTop: 12 }}>
             <div style={{ color: "#FFFFFF", fontSize: 12, fontWeight: 700, marginBottom: 8 }}>Acessórios</div>
             <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
               {renderComandaInput("comandaAcessoriosDescricao", "Descrição", "text", "Ex: Fone + capa")}
@@ -1128,9 +1131,10 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
       )}
 
       {wizardPage === 3 && !initial && currentPlano === "Aparelho Celular" && (
-        <div style={{ borderTop: "1px solid #2A2A2E", margin: "6px 0 16px", paddingTop: 16 }}>
-          <div style={{ fontSize: 11, color: "#22C55E", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 12 }}>
-            🛡️ Seguro automático
+        <div style={{ borderTop: "1px solid #232327", margin: "6px 0 16px", paddingTop: 16 }}>
+          <div style={{ fontSize: 11, color: "#22C55E", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+            <AppIcon name="shield" size={14} />
+            Seguro automático
           </div>
           <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
             <Field label="Incluir seguro junto com o celular">
@@ -1154,7 +1158,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
                 value={form.tipoSeguro || ""}
                 disabled={!form.adicionarSeguro}
                 onChange={(e) => setField("tipoSeguro", e.target.value)}
-                style={{ ...inputStyle, appearance: "none", borderColor: errors.tipoSeguro ? "#EF4444" : "#2A2A2E", opacity: form.adicionarSeguro ? 1 : 0.6 }}
+                style={{ ...inputStyle, appearance: "none", borderColor: errors.tipoSeguro ? "#EF4444" : "#232327", opacity: form.adicionarSeguro ? 1 : 0.6 }}
               >
                 <option value="">Selecione o seguro</option>
                 {seguroOptions.map((item) => (

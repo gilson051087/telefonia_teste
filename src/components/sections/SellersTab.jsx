@@ -1,5 +1,6 @@
 import { Badge, StatCard, btnDanger, btnPrimary, btnSecondary } from "../ui";
 import { fmtBRL } from "../../utils/sales";
+import { AppIcon } from "../icons";
 
 function fmtMonthLabel(value) {
   if (!value) return "";
@@ -50,16 +51,18 @@ export default function SellersTab({ userSummaries, currentCycleMonth, onOpenSel
       </div>
 
       <div className="kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16 }}>
-        <StatCard icon="👥" label={canManageAdmins ? "Usuários" : "Vendedores"} value={userSummaries.length} color="#DA291C" />
-        <StatCard icon="🛠️" label={canManageAdmins ? "Administradores" : "Vendedores ativos"} value={canManageAdmins ? adminCount : sellerSummaries.length} color="#DA291C" />
-        <StatCard icon="📋" label="Vendas da Equipe" value={sellerSummaries.reduce((sum, seller) => sum + seller.vendas, 0)} color="#DA291C" />
-        <StatCard icon="✅" label="Ativas" value={sellerSummaries.reduce((sum, seller) => sum + seller.ativas, 0)} color="#22C55E" />
-        <StatCard icon="⏳" label="Pendentes" value={sellerSummaries.reduce((sum, seller) => sum + seller.pendentes, 0)} color="#FACC15" />
+        <StatCard icon={<AppIcon name="users" size={18} />} label={canManageAdmins ? "Usuários" : "Vendedores"} value={userSummaries.length} color="#DA291C" />
+        <StatCard icon={<AppIcon name="tools" size={18} />} label={canManageAdmins ? "Administradores" : "Vendedores ativos"} value={canManageAdmins ? adminCount : sellerSummaries.length} color="#DA291C" />
+        <StatCard icon={<AppIcon name="sales" size={18} />} label="Vendas da Equipe" value={sellerSummaries.reduce((sum, seller) => sum + seller.vendas, 0)} color="#DA291C" />
+        <StatCard icon={<AppIcon name="check" size={18} />} label="Ativas" value={sellerSummaries.reduce((sum, seller) => sum + seller.ativas, 0)} color="#22C55E" />
+        <StatCard icon={<AppIcon name="hourglass" size={18} />} label="Pendentes" value={sellerSummaries.reduce((sum, seller) => sum + seller.pendentes, 0)} color="#FACC15" />
       </div>
 
       {userSummaries.length === 0 ? (
         <div style={{ textAlign: "center", padding: "80px 0", color: "#2A2A2E" }}>
-          <div style={{ fontSize: 52, marginBottom: 12 }}>👥</div>
+          <div style={{ width: 58, height: 58, margin: "0 auto 12px", display: "grid", placeItems: "center", color: "#52525B" }}>
+            <AppIcon name="users" size={42} strokeWidth={1.5} />
+          </div>
           <p style={{ fontFamily: "'Crimson Pro',serif", fontSize: 18, color: "#A1A1AA", marginBottom: 6 }}>
             {canManageAdmins ? "Nenhum usuário cadastrado" : "Nenhum vendedor cadastrado"}
           </p>

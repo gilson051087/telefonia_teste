@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PLANOS, PLANO_COLORS, PLANO_ICONS, PLANO_LABELS } from "../../constants/sales";
 import { fmtBRL, fmtDate } from "../../utils/sales";
+import { AppIcon } from "../icons";
 import { Badge, btnPrimary, btnSecondary, inputStyle } from "../ui";
 
 function SortArrow({ col, sortBy, sortDir }) {
@@ -250,7 +251,9 @@ export default function VendasTab({
 
       {filtered.length === 0 ? (
         <div style={{ textAlign: "center", padding: "80px 0", color: "#2A2A2E", flex: 1 }}>
-          <div style={{ fontSize: 52, marginBottom: 12 }}>📡</div>
+          <div style={{ width: 58, height: 58, margin: "0 auto 12px", display: "grid", placeItems: "center", color: "#52525B" }}>
+            <AppIcon name="signal" size={42} strokeWidth={1.5} />
+          </div>
           <p style={{ fontFamily: "'Crimson Pro',serif", fontSize: 18, color: "#A1A1AA", marginBottom: 6 }}>Nenhum lançamento encontrado</p>
           <button onClick={onOpenNew} className="touch-btn lift-hover" style={{ ...btnPrimary, marginTop: 12 }}>
             + Nova venda
@@ -260,7 +263,7 @@ export default function VendasTab({
         <div style={{ display: "flex", flexDirection: "column", gap: 16, minHeight: 0, overflowY: "visible", paddingRight: 2, alignItems: "stretch", paddingBottom: 18 }}>
           {grouped.map((group) => {
             const color = PLANO_COLORS[group.plano] || "#DA291C";
-            const icon = PLANO_ICONS[group.plano] || "📦";
+            const icon = PLANO_ICONS[group.plano] || "package";
             const title = PLANO_LABELS[group.plano] || group.plano;
             const isOpen = Boolean(openGroups[group.plano]);
             const groupTotal = group.items.reduce((sum, venda) => sum + (Number(venda.valor) || 0), 0);
@@ -315,7 +318,7 @@ export default function VendasTab({
                           boxShadow: `0 8px 14px ${color}22`,
                         }}
                       >
-                        {icon}
+                        <AppIcon name={icon} size={16} />
                       </span>
                       <span style={{ fontSize: 18 }}>{title}</span>
                     </div>
@@ -377,13 +380,16 @@ export default function VendasTab({
                           <td style={{ padding: "14px 12px" }}>
                             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                               <button title="Ver detalhes" onClick={() => onView(venda)} className="action-pill action-pill-info">
-                                👁 Ver
+                                <AppIcon name="eye" size={14} />
+                                Ver
                               </button>
                               <button title="Editar" onClick={() => onEdit(venda)} className="action-pill action-pill-edit">
-                                ✏ Editar
+                                <AppIcon name="edit" size={14} />
+                                Editar
                               </button>
                               <button title="Excluir" onClick={() => onDelete(venda.id)} className="action-pill action-pill-delete">
-                                🗑 Excluir
+                                <AppIcon name="trash" size={14} />
+                                Excluir
                               </button>
                             </div>
                           </td>
@@ -423,12 +429,15 @@ export default function VendasTab({
 
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
                         <button title="Ver detalhes" onClick={() => onView(venda)} className="action-pill action-pill-info">
+                          <AppIcon name="eye" size={14} />
                           Ver
                         </button>
                         <button title="Editar" onClick={() => onEdit(venda)} className="action-pill action-pill-edit">
+                          <AppIcon name="edit" size={14} />
                           Editar
                         </button>
                         <button title="Excluir" onClick={() => onDelete(venda.id)} className="action-pill action-pill-delete">
+                          <AppIcon name="trash" size={14} />
                           Excluir
                         </button>
                       </div>

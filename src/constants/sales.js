@@ -31,14 +31,14 @@ export const PLANO_LABELS = {
 };
 
 export const PLANO_ICONS = {
-  "Plano Controle": "📱",
-  "Plano Pós-Pago": "📱",
-  "Internet Residencial": "🌐",
-  "Internet Movel Mais": "📶",
-  TV: "📺",
-  "Aparelho Celular": "📲",
-  Acessorios: "🎧",
-  "Seguro Movel Celular": "🛡️",
+  "Plano Controle": "phone",
+  "Plano Pós-Pago": "phone",
+  "Internet Residencial": "wifi",
+  "Internet Movel Mais": "signal",
+  TV: "tv",
+  "Aparelho Celular": "device",
+  Acessorios: "headset",
+  "Seguro Movel Celular": "shield",
 };
 
 export const PLANO_COLORS = {
@@ -129,9 +129,9 @@ export const PLANO_EXTRAS = {
       placeholderSelect: "Selecione o tipo do plano",
       options: REMUNERATION_OPTIONS_BY_PLANO["Plano Controle"].map((item) => item.label),
     },
-    { key: "numero", label: "Número do Cliente", type: "text", placeholder: "Ex: (41) 99999-0000" },
+    { key: "numero", label: "Número Provisório / Cliente", type: "text", placeholder: "Ex: (41) 99999-0000" },
     { key: "portabilidade", label: "Número da Portabilidade", type: "text", placeholder: "Ex: (41) 98765-1234" },
-    { key: "iccid", label: "ICCID", type: "text", placeholder: "Ex: 8955053165000***" },
+    { key: "iccid", label: "ICCID", type: "text", placeholder: "Ex: 8955053164000601" },
   ],
   "Plano Pós-Pago": [
     {
@@ -141,9 +141,9 @@ export const PLANO_EXTRAS = {
       placeholderSelect: "Selecione o tipo do plano",
       options: REMUNERATION_OPTIONS_BY_PLANO["Plano Pós-Pago"].map((item) => item.label),
     },
-    { key: "numero", label: "Número do Cliente", type: "text", placeholder: "Ex: (41) 99999-0000" },
+    { key: "numero", label: "Número Provisório / Cliente", type: "text", placeholder: "Ex: (41) 99999-0000" },
     { key: "portabilidade", label: "Número da Portabilidade", type: "text", placeholder: "Ex: (41) 98888-7777" },
-    { key: "iccid", label: "ICCID", type: "text", placeholder: "Ex: 8955..." },
+    { key: "iccid", label: "ICCID", type: "text", placeholder: "Ex: 8955053164000601" },
     { key: "linhas", label: "Qtd. Linhas", type: "number", placeholder: "1" },
   ],
   "Internet Residencial": [
@@ -166,9 +166,9 @@ export const PLANO_EXTRAS = {
       placeholderSelect: "Selecione o tipo do plano",
       options: REMUNERATION_OPTIONS_BY_PLANO["Internet Movel Mais"].map((item) => item.label),
     },
-    { key: "numero", label: "Número do Cliente", type: "text", placeholder: "Ex: (41) 99999-0000" },
+    { key: "numero", label: "Número Provisório / Cliente", type: "text", placeholder: "Ex: (41) 99999-0000" },
     { key: "portabilidade", label: "Número da Portabilidade", type: "text", placeholder: "Ex: (41) 98888-7777" },
-    { key: "iccid", label: "ICCID", type: "text", placeholder: "Ex: 8955..." },
+    { key: "iccid", label: "ICCID", type: "text", placeholder: "Ex: 8955053164000601" },
   ],
   TV: [
     {
@@ -201,9 +201,9 @@ export const PLANO_EXTRAS = {
       placeholderSelect: "Selecione o tipo do plano",
       options: REMUNERATION_OPTIONS_BY_PLANO["Seguro Movel Celular"].map((item) => item.label),
     },
-    { key: "numero", label: "Número do Cliente", type: "text", placeholder: "Ex: (41) 99999-0000" },
+    { key: "numero", label: "Número Provisório / Cliente", type: "text", placeholder: "Ex: (41) 99999-0000" },
     { key: "portabilidade", label: "Número da Portabilidade", type: "text", placeholder: "Ex: (41) 98888-7777" },
-    { key: "iccid", label: "ICCID", type: "text", placeholder: "Ex: 8955..." },
+    { key: "iccid", label: "ICCID", type: "text", placeholder: "Ex: 88955053164000601" },
   ],
 };
 

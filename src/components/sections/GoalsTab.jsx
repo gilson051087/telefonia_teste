@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { fmtBRL } from "../../utils/sales";
+import { AppIcon } from "../icons";
 import { Badge } from "../ui";
 
 export default function GoalsTab({
@@ -7,6 +8,7 @@ export default function GoalsTab({
   onGoalTargetChange,
   projectedGoalProgress,
   elapsedDays = 1,
+  remainingDays = 0,
   ownerName = "",
   ownerOptions = [],
   selectedOwnerId = "",
@@ -116,6 +118,19 @@ export default function GoalsTab({
 
   return (
     <div style={{ display: "grid", gap: 18 }}>
+      <style>{`
+        .goals-indicator-grid{
+          display:grid;
+          gap:12px;
+          grid-template-columns:repeat(3, minmax(0, 1fr));
+        }
+        @media (max-width: 980px){
+          .goals-indicator-grid{grid-template-columns:repeat(2, minmax(0, 1fr));}
+        }
+        @media (max-width: 640px){
+          .goals-indicator-grid{grid-template-columns:1fr;}
+        }
+      `}</style>
       <div
         className="panel-surface"
         style={{
@@ -181,12 +196,27 @@ export default function GoalsTab({
         </div>
       </div>
 
-      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
+      <div className="goals-indicator-grid">
         {items.map((item) => {
           const progress = getProgressPercent(item);
           const isMet = item.remaining <= 0;
           const accent = accentByKey[item.key] || "#EF4444";
           const projectedValue = Number(projected[item.key]) || 0;
+          const target = Number(item.target) || 0;
+          const done = Number(item.done) || 0;
+          const eightyPercentTarget = item.type === "currency" ? target * 0.8 : Math.ceil(target * 0.8);
+          const remainingToEighty = Math.max(0, eightyPercentTarget - done);
+          const hasEightyTarget = target > 0;
+          const reachedEighty = hasEightyTarget && remainingToEighty <= 0;
+          const remainingToFull = Math.max(0, target - done);
+          const hasFullTarget = target > 0;
+          const reachedFull = hasFullTarget && remainingToFull <= 0;
+          const hasRemainingDays = Number(remainingDays) > 0;
+          const daysLeft = hasRemainingDays ? Number(remainingDays) : 1;
+          const requiredDailyToEightyRaw = remainingToEighty / daysLeft;
+          const requiredDailyToFullRaw = remainingToFull / daysLeft;
+          const requiredDailyToEighty = item.type === "currency" ? requiredDailyToEightyRaw : Math.ceil(requiredDailyToEightyRaw);
+          const requiredDailyToFull = item.type === "currency" ? requiredDailyToFullRaw : Math.ceil(requiredDailyToFullRaw);
           const dailyEfficiencyRaw = (Number(item.done) || 0) / Math.max(1, elapsedDays);
           const dailyEfficiency = item.type === "currency" ? dailyEfficiencyRaw : Math.round(dailyEfficiencyRaw);
           return (
@@ -204,8 +234,8 @@ export default function GoalsTab({
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                <div style={{ color: "#FFFFFF", fontSize: 13, fontWeight: 700 }}>
-                  <span style={{ marginRight: 6 }}>{item.icon}</span>
+                <div style={{ color: "#FFFFFF", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 7 }}>
+                  <AppIcon name={item.icon || "target"} size={15} color={accent} />
                   {item.label}
                 </div>
                 <Badge color={isMet ? "#22C55E" : "#EF4444"}>
@@ -243,6 +273,56 @@ export default function GoalsTab({
                 </span>
               </div>
 
+              <div style={{ display: "grid", gap: 8 }}>
+                <div
+                  style={{
+                    border: "1px solid rgba(42,42,46,0.9)",
+                    borderRadius: 10,
+                    padding: "9px 10px",
+                    background: reachedEighty ? "rgba(34,197,94,0.1)" : "rgba(250,204,21,0.08)",
+                    color: "#A1A1AA",
+                    fontSize: 12,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <span>Para 80% da meta</span>
+                  <strong style={{ color: reachedEighty ? "#22C55E" : "#FACC15" }}>
+                    {!hasEightyTarget
+                      ? "Defina a meta"
+                      : reachedEighty
+                        ? "80% atingido"
+                        : `Falta ${renderGoalValue(item, remainingToEighty)}`}
+                  </strong>
+                </div>
+
+                <div
+                  style={{
+                    border: "1px solid rgba(42,42,46,0.9)",
+                    borderRadius: 10,
+                    padding: "9px 10px",
+                    background: reachedFull ? "rgba(34,197,94,0.1)" : "rgba(218,41,28,0.08)",
+                    color: "#A1A1AA",
+                    fontSize: 12,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <span>Para 100% da meta</span>
+                  <strong style={{ color: reachedFull ? "#22C55E" : "#FACC15" }}>
+                    {!hasFullTarget
+                      ? "Defina a meta"
+                      : reachedFull
+                        ? "100% atingido"
+                        : `Falta ${renderGoalValue(item, remainingToFull)}`}
+                  </strong>
+                </div>
+              </div>
+
               <div style={{ display: "grid", gap: 4, color: "#A1A1AA", fontSize: 11 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                   <span>Eficiência diária: <strong style={{ color: "#FFFFFF" }}>{renderGoalValue(item, dailyEfficiency)}/dia</strong></span>
@@ -253,6 +333,32 @@ export default function GoalsTab({
                 <div>
                   Projeção fechamento:{" "}
                   <strong style={{ color: "#FFFFFF" }}>{renderGoalValue(item, projectedValue)}</strong>
+                </div>
+                <div style={{ borderTop: "1px solid rgba(42,42,46,0.85)", paddingTop: 6, display: "grid", gap: 4 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                    <span>Necessário/dia para 80%:</span>
+                    <strong style={{ color: reachedEighty ? "#22C55E" : "#FACC15" }}>
+                      {!hasEightyTarget
+                        ? "Defina a meta"
+                        : reachedEighty
+                          ? "Atingido"
+                          : !hasRemainingDays
+                            ? "Ciclo encerrado"
+                          : `${renderGoalValue(item, requiredDailyToEighty)}/dia`}
+                    </strong>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                    <span>Necessário/dia para 100%:</span>
+                    <strong style={{ color: reachedFull ? "#22C55E" : "#FACC15" }}>
+                      {!hasFullTarget
+                        ? "Defina a meta"
+                        : reachedFull
+                          ? "Atingido"
+                          : !hasRemainingDays
+                            ? "Ciclo encerrado"
+                          : `${renderGoalValue(item, requiredDailyToFull)}/dia`}
+                    </strong>
+                  </div>
                 </div>
               </div>
 
