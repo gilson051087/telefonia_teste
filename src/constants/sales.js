@@ -78,8 +78,12 @@ export const REMUNERATION_OPTIONS_BY_PLANO = {
     { label: "Claro Pós 500GB (Multi)", value: 800.0 },
   ],
   "Internet Residencial": [
+    { label: "Fibra 350 Mega (claro Multi) ", value: 79.9 },
+    { label: "Fibra 350 Mega (claro Single) ", value: 99.9 },
     { label: "Fibra 500 Mega (Claro Multi)", value: 99.9 },
     { label: "Fibra 500 Mega (Single)", value: 119.9 },
+    { label: "Fibra 600 Mega (Claro Multi)", value: 99.9 },
+    { label: "Fibra 600 Mega (Claro Single)", value: 119.9 },
     { label: "Fibra 1 Giga (Claro Multi)", value: 149.9 },
     { label: "Fibra 1 Giga (Single)", value: 199.9 },
     { label: "Fibra 5 Giga (Claro Multi)", value: 449.9 },
