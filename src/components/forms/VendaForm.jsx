@@ -1,8 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { COMANDA_COMMON_FIELDS, PLANOS, PLANO_EXTRAS, PLANO_ICONS, PLANO_LABELS, REMUNERATION_OPTIONS_BY_PLANO, getRemunerationValue } from "../../constants/sales";
 import { isValidCpfCnpj, maskCEP, maskCpfCnpj, maskICCID, maskPhone, normalizePlanoName } from "../../utils/sales";
 import { AppIcon } from "../icons";
 import { Field, btnPrimary, btnSecondary, inputStyle, labelStyle } from "../ui";
+
+const padDatePart = (value) => String(value).padStart(2, "0");
+const getLocalTodayDate = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${padDatePart(now.getMonth() + 1)}-${padDatePart(now.getDate())}`;
+};
 
 export default function VendaForm({ initial, onSave, onClose, currentUser, sellers, onFeedback }) {
   const installationPlanos = ["Internet Residencial", "TV"];
@@ -18,7 +24,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
     tipoPlano: "",
     descricao: "",
     valor: "",
-    data: new Date().toISOString().split("T")[0],
+    data: getLocalTodayDate(),
     vendedor: defaultSellerName,
     vendedorId: defaultSellerId,
     adicionarSeguro: false,
@@ -115,6 +121,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
   const [isSaving, setIsSaving] = useState(false);
   const [dateDrafts, setDateDrafts] = useState({});
   const [wizardPage, setWizardPage] = useState(initial ? 3 : 1);
+  const autoSaleDateRef = useRef(defaultForm.data);
   const currentPlano = normalizePlanoName(form.plano) || "Plano Controle";
   const extras = PLANO_EXTRAS[currentPlano] || [];
   const remunerationOptions = useMemo(() => REMUNERATION_OPTIONS_BY_PLANO[currentPlano] || [], [currentPlano]);
@@ -212,6 +219,22 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
     if (!comandaMovelServicoOptions.length) return;
     setForm((current) => ({ ...current, comandaMovelServico: comandaMovelServicoOptions[0] }));
   }, [form.comandaMovelAtiva, form.comandaMovelServico, comandaMovelServicoOptions]);
+
+  useEffect(() => {
+    if (initial) return undefined;
+
+    const timer = setInterval(() => {
+      const today = getLocalTodayDate();
+      setForm((current) => {
+        if (current.data !== autoSaleDateRef.current) return current;
+        if (current.data === today) return current;
+        autoSaleDateRef.current = today;
+        return { ...current, data: today };
+      });
+    }, 60000);
+
+    return () => clearInterval(timer);
+  }, [initial]);
 
   function setField(key, value) {
     if (key === "plano") {

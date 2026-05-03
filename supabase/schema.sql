@@ -463,7 +463,7 @@ begin
     raise exception 'Mes de competencia invalido.';
   end if;
 
-  if v_goal_key not in ('bandaLarga', 'grossTotal', 'posPagoTitular', 'residencial', 'receita', 'tv') then
+  if v_goal_key not in ('bandaLarga', 'grossTotal', 'posPagoTitular', 'residencial', 'receita', 'tv', 'aparelhos') then
     raise exception 'Indicador de meta invalido.';
   end if;
 

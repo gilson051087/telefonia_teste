@@ -950,6 +950,7 @@ export default function App() {
   const isAllAdminsGoalView = canReviewAdminGoals && goalOwnerId === GOAL_OWNER_ALL_ADMINS;
   const selectedGoalOwner = isAllAdminsGoalView ? null : (users.find((user) => user.id === goalOwnerId) || currentUser);
   const selectedGoalOwnerId = isAllAdminsGoalView ? null : (selectedGoalOwner?.id || currentUser?.id || null);
+  const isAdminGoalScope = isAllAdminsGoalView || selectedGoalOwner?.role === "admin" || selectedGoalOwner?.role === "superadmin";
   const goalScopeUsers = isAllAdminsGoalView
     ? adminGoalUsers
     : selectedGoalOwner
@@ -957,10 +958,12 @@ export default function App() {
       : [];
   const goalScopeUserIds = new Set(goalScopeUsers.map((user) => user.id));
   const goalScopeUserNames = new Set(goalScopeUsers.map((user) => String(user.nome || "").toUpperCase()));
-  const goalScopedVendas = cycleScopedVendas.filter((venda) => {
-    const sellerName = String(venda.vendedor || "").toUpperCase();
-    return goalScopeUserIds.has(venda.vendedorId) || goalScopeUserNames.has(sellerName);
-  });
+  const goalScopedVendas = isAdminGoalScope
+    ? cycleScopedVendas
+    : cycleScopedVendas.filter((venda) => {
+        const sellerName = String(venda.vendedor || "").toUpperCase();
+        return goalScopeUserIds.has(venda.vendedorId) || goalScopeUserNames.has(sellerName);
+      });
   const goalScopedTotal = goalScopedVendas
     .filter((venda) => venda.status === "Ativa")
     .reduce((sum, venda) => sum + getVendaRevenue(venda), 0);
@@ -1164,7 +1167,7 @@ export default function App() {
 
   const handleDownloadComanda = useCallback((venda, comandaVendas = []) => {
     if (!venda) return;
-    const baseDate = venda.data || new Date().toISOString().split("T")[0];
+    const baseDate = venda.data || getTodayDate();
     const safeClient = slugify(venda.cliente || "cliente").slice(0, 50) || "cliente";
     exportVendaComanda(`comanda-venda-${baseDate}-${safeClient}.xls`, venda, comandaVendas);
   }, []);
@@ -1218,9 +1221,9 @@ export default function App() {
 
   const buildComandaAdditionalSales = useCallback((baseData = {}, controleExtrasList = []) => {
     const additionalSales = [];
-    const addAdditional = (payload) => {
+    const addAdditional = (payload, options = {}) => {
       const valorNumerico = parseNumericValue(payload?.valor);
-      if (!payload?.plano || !payload?.tipoPlano || valorNumerico <= 0) return;
+      if (!payload?.plano || !payload?.tipoPlano || (!options.allowZeroValue && valorNumerico <= 0)) return;
       additionalSales.push({
         ...payload,
         valor: valorNumerico,
@@ -1292,16 +1295,14 @@ export default function App() {
 
     if (hasAparelhoExtra && baseData.plano !== "Aparelho Celular") {
       const aparelhoValor = num(baseData.comandaAparelhoValor);
-      if (aparelhoValor > 0) {
-        addAdditional({
-          ...additionalBase,
-          plano: "Aparelho Celular",
-          tipoPlano: baseData.comandaAparelhoModelo || "Aparelho adicional",
-          valor: aparelhoValor,
-          modelo: baseData.comandaAparelhoModelo || "",
-          imei: baseData.comandaAparelhoImei || "",
-        });
-      }
+      addAdditional({
+        ...additionalBase,
+        plano: "Aparelho Celular",
+        tipoPlano: baseData.comandaAparelhoModelo || "Aparelho adicional",
+        valor: aparelhoValor,
+        modelo: baseData.comandaAparelhoModelo || "",
+        imei: baseData.comandaAparelhoImei || "",
+      }, { allowZeroValue: true });
     }
 
     if (hasAcessoriosExtra && baseData.plano !== "Acessorios") {
