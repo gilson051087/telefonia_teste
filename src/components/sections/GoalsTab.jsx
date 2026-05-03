@@ -57,6 +57,7 @@ export default function GoalsTab({
     residencial: "#DA291C",
     receita: "#DA291C",
     tv: "#DA291C",
+    aparelhos: "#DA291C",
   };
 
   function sanitizeDraft(item, raw) {

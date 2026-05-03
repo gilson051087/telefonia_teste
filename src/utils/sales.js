@@ -344,8 +344,7 @@ function isMobilePlano(plano) {
   return (
     planoLower === "plano controle" ||
     planoLower === "plano pos-pago" ||
-    planoLower === "internet movel mais" ||
-    planoLower === "seguro movel celular"
+    planoLower === "internet movel mais"
   );
 }
 
@@ -400,7 +399,7 @@ export function exportVendaComanda(filename, venda = {}, relatedVendas = []) {
   const vendaMovel = isPlanoMovel
     ? venda
     : findVendaByPlano((itemPlano) =>
-        ["plano controle", "plano pos-pago", "internet movel mais", "seguro movel celular"].includes(itemPlano)
+        ["plano controle", "plano pos-pago", "internet movel mais"].includes(itemPlano)
       );
   const vendaInternet = isPlanoInternet ? venda : findVendaByPlano((itemPlano) => itemPlano === "internet residencial");
   const vendaTv = isPlanoTv ? venda : findVendaByPlano((itemPlano) => itemPlano === "tv");

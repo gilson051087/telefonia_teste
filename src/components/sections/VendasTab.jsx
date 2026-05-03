@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PLANOS, PLANO_COLORS, PLANO_ICONS, PLANO_LABELS } from "../../constants/sales";
 import { fmtBRL, fmtDate } from "../../utils/sales";
 import { AppIcon } from "../icons";
@@ -21,6 +21,7 @@ export default function VendasTab({
   fDia,
   setFDia,
   filtered,
+  animatedSaleIds = [],
   setPage,
   sortBy,
   sortDir,
@@ -34,6 +35,7 @@ export default function VendasTab({
   pendingInstallationCount,
 }) {
   const [openGroups, setOpenGroups] = useState({});
+  const animatedSaleIdSet = new Set(animatedSaleIds);
 
   const grouped = PLANOS.map((plano) => ({
     plano,
@@ -44,6 +46,13 @@ export default function VendasTab({
   if (extras.length > 0) {
     grouped.push({ plano: "Outros", items: extras });
   }
+
+  const highlightedGroupKey = grouped.find((group) => group.items.some((venda) => animatedSaleIdSet.has(venda.id)))?.plano || "";
+
+  useEffect(() => {
+    if (!highlightedGroupKey) return;
+    setOpenGroups((current) => (current[highlightedGroupKey] ? current : { [highlightedGroupKey]: true }));
+  }, [highlightedGroupKey]);
 
   function toggleGroup(groupKey) {
     setOpenGroups((current) => (current[groupKey] ? {} : { [groupKey]: true }));
@@ -267,11 +276,12 @@ export default function VendasTab({
             const title = PLANO_LABELS[group.plano] || group.plano;
             const isOpen = Boolean(openGroups[group.plano]);
             const groupTotal = group.items.reduce((sum, venda) => sum + (Number(venda.valor) || 0), 0);
+            const hasAnimatedSale = group.items.some((venda) => animatedSaleIdSet.has(venda.id));
 
             return (
               <div
                 key={group.plano}
-                className="sales-group-card"
+                className={`sales-group-card${hasAnimatedSale ? " sale-launch-group" : ""}`}
                 style={{
                   width: "100%",
                   height: "auto",
@@ -370,8 +380,10 @@ export default function VendasTab({
                       </tr>
                     </thead>
                     <tbody>
-                      {group.items.map((venda, index) => (
-                        <tr key={venda.id} style={{ borderBottom: "1px solid rgba(42,42,46,0.8)", background: index % 2 === 0 ? "rgba(20,20,22,0.16)" : "rgba(20,20,22,0.34)", transition: "all 0.2s ease" }}>
+                      {group.items.map((venda, index) => {
+                        const isAnimatedSale = animatedSaleIdSet.has(venda.id);
+                        return (
+                        <tr key={venda.id} className={isAnimatedSale ? "sale-launch-row" : ""} style={{ borderBottom: "1px solid rgba(42,42,46,0.8)", background: index % 2 === 0 ? "rgba(20,20,22,0.16)" : "rgba(20,20,22,0.34)", transition: "all 0.2s ease" }}>
                           <td style={{ padding: "14px 12px", fontWeight: 700, color: "#FFFFFF" }}>{venda.cliente}</td>
                           <td style={{ padding: "14px 12px", color: "#A1A1AA", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{venda.descricao || "-"}</td>
                           <td style={{ padding: "14px 12px", fontWeight: 700, color: "#DA291C", fontFamily: "'Crimson Pro',serif", fontSize: 16 }}>{fmtBRL(venda.valor)}</td>
@@ -394,14 +406,17 @@ export default function VendasTab({
                             </div>
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
 
                 <div className="mobile-cards" style={{ display: "none", gap: 10, padding: 12 }}>
-                  {group.items.map((venda) => (
-                    <div key={venda.id} style={{ border: "1px solid rgba(42,42,46,0.9)", borderRadius: 10, padding: 15, background: "#141416", boxShadow: "0 8px 16px rgba(0,0,0,0.3)", transition: "all 0.2s ease" }}>
+                  {group.items.map((venda) => {
+                    const isAnimatedSale = animatedSaleIdSet.has(venda.id);
+                    return (
+                    <div key={venda.id} className={isAnimatedSale ? "sale-launch-card" : ""} style={{ border: "1px solid rgba(42,42,46,0.9)", borderRadius: 10, padding: 15, background: "#141416", boxShadow: "0 8px 16px rgba(0,0,0,0.3)", transition: "all 0.2s ease" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 10, alignItems: "flex-start" }}>
                           <div style={{ fontWeight: 700, color: "#FFFFFF", fontSize: 15 }}>{venda.cliente}</div>
                         </div>
@@ -442,7 +457,8 @@ export default function VendasTab({
                         </button>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
                   </div>
                 )}

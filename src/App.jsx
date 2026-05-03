@@ -3,7 +3,7 @@ import {
   changePassword as apiChangePassword,
   clearApiToken,
   createSeller,
-  createVenda,
+  createVendas,
   deleteSeller,
   deleteVenda,
   getSession,
@@ -39,8 +39,16 @@ import { exportExcelReport, exportVendaComanda, fmtBRL, fmtDate, fmtMonth, loadU
 import { appendHistory, buildPendingQueue, getInstallationStatus } from "./utils/workflow";
 import "./App.css";
 
-const getTodayDate = () => new Date().toISOString().split("T")[0];
-const getTodayMonth = () => new Date().toISOString().slice(0, 7);
+const padDatePart = (value) => String(value).padStart(2, "0");
+const getTodayDate = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${padDatePart(now.getMonth() + 1)}-${padDatePart(now.getDate())}`;
+};
+const getTodayMonth = () => getTodayDate().slice(0, 7);
+export const resolveInitialCycleMonth = (storedMonth) => {
+  const todayMonth = getTodayMonth();
+  return storedMonth === todayMonth ? storedMonth : todayMonth;
+};
 const INSTALLATION_COMPETENCE_PLANOS = new Set(["Internet Residencial", "TV"]);
 const THEME_VARIANTS = {
   A: {
@@ -71,6 +79,7 @@ const GOAL_FIELDS = [
   { key: "residencial", label: "Residencial", type: "count", icon: "wifi" },
   { key: "receita", label: "Receita", type: "currency", icon: "chart" },
   { key: "tv", label: "Tv", type: "count", icon: "tv" },
+  { key: "aparelhos", label: "Aparelhos", type: "count", icon: "device" },
 ];
 const DEFAULT_GOAL_VALUES = GOAL_FIELDS.reduce((acc, field) => ({ ...acc, [field.key]: 0 }), {});
 const GOAL_OWNER_ALL_ADMINS = "__all_admins__";
@@ -117,6 +126,22 @@ const APP_STYLES = `
   @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
   @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
   @keyframes auroraDrift{0%{transform:translate3d(-2%,0,0)}50%{transform:translate3d(2%,1%,0)}100%{transform:translate3d(-2%,0,0)}}
+  @keyframes saleLaunchGroup{
+    0%{transform:translateY(-8px) scale(.99);border-color:rgba(34,197,94,.92);box-shadow:0 0 0 0 rgba(34,197,94,.4),0 18px 34px rgba(0,0,0,.35)}
+    35%{transform:translateY(0) scale(1.01);border-color:rgba(34,197,94,.86);box-shadow:0 0 0 7px rgba(34,197,94,.08),0 18px 34px rgba(0,0,0,.38)}
+    100%{transform:translateY(0) scale(1);border-color:rgba(42,42,46,.85);box-shadow:0 6px 14px rgba(0,0,0,.28)}
+  }
+  @keyframes saleLaunchItem{
+    0%{opacity:0;transform:translateY(-12px) scale(.98);background:rgba(34,197,94,.24)}
+    18%{opacity:1;transform:translateY(0) scale(1.01);background:rgba(34,197,94,.18)}
+    70%{background:rgba(34,197,94,.08)}
+    100%{opacity:1;transform:translateY(0) scale(1);background:transparent}
+  }
+  @keyframes saleLaunchRing{
+    0%{box-shadow:0 0 0 0 rgba(34,197,94,.48),0 8px 16px rgba(0,0,0,.3)}
+    50%{box-shadow:0 0 0 7px rgba(34,197,94,.08),0 14px 24px rgba(0,0,0,.34)}
+    100%{box-shadow:0 8px 16px rgba(0,0,0,.3)}
+  }
   .app-atmosphere{
     position:relative;
     isolation:isolate;
@@ -252,6 +277,16 @@ const APP_STYLES = `
     transform:translateY(-1px);
     border-color:rgba(218,41,28,0.4) !important;
     box-shadow:0 10px 18px rgba(0,0,0,0.3) !important;
+  }
+  .sales-group-card.sale-launch-group{
+    animation:saleLaunchGroup 1.35s ease both;
+  }
+  .sale-launch-row{
+    animation:saleLaunchItem 1.6s ease both;
+  }
+  .sale-launch-card{
+    animation:saleLaunchItem 1.6s ease both, saleLaunchRing 1.8s ease both;
+    border-color:rgba(34,197,94,.62) !important;
   }
   .skeleton{
     background:linear-gradient(90deg, rgba(42,42,46,0.45) 25%, rgba(62,62,68,0.55) 50%, rgba(42,42,46,0.45) 75%);
@@ -554,7 +589,7 @@ const APP_STYLES = `
 export default function App() {
   const storedCycleMonth = (() => {
     try {
-      return localStorage.getItem(STORAGE_KEYS.currentCycleMonth) || getTodayMonth();
+      return resolveInitialCycleMonth(localStorage.getItem(STORAGE_KEYS.currentCycleMonth));
     } catch {
       return getTodayMonth();
     }
@@ -586,15 +621,17 @@ export default function App() {
   const [monthlyReportMonth, setMonthlyReportMonth] = useState(storedCycleMonth);
   const [dailyReportDate, setDailyReportDate] = useState(getTodayDate);
   const [cycleDate, setCycleDate] = useState(getTodayDate);
-  const [currentCycleMonth] = useState(storedCycleMonth);
+  const [currentCycleMonth, setCurrentCycleMonth] = useState(storedCycleMonth);
   const [sortBy, setSortBy] = useState("data");
   const [sortDir, setSortDir] = useState("desc");
   const [page, setPage] = useState(1);
   const [toasts, setToasts] = useState([]);
   const [goalsByMonth, setGoalsByMonth] = useState(storedGoalsByMonth);
   const [goalOwnerId, setGoalOwnerId] = useState("");
+  const [animatedSaleIds, setAnimatedSaleIds] = useState([]);
   const goalSaveTimersRef = useRef({});
   const goalSyncWarningShownRef = useRef(false);
+  const saleAnimationTimerRef = useRef(null);
   const PER_PAGE = 8;
 
   const pushToast = useCallback((message, type = "info") => {
@@ -635,6 +672,7 @@ export default function App() {
   useEffect(() => {
     return () => {
       Object.values(goalSaveTimersRef.current).forEach((timerId) => clearTimeout(timerId));
+      if (saleAnimationTimerRef.current) clearTimeout(saleAnimationTimerRef.current);
     };
   }, []);
 
@@ -719,6 +757,10 @@ export default function App() {
   useEffect(() => {
     const timer = setInterval(() => {
       const nowDate = getTodayDate();
+      const nowMonth = nowDate.slice(0, 7);
+      if (nowMonth !== currentCycleMonth) {
+        setCurrentCycleMonth(nowMonth);
+      }
       if (nowDate === cycleDate) return;
 
       setCycleDate(nowDate);
@@ -728,7 +770,7 @@ export default function App() {
     }, 60000);
 
     return () => clearInterval(timer);
-  }, [cycleDate]);
+  }, [currentCycleMonth, cycleDate]);
 
   useEffect(() => {
     try {
@@ -826,17 +868,11 @@ export default function App() {
     return valorBase;
   };
   const cycleScopedVendas = scopedVendas.filter((venda) => getVendaCompetenceMonth(venda) === currentCycleMonth);
-  const installationCycleScopedVendas = scopedVendas.filter(
-    (venda) =>
-      ["Internet Residencial", "TV"].includes(venda.plano) &&
-      venda.status !== "Cancelada" &&
-      venda.dataInstalacao &&
-      venda.dataInstalacao.slice(0, 7) === currentCycleMonth
-  );
   const searchTerms = normalizeSearchText(search).split(/\s+/).filter(Boolean);
 
   const filtered = scopedVendas
     .filter((venda) => {
+      if (venda.status !== "Ativa") return false;
       const vendaCompetenceDate = getVendaCompetenceDate(venda);
       if (searchTerms.length > 0) {
         const haystack = normalizeSearchText(`${venda.cliente} ${PLANO_LABELS[venda.plano] || venda.plano} ${venda.tipoPlano || ""}`);
@@ -875,7 +911,7 @@ export default function App() {
   const ticketPlanosPrincipaisVendas = vendasComValor.filter((venda) => ["Plano Controle", "Plano Pós-Pago", "TV", "Internet Residencial", "Internet Movel Mais"].includes(venda.plano));
   const ticketPlanosPrincipaisTotal = ticketPlanosPrincipaisVendas.reduce((sum, venda) => sum + getVendaRevenue(venda), 0);
   const computeGoalProgress = (vendasList = [], receitaTotal = 0) => {
-    const activeVendas = (vendasList || []).filter((venda) => venda.status !== "Cancelada");
+    const activeVendas = (vendasList || []).filter((venda) => venda.status === "Ativa");
     const bandaLarga = activeVendas.reduce((sum, venda) => {
       const isDependenteVenda =
         venda.plano === "Plano Pós-Pago" &&
@@ -901,26 +937,12 @@ export default function App() {
       residencial: activeVendas.filter((venda) => ["Internet Residencial", "TV"].includes(venda.plano)).length,
       receita: receitaTotal,
       tv: activeVendas.filter((venda) => venda.plano === "TV").length,
+      aparelhos: activeVendas.filter((venda) => venda.plano === "Aparelho Celular").length,
     };
   };
-  const installationReminders = installationCycleScopedVendas
-    .filter((venda) => venda.dataInstalacao <= cycleDate)
-    .map((venda) => {
-      const statusInstalacao = getInstallationStatus(venda);
-      return {
-        id: venda.id,
-        cliente: venda.cliente,
-        plano: venda.plano,
-        tipoPlano: venda.tipoPlano || "—",
-        dataInstalacao: venda.dataInstalacao,
-        statusInstalacao,
-        isInstalled: statusInstalacao === "Instalado",
-      };
-    })
-    .filter((item) => item.statusInstalacao === "Pendente")
-    .sort((a, b) => a.dataInstalacao.localeCompare(b.dataInstalacao));
-  const pendingInstallationCount = installationReminders.length;
   const pendingQueue = buildPendingQueue(scopedVendas, cycleDate, currentCycleMonth);
+  const installationReminders = pendingQueue.installationOverdue;
+  const pendingInstallationCount = pendingQueue.installationPending.length;
   const adminGoalUsers = users
     .filter((user) => user.role === "admin")
     .sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || "")));
@@ -1194,13 +1216,199 @@ export default function App() {
     }
   }, [pushToast]);
 
+  const buildComandaAdditionalSales = useCallback((baseData = {}, controleExtrasList = []) => {
+    const additionalSales = [];
+    const addAdditional = (payload) => {
+      const valorNumerico = parseNumericValue(payload?.valor);
+      if (!payload?.plano || !payload?.tipoPlano || valorNumerico <= 0) return;
+      additionalSales.push({
+        ...payload,
+        valor: valorNumerico,
+      });
+    };
+    const num = parseNumericValue;
+
+    const additionalBase = {
+      cliente: baseData.cliente,
+      cpf: baseData.cpf,
+      data: baseData.data,
+      vendedor: baseData.vendedor,
+      vendedorId: baseData.vendedorId,
+      ordemVenda: baseData.ordemVenda,
+      cep: baseData.cep,
+      dataNascimento: baseData.dataNascimento,
+      descricao: baseData.descricao ? `${baseData.descricao} | Lançamento conjunto` : "Lançamento conjunto",
+      status: "Ativa",
+    };
+
+    const hasMovelExtra = Boolean(baseData.comandaMovelAtiva || baseData.comandaMovelServico);
+    const hasInternetExtra = Boolean(baseData.comandaInternetAtiva || baseData.comandaInternetPlano);
+    const hasTvExtra = Boolean(baseData.comandaTvAtiva || baseData.comandaTvPlano);
+    const hasAparelhoExtra = Boolean(baseData.comandaAparelhoAtiva || baseData.comandaAparelhoValor);
+    const hasAcessoriosExtra = Boolean(baseData.comandaAcessoriosAtiva || baseData.comandaAcessoriosValor);
+    const hasSeguroExtra = Boolean(baseData.comandaSeguroAtiva || baseData.comandaSeguroTipo);
+
+    const movelPlano = baseData.comandaMovelPlano || "Plano Controle";
+    if (hasMovelExtra && baseData.plano !== movelPlano && baseData.comandaMovelServico) {
+      addAdditional({
+        ...additionalBase,
+        plano: movelPlano,
+        tipoPlano: baseData.comandaMovelServico,
+        valor: getRemunerationValue(movelPlano, baseData.comandaMovelServico) || 0,
+        numero: baseData.comandaMovelNumero || "",
+        portabilidade: baseData.comandaMovelPortabilidade || baseData.comandaMovelNumero || "",
+        iccid: baseData.comandaMovelIccid || "",
+      });
+    }
+
+    if (hasInternetExtra && baseData.plano !== "Internet Residencial" && baseData.comandaInternetPlano) {
+      addAdditional({
+        ...additionalBase,
+        plano: "Internet Residencial",
+        tipoPlano: baseData.comandaInternetPlano,
+        valor: getRemunerationValue("Internet Residencial", baseData.comandaInternetPlano) || 0,
+        dataInstalacao: baseData.comandaInternetDataInstalacao || "",
+        statusInstalacao: baseData.comandaInternetDataInstalacao ? "Pendente" : "",
+        status: baseData.comandaInternetDataInstalacao ? "Pendente" : "Ativa",
+        contrato: baseData.comandaInternetContrato || "",
+        periodo: baseData.comandaInternetPeriodo || "",
+        hfcGpon: baseData.comandaInternetHfcGpon || "",
+      });
+    }
+
+    if (hasTvExtra && baseData.plano !== "TV" && baseData.comandaTvPlano) {
+      addAdditional({
+        ...additionalBase,
+        plano: "TV",
+        tipoPlano: baseData.comandaTvPlano,
+        valor: getRemunerationValue("TV", baseData.comandaTvPlano) || 0,
+        dataInstalacao: baseData.comandaTvDataInstalacao || "",
+        statusInstalacao: baseData.comandaTvDataInstalacao ? "Pendente" : "",
+        status: baseData.comandaTvDataInstalacao ? "Pendente" : "Ativa",
+        contrato: baseData.comandaTvContrato || "",
+        boxImediata: baseData.comandaTvBoxImediata || "",
+      });
+    }
+
+    if (hasAparelhoExtra && baseData.plano !== "Aparelho Celular") {
+      const aparelhoValor = num(baseData.comandaAparelhoValor);
+      if (aparelhoValor > 0) {
+        addAdditional({
+          ...additionalBase,
+          plano: "Aparelho Celular",
+          tipoPlano: baseData.comandaAparelhoModelo || "Aparelho adicional",
+          valor: aparelhoValor,
+          modelo: baseData.comandaAparelhoModelo || "",
+          imei: baseData.comandaAparelhoImei || "",
+        });
+      }
+    }
+
+    if (hasAcessoriosExtra && baseData.plano !== "Acessorios") {
+      const acessoriosValor = num(baseData.comandaAcessoriosValor);
+      if (acessoriosValor > 0) {
+        addAdditional({
+          ...additionalBase,
+          plano: "Acessorios",
+          tipoPlano: baseData.comandaAcessoriosDescricao || "Acessório adicional",
+          valor: acessoriosValor,
+          modelo: baseData.comandaAcessoriosDescricao || "",
+          qty: baseData.comandaAcessoriosQuantidade || "",
+        });
+      }
+    }
+
+    if (hasSeguroExtra && baseData.plano !== "Seguro Movel Celular" && baseData.comandaSeguroTipo) {
+      addAdditional({
+        ...additionalBase,
+        plano: "Seguro Movel Celular",
+        tipoPlano: baseData.comandaSeguroTipo,
+        valor: getRemunerationValue("Seguro Movel Celular", baseData.comandaSeguroTipo) || 0,
+        descricao: baseData.descricao ? `${baseData.descricao} | Seguro incluso` : "Seguro incluso no lançamento conjunto",
+      });
+    }
+
+    if (baseData.plano === "Plano Controle" && controleExtrasList.length > 0) {
+      controleExtrasList.forEach((item, index) => {
+        if (!item?.tipoPlano) return;
+        const valorControleExtra = getRemunerationValue("Plano Controle", item.tipoPlano) || 0;
+        if (valorControleExtra <= 0) return;
+        addAdditional({
+          ...additionalBase,
+          plano: "Plano Controle",
+          tipoPlano: item.tipoPlano,
+          valor: valorControleExtra,
+          numero: item.numero || "",
+          portabilidade: item.tipoNumeroPortado === "portabilidade" ? item.portabilidade || "" : item.numero || "",
+          iccid: item.iccid || "",
+          descricao: additionalBase.descricao
+            ? `${additionalBase.descricao} | Linha Controle adicional ${index + 1}`
+            : `Linha Controle adicional ${index + 1}`,
+        });
+      });
+    }
+
+    return additionalSales;
+  }, []);
+
+  const getComandaRelationKey = useCallback((venda = {}) => {
+    const ordemVenda = String(venda.ordemVenda || venda.ordem || "").trim().toLowerCase();
+    if (ordemVenda) return `ordem:${ordemVenda}`;
+    return [
+      venda.cliente,
+      venda.cpf,
+      venda.data,
+      venda.vendedorId,
+      venda.vendedor,
+    ]
+      .map((value) => String(value || "").trim().toLowerCase())
+      .join("|");
+  }, []);
+
+  const getComandaSaleKey = useCallback((venda = {}) => {
+    return [
+      getComandaRelationKey(venda),
+      venda.plano,
+      venda.tipoPlano,
+      venda.numero,
+      venda.iccid,
+      venda.modelo,
+      venda.qty,
+    ]
+      .map((value) => String(value || "").trim().toLowerCase())
+      .join("|");
+  }, [getComandaRelationKey]);
+
+  const resetVendaFiltersForNewItems = useCallback(() => {
+    setSearch("");
+    setFPlano("Todos");
+    setFVendedor("Todos");
+    setFMes(currentCycleMonth);
+    setFDia("");
+    setPage(1);
+  }, [currentCycleMonth]);
+
   const saveVenda = useCallback(
     async (data) => {
-      const { autoSeguro, adicionarSeguro, tipoSeguro, controleAdicionais, ...baseData } = data || {};
+      const formData = { ...(data || {}) };
+      delete formData.adicionarSeguro;
+      delete formData.tipoSeguro;
+      const { controleAdicionais, ...baseData } = formData;
+      const controleExtrasList = Array.isArray(controleAdicionais) ? controleAdicionais : [];
+      const comandaDependentes =
+        baseData.plano === "Plano Controle"
+          ? controleExtrasList.map((item) => ({
+              tipo: item?.tipoPlano || "",
+              numero: item?.numero || "",
+              portabilidade: item?.tipoNumeroPortado === "portabilidade" ? item?.portabilidade || "" : item?.numero || "",
+              iccid: item?.iccid || "",
+            }))
+          : baseData.comandaDependentes;
       if (modal?.edit) {
         const current = vendas.find((item) => item.id === modal.edit.id) || {};
         const updatedPayload = {
           ...baseData,
+          comandaDependentes,
           historico: appendHistory(current, {
             action: "edicao",
             userId: currentUser?.id || "",
@@ -1208,21 +1416,35 @@ export default function App() {
           }),
         };
         const updated = await updateVenda(modal.edit.id, updatedPayload);
-        setVendas((current) => current.map((item) => (item.id === modal.edit.id ? normalizeLegacyVenda(updated) : item)));
+        const updatedVenda = normalizeLegacyVenda(updated);
+        const candidateAdditionalSales = buildComandaAdditionalSales(baseData, controleExtrasList);
+        const existingKeys = new Set(
+          vendas
+            .filter((item) => item.id !== modal.edit.id)
+            .map((item) => getComandaSaleKey(item))
+        );
+        const missingAdditionalSales = candidateAdditionalSales.filter((payload) => !existingKeys.has(getComandaSaleKey(payload)));
+        const createdAdditionalItems = missingAdditionalSales.length
+          ? (await createVendas(missingAdditionalSales)).map((item) => normalizeLegacyVenda(item))
+          : [];
+
+        setVendas((currentList) => [
+          ...createdAdditionalItems,
+          ...currentList.map((item) => (item.id === modal.edit.id ? updatedVenda : item)),
+        ]);
+        if (createdAdditionalItems.length > 0) {
+          resetVendaFiltersForNewItems();
+          setAnimatedSaleIds(createdAdditionalItems.map((item) => item.id).filter(Boolean));
+          if (saleAnimationTimerRef.current) clearTimeout(saleAnimationTimerRef.current);
+          saleAnimationTimerRef.current = setTimeout(() => {
+            setAnimatedSaleIds([]);
+            saleAnimationTimerRef.current = null;
+          }, 3200);
+          pushToast(`${createdAdditionalItems.length} lançamento${createdAdditionalItems.length > 1 ? "s" : ""} da comanda contabilizado${createdAdditionalItems.length > 1 ? "s" : ""}.`, "success");
+        }
         broadcastVendaSync();
       } else {
-        const controleExtrasList = Array.isArray(controleAdicionais) ? controleAdicionais : [];
-        const comandaDependentes =
-          baseData.plano === "Plano Controle"
-            ? controleExtrasList.map((item) => ({
-                tipo: item?.tipoPlano || "",
-                numero: item?.numero || "",
-                portabilidade: item?.tipoNumeroPortado === "portabilidade" ? item?.portabilidade || "" : item?.numero || "",
-                iccid: item?.iccid || "",
-              }))
-            : baseData.comandaDependentes;
-
-        const created = await createVenda({
+        const primarySale = {
           ...baseData,
           comandaDependentes,
           historico: appendHistory({}, {
@@ -1230,151 +1452,21 @@ export default function App() {
             userId: currentUser?.id || "",
             userName: currentUser?.nome || "",
           }),
-        });
-        const createdVenda = normalizeLegacyVenda(created);
-        const createdItems = [createdVenda];
-
-        const additionalSales = [];
-        const addAdditional = (payload) => {
-          const valorNumerico = parseNumericValue(payload?.valor);
-          if (!payload?.plano || !payload?.tipoPlano || valorNumerico <= 0) return;
-          additionalSales.push({
-            ...payload,
-            valor: valorNumerico,
-          });
-        };
-        const num = parseNumericValue;
-
-        const additionalBase = {
-          cliente: baseData.cliente,
-          cpf: baseData.cpf,
-          data: baseData.data,
-          vendedor: baseData.vendedor,
-          vendedorId: baseData.vendedorId,
-          ordemVenda: baseData.ordemVenda,
-          cep: baseData.cep,
-          dataNascimento: baseData.dataNascimento,
-          descricao: baseData.descricao ? `${baseData.descricao} | Lançamento conjunto` : "Lançamento conjunto",
-          status: "Ativa",
         };
 
-        const hasMovelExtra = Boolean(baseData.comandaMovelAtiva || baseData.comandaMovelServico);
-        const hasInternetExtra = Boolean(baseData.comandaInternetAtiva || baseData.comandaInternetPlano);
-        const hasTvExtra = Boolean(baseData.comandaTvAtiva || baseData.comandaTvPlano);
-        const hasAparelhoExtra = Boolean(baseData.comandaAparelhoAtiva || baseData.comandaAparelhoValor);
-        const hasAcessoriosExtra = Boolean(baseData.comandaAcessoriosAtiva || baseData.comandaAcessoriosValor);
+        const additionalSales = buildComandaAdditionalSales(baseData, controleExtrasList);
 
-        const movelPlano = baseData.comandaMovelPlano || "Plano Controle";
-        if (hasMovelExtra && baseData.plano !== movelPlano && baseData.comandaMovelServico) {
-          addAdditional({
-            ...additionalBase,
-            plano: movelPlano,
-            tipoPlano: baseData.comandaMovelServico,
-            valor: getRemunerationValue(movelPlano, baseData.comandaMovelServico) || 0,
-            numero: baseData.comandaMovelNumero || "",
-            portabilidade: baseData.comandaMovelPortabilidade || baseData.comandaMovelNumero || "",
-            iccid: baseData.comandaMovelIccid || "",
-          });
-        }
-
-        if (hasInternetExtra && baseData.plano !== "Internet Residencial" && baseData.comandaInternetPlano) {
-          addAdditional({
-            ...additionalBase,
-            plano: "Internet Residencial",
-            tipoPlano: baseData.comandaInternetPlano,
-            valor: getRemunerationValue("Internet Residencial", baseData.comandaInternetPlano) || 0,
-            dataInstalacao: baseData.comandaInternetDataInstalacao || "",
-            statusInstalacao: baseData.comandaInternetDataInstalacao ? "Pendente" : "",
-            status: baseData.comandaInternetDataInstalacao ? "Pendente" : "Ativa",
-            contrato: baseData.comandaInternetContrato || "",
-            periodo: baseData.comandaInternetPeriodo || "",
-            hfcGpon: baseData.comandaInternetHfcGpon || "",
-          });
-        }
-
-        if (hasTvExtra && baseData.plano !== "TV" && baseData.comandaTvPlano) {
-          addAdditional({
-            ...additionalBase,
-            plano: "TV",
-            tipoPlano: baseData.comandaTvPlano,
-            valor: getRemunerationValue("TV", baseData.comandaTvPlano) || 0,
-            dataInstalacao: baseData.comandaTvDataInstalacao || "",
-            statusInstalacao: baseData.comandaTvDataInstalacao ? "Pendente" : "",
-            status: baseData.comandaTvDataInstalacao ? "Pendente" : "Ativa",
-            contrato: baseData.comandaTvContrato || "",
-            boxImediata: baseData.comandaTvBoxImediata || "",
-          });
-        }
-
-        if (hasAparelhoExtra && baseData.plano !== "Aparelho Celular") {
-          const aparelhoValor = num(baseData.comandaAparelhoValor);
-          if (aparelhoValor > 0) {
-            addAdditional({
-              ...additionalBase,
-              plano: "Aparelho Celular",
-              tipoPlano: baseData.comandaAparelhoModelo || "Aparelho adicional",
-              valor: aparelhoValor,
-              modelo: baseData.comandaAparelhoModelo || "",
-              imei: baseData.comandaAparelhoImei || "",
-            });
-          }
-        }
-
-        if (hasAcessoriosExtra && baseData.plano !== "Acessorios") {
-          const acessoriosValor = num(baseData.comandaAcessoriosValor);
-          if (acessoriosValor > 0) {
-            addAdditional({
-              ...additionalBase,
-              plano: "Acessorios",
-              tipoPlano: baseData.comandaAcessoriosDescricao || "Acessório adicional",
-              valor: acessoriosValor,
-              modelo: baseData.comandaAcessoriosDescricao || "",
-              qty: baseData.comandaAcessoriosQuantidade || "",
-            });
-          }
-        }
-
-        if (baseData.plano === "Plano Controle" && controleExtrasList.length > 0) {
-          controleExtrasList.forEach((item, index) => {
-            if (!item?.tipoPlano) return;
-            const valorControleExtra = getRemunerationValue("Plano Controle", item.tipoPlano) || 0;
-            if (valorControleExtra <= 0) return;
-            addAdditional({
-              ...additionalBase,
-              plano: "Plano Controle",
-              tipoPlano: item.tipoPlano,
-              valor: valorControleExtra,
-              numero: item.numero || "",
-              portabilidade: item.tipoNumeroPortado === "portabilidade" ? item.portabilidade || "" : item.numero || "",
-              iccid: item.iccid || "",
-              descricao: additionalBase.descricao
-                ? `${additionalBase.descricao} | Linha Controle adicional ${index + 1}`
-                : `Linha Controle adicional ${index + 1}`,
-            });
-          });
-        }
-
-        if (additionalSales.length > 0) {
-          const createdAdditional = await Promise.all(additionalSales.map((payload) => createVenda(payload)));
-          createdItems.unshift(...createdAdditional.map((item) => normalizeLegacyVenda(item)));
-        }
-
-        if (baseData.plano === "Aparelho Celular" && autoSeguro?.tipoPlano) {
-          const valorSeguro = getRemunerationValue("Seguro Movel Celular", autoSeguro.tipoPlano);
-          if (valorSeguro && valorSeguro > 0) {
-            const createdSeguro = await createVenda({
-              ...baseData,
-              plano: "Seguro Movel Celular",
-              tipoPlano: autoSeguro.tipoPlano,
-              valor: valorSeguro,
-              status: "Ativa",
-              descricao: baseData.descricao ? `${baseData.descricao} | Seguro incluso` : "Seguro incluso no lançamento de aparelho",
-            });
-            createdItems.unshift(normalizeLegacyVenda(createdSeguro));
-          }
-        }
+        const createdItems = (await createVendas([primarySale, ...additionalSales])).map((item) => normalizeLegacyVenda(item));
+        const createdVenda = createdItems[0];
 
         setVendas((current) => [...createdItems, ...current]);
+        resetVendaFiltersForNewItems();
+        setAnimatedSaleIds(createdItems.map((item) => item.id).filter(Boolean));
+        if (saleAnimationTimerRef.current) clearTimeout(saleAnimationTimerRef.current);
+        saleAnimationTimerRef.current = setTimeout(() => {
+          setAnimatedSaleIds([]);
+          saleAnimationTimerRef.current = null;
+        }, 3200);
         broadcastVendaSync();
 
         pushToast("Venda registrada com sucesso.", "success");
@@ -1386,7 +1478,7 @@ export default function App() {
       }
       setModal(null);
     },
-    [handleDownloadComanda, modal, vendas, currentUser, pushToast, broadcastVendaSync]
+    [buildComandaAdditionalSales, getComandaSaleKey, handleDownloadComanda, modal, vendas, currentUser, pushToast, broadcastVendaSync, resetVendaFiltersForNewItems]
   );
 
   const confirmDelete = useCallback(async () => {
@@ -1648,6 +1740,7 @@ export default function App() {
               setFDia={setFDia}
               filtered={filtered}
               paginated={paginated}
+              animatedSaleIds={animatedSaleIds}
               page={page}
               setPage={setPage}
               totalPages={totalPages}

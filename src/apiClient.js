@@ -527,26 +527,41 @@ export async function listVendas() {
 
 export async function createVenda(payload) {
   const user = await requireCurrentUser();
-  const client = ensureSupabase(true);
-  const venda = normalizeLegacyVenda({
-    ...payload,
-    id: genId(),
-    vendedorId: user.role === "seller" ? user.id : payload.vendedorId,
-    vendedor: user.role === "seller" ? user.nome : payload.vendedor,
-  });
+  const vendas = await insertVendas([payload], user);
+  return vendas[0];
+}
 
-  const record = {
+export async function createVendas(payloads = []) {
+  const user = await requireCurrentUser();
+  return insertVendas(Array.isArray(payloads) ? payloads : [], user);
+}
+
+async function insertVendas(payloads, user) {
+  const client = ensureSupabase(true);
+  const createdAt = nowIso();
+  const vendas = payloads.map((payload) =>
+    normalizeLegacyVenda({
+      ...payload,
+      id: genId(),
+      vendedorId: user.role === "seller" ? user.id : payload.vendedorId,
+      vendedor: user.role === "seller" ? user.nome : payload.vendedor,
+    })
+  );
+
+  if (!vendas.length) return [];
+
+  const records = vendas.map((venda) => ({
     id: venda.id,
     vendedor_id: venda.vendedorId || null,
     vendedor: venda.vendedor || null,
     payload: venda,
-    created_at: nowIso(),
-    updated_at: nowIso(),
-  };
+    created_at: createdAt,
+    updated_at: createdAt,
+  }));
 
-  const { error } = await client.from("vendas").insert(record);
+  const { error } = await client.from("vendas").insert(records);
   if (error) throw new Error(error.message || "Erro ao salvar venda.");
-  return venda;
+  return vendas;
 }
 
 export async function updateVenda(id, payload) {

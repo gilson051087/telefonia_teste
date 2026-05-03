@@ -33,6 +33,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
     comandaTvAtiva: false,
     comandaAparelhoAtiva: false,
     comandaAcessoriosAtiva: false,
+    comandaSeguroAtiva: false,
     comandaMovelPlano: "Plano Controle",
     comandaMovelServico: "",
     comandaMovelNumero: "",
@@ -126,7 +127,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
     []
   );
   const comandaMovelPlanoOptions = useMemo(
-    () => ["Plano Controle", "Plano Pós-Pago", "Internet Movel Mais", "Seguro Movel Celular"],
+    () => ["Plano Controle", "Plano Pós-Pago", "Internet Movel Mais"],
     []
   );
   const comandaMovelServicoOptions = useMemo(
@@ -141,6 +142,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
   const isCurrentTv = currentPlano === "TV";
   const isCurrentAparelho = currentPlano === "Aparelho Celular";
   const isCurrentAcessorios = currentPlano === "Acessorios";
+  const isCurrentSeguro = currentPlano === "Seguro Movel Celular";
   const isCurrentPosPago = currentPlano === "Plano Pós-Pago";
   const isCurrentControle = currentPlano === "Plano Controle";
   const highlightedFieldKeys = ["tipoPlano", "numero", "portabilidade", "iccid", "linhas"];
@@ -166,6 +168,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
     { key: "comandaTvAtiva", label: "TV" },
     { key: "comandaAparelhoAtiva", label: "Aparelho" },
     { key: "comandaAcessoriosAtiva", label: "Acessórios" },
+    { key: "comandaSeguroAtiva", label: "Seguro" },
   ];
   const availableComandaServiceToggles = comandaServiceToggles.filter((toggle) => {
     if (toggle.key === "comandaMovelAtiva") return !isCurrentMovel;
@@ -173,6 +176,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
     if (toggle.key === "comandaTvAtiva") return !isCurrentTv;
     if (toggle.key === "comandaAparelhoAtiva") return !isCurrentAparelho;
     if (toggle.key === "comandaAcessoriosAtiva") return !isCurrentAcessorios;
+    if (toggle.key === "comandaSeguroAtiva") return !isCurrentSeguro;
     return true;
   });
 
@@ -350,6 +354,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
     if (usesInstallationStatus && !form.statusInstalacao) next.statusInstalacao = "Obrigatório";
     if (!usesInstallationStatus && form.dataInstalacao && !form.statusInstalacao) next.statusInstalacao = "Obrigatório";
     if (!initial && currentPlano === "Aparelho Celular" && form.adicionarSeguro && !form.tipoSeguro) next.tipoSeguro = "Selecione o seguro";
+    if (!initial && form.comandaSeguroAtiva && !form.comandaSeguroTipo) next.comandaSeguroTipo = "Selecione o seguro";
     if (!form.valor || parseNumericInput(form.valor) <= 0) next.valor = "Valor inválido";
     if (!form.data) next.data = "Obrigatório";
     if (!form.vendedorId && currentUser.role !== "seller") next.vendedor = "Selecione um vendedor";
@@ -411,11 +416,11 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
         comandaTvAtiva: isCurrentTv ? false : form.comandaTvAtiva,
         comandaAparelhoAtiva: isCurrentAparelho ? false : form.comandaAparelhoAtiva,
         comandaAcessoriosAtiva: isCurrentAcessorios ? false : form.comandaAcessoriosAtiva,
+        comandaSeguroAtiva: isCurrentSeguro ? false : form.comandaSeguroAtiva,
         portabilidade:
           usesPortabilitySelector && form.tipoNumeroPortado !== "portabilidade"
             ? form.numero || ""
             : form.portabilidade || "",
-        autoSeguro: !initial && currentPlano === "Aparelho Celular" && form.adicionarSeguro ? { tipoPlano: form.tipoSeguro } : null,
         posPagoDependentes: !initial && isCurrentPosPago ? dependentesList : [],
         controleAdicionais: !initial && isCurrentControle ? controleAdicionaisList : [],
         status:
@@ -1027,6 +1032,12 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
                       const options = REMUNERATION_OPTIONS_BY_PLANO[next.comandaMovelPlano] || [];
                       next.comandaMovelServico = options[0]?.label || "";
                     }
+                    if (toggle.key === "comandaSeguroAtiva" && nextActive && !next.comandaSeguroTipo) {
+                      next.comandaSeguroTipo = seguroOptions[0]?.label || "";
+                    }
+                    if (toggle.key === "comandaSeguroAtiva" && !nextActive) {
+                      next.comandaSeguroTipo = "";
+                    }
                     return next;
                   })
                 }
@@ -1123,6 +1134,28 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
               {renderComandaInput("comandaAcessoriosDescricao", "Descrição", "text", "Ex: Fone + capa")}
               {renderComandaInput("comandaAcessoriosQuantidade", "Quantidade", "number", "1")}
               {renderComandaInput("comandaAcessoriosValor", "Valor de receita", "number", "0,00")}
+            </div>
+          </div>
+        )}
+
+        {!isCurrentSeguro && form.comandaSeguroAtiva && (
+          <div style={{ marginBottom: 4, borderTop: "1px solid #232327", paddingTop: 12 }}>
+            <div style={{ color: "#FFFFFF", fontSize: 12, fontWeight: 700, marginBottom: 8 }}>Seguro</div>
+            <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+              <Field label="Tipo de seguro" error={errors.comandaSeguroTipo}>
+                <select
+                  value={form.comandaSeguroTipo || ""}
+                  onChange={(e) => setField("comandaSeguroTipo", e.target.value)}
+                  style={{ ...inputStyle, appearance: "none", borderColor: errors.comandaSeguroTipo ? "#EF4444" : "#232327" }}
+                >
+                  <option value="">Selecione o seguro</option>
+                  {seguroOptions.map((item) => (
+                    <option key={item.label} value={item.label}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
             </div>
           </div>
         )}
