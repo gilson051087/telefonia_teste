@@ -54,42 +54,48 @@ export const PLANO_COLORS = {
 
 export const REMUNERATION_OPTIONS_BY_PLANO = {
   "Plano Controle": [
-    { label: "Claro Controle 40GB GeForce (No Multi)", value: 99.9 },
-    { label: "Claro Controle 40GB GeForce (Single)", value: 99.9 },
-    { label: "Claro Controle 40GB (No Multi)", value: 69.9 },
-    { label: "Claro Controle 40GB (Single)", value: 69.9 },
-    { label: "Claro Controle 35GB (No Multi)", value: 49.9 },
     { label: "Claro Controle 35GB (Single)", value: 59.9 },
+    { label: "Claro Controle 35GB (Multi)", value: 49.9 },
+    { label: "Claro Controle 40GB (Single)", value: 69.9 },
+    { label: "Claro Controle 40GB (Multi)", value: 69.9 },
+    { label: "Claro Controle 40GB GeForce (Single)", value: 99.9 },
+    { label: "Claro Controle 40GB GeForce (Multi)", value: 99.9 },
+    
+    
+    
+    
+    
   ],
   "Plano Pós-Pago": [
+    { label: "Claro Pós 50GB (Single)", value: 124.9 },
+    { label: "Claro Pós 50GB (Multi)", value: 80.0 },
+    { label: "Claro Pós 50GB GeForce NOW (Single)", value: 164.9 },
+    { label: "Claro Pós 50GB GeForce NOW (Multi)", value: 120.0 },
+    { label: "Claro Pós 100GB (Single)", value: 179.9 },
+    { label: "Claro Pós 100GB (Multi)", value: 125.0 },
+    { label: "Claro Pós 150GB (Single)", value: 239.9 },
+    { label: "Claro Pós 150GB (Multi)", value: 180.0 },
+    { label: "Claro Pós 200GB (Single)", value: 339.9 },
+    { label: "Claro Pós 200GB (Multi)", value: 240.0 },
+    { label: "Claro Pós 500GB (Single)", value: 849.9 },
+    { label: "Claro Pós 500GB (Multi)", value: 800.0 },
     { label: "Dependente Conta", value: 55.0 },
     { label: "Dependente Banda Larga", value: 60.0 },
-    { label: "Claro Pós 50GB (Single)", value: 124.9 },
-    { label: "Claro Pós 50GB GeForce NOW (Single)", value: 164.9 },
-    { label: "Claro Pós 100GB (Single)", value: 179.9 },
-    { label: "Claro Pós 150GB (Single)", value: 239.9 },
-    { label: "Claro Pós 200GB (Single)", value: 339.9 },
-    { label: "Claro Pós 500GB (Single)", value: 849.9 },
-    { label: "Claro Pós 50GB (Multi)", value: 80.0 },
-    { label: "Claro Pós 50GB GeForce NOW (Multi)", value: 120.0 },
-    { label: "Claro Pós 100GB (Multi)", value: 125.0 },
-    { label: "Claro Pós 150GB (Multi)", value: 180.0 },
-    { label: "Claro Pós 200GB (Multi)", value: 240.0 },
-    { label: "Claro Pós 500GB (Multi)", value: 800.0 },
   ],
   "Internet Residencial": [
-    { label: "Fibra 350 Mega (claro Multi) ", value: 79.9 },
-    { label: "Fibra 350 Mega (claro Single) ", value: 99.9 },
-    { label: "Fibra 500 Mega (Claro Multi)", value: 99.9 },
+    { label: "Fibra 350 Mega (Single) ", value: 99.9 },
+    { label: "Fibra 350 Mega (Multi) ", value: 79.9 },
     { label: "Fibra 500 Mega (Single)", value: 119.9 },
-    { label: "Fibra 600 Mega (Claro Multi)", value: 99.9 },
-    { label: "Fibra 600 Mega (Claro Single)", value: 119.9 },
-    { label: "Fibra 1 Giga (Claro Multi)", value: 149.9 },
+    { label: "Fibra 500 Mega (Multi)", value: 99.9 },
+    { label: "Fibra 600 Mega (Single)", value: 119.9 },
+    { label: "Fibra 600 Mega (Multi)", value: 99.9 },
     { label: "Fibra 1 Giga (Single)", value: 199.9 },
-    { label: "Fibra 5 Giga (Claro Multi)", value: 449.9 },
+    { label: "Fibra 1 Giga (Multi)", value: 149.9 },
     { label: "Fibra 5 Giga (Single)", value: 499.9 },
-    { label: "Fibra 10 Giga (Claro Multi)", value: 1949.9 },
+    { label: "Fibra 5 Giga (Multi)", value: 449.9 },
     { label: "Fibra 10 Giga (Single)", value: 1999.9 },
+    { label: "Fibra 10 Giga (Multi)", value: 1949.9 },
+    
   ],
   "Internet Movel Mais": [
     { label: "Claro Internet Móvel 120GB", value: 199.9 },
@@ -97,8 +103,8 @@ export const REMUNERATION_OPTIONS_BY_PLANO = {
     { label: "Claro Internet Móvel 5G 400GB", value: 399.9 },
   ],
   TV: [
-    { label: "Claro TV + 6 Streams (Áreas Cabeadas)", value: 99.9 },
-    { label: "Claro TV + 6 Streams (Áreas Não Cabeadas)", value: 109.9 },
+    { label: "Claro TV (Áreas Cabeadas)", value: 99.9 },
+    { label: "Claro TV (Áreas Não Cabeadas)", value: 109.9 },
   ],
   "Seguro Movel Celular": [
     { label: "Seguro R$ 17,00", value: 6.8 },
@@ -136,6 +142,7 @@ export const PLANO_EXTRAS = {
     { key: "numero", label: "Número Provisório / Cliente", type: "text", placeholder: "Ex: (41) 99999-0000" },
     { key: "portabilidade", label: "Número da Portabilidade", type: "text", placeholder: "Ex: (41) 98765-1234" },
     { key: "iccid", label: "ICCID", type: "text", placeholder: "Ex: 8955053164000601" },
+    { key: "doarChip", label: "Etiquetar", type: "checkbox", checkboxText: "DOAR CHIP?" },
   ],
   "Plano Pós-Pago": [
     {
@@ -149,6 +156,7 @@ export const PLANO_EXTRAS = {
     { key: "portabilidade", label: "Número da Portabilidade", type: "text", placeholder: "Ex: (41) 98888-7777" },
     { key: "iccid", label: "ICCID", type: "text", placeholder: "Ex: 8955053164000601" },
     { key: "linhas", label: "Qtd. Linhas", type: "number", placeholder: "1" },
+    { key: "doarChip", label: "Etiquetar", type: "checkbox", checkboxText: "DOAR CHIP?" },
   ],
   "Internet Residencial": [
     {
@@ -173,6 +181,7 @@ export const PLANO_EXTRAS = {
     { key: "numero", label: "Número Provisório / Cliente", type: "text", placeholder: "Ex: (41) 99999-0000" },
     { key: "portabilidade", label: "Número da Portabilidade", type: "text", placeholder: "Ex: (41) 98888-7777" },
     { key: "iccid", label: "ICCID", type: "text", placeholder: "Ex: 8955053164000601" },
+    { key: "doarChip", label: "Etiquetar", type: "checkbox", checkboxText: "DOAR CHIP?" },
   ],
   TV: [
     {
@@ -184,11 +193,12 @@ export const PLANO_EXTRAS = {
     },
     { key: "dataInstalacao", label: "Data de Instalação", type: "date" },
     { key: "statusInstalacao", label: "Status da Instalação", type: "select", placeholderSelect: "Selecione o status", options: INSTALLATION_STATUS_OPTIONS },
-    { key: "pacote", label: "Streaming", type: "text", placeholder: "Ex: Box 4K" },
+    { key: "pacote", label: "Streaming", type: "text", placeholder: "Ex: TV Box 4K" },
     { key: "contrato", label: "Contrato", type: "text", placeholder: "Ex: 884/12345678-9", numericOnly: true },
   ],
   "Aparelho Celular": [
     { key: "modelo", label: "Modelo", type: "text", placeholder: "Ex: iPhone 15" },
+    { key: "numero", label: "Número do cliente", type: "text", placeholder: "Ex: (41) 99999-0000" },
     { key: "imei", label: "IMEI", type: "text", placeholder: "15 digitos" },
     { key: "cor", label: "Cor", type: "text", placeholder: "Ex: Preto" },
     { key: "memoria", label: "Memória", type: "text", placeholder: "Ex: 128GB" },

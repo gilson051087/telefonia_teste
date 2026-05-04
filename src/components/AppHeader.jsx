@@ -6,6 +6,7 @@ export default function AppHeader({ currentUser, tab, onTabChange, onOpenSellerM
   const tabs = [
     ["vendas", "sales", "Vendas"],
     ["pendencias", "clock", "Pendências"],
+    ["planos", "image", "Planos"],
     ["relatorios", "chart", "Relatórios"],
     ["metas", "target", "Metas"],
     ...(currentUser.role !== "seller" ? [["vendedores", "users", "Vendedores"]] : []),

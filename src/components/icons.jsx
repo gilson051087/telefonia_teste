@@ -60,6 +60,11 @@ const ICON_PATHS = {
     <path key="a" d="m12 3.5 7.5 4.2v8.6L12 20.5l-7.5-4.2V7.7z" />,
     <path key="b" d="M4.8 7.9 12 12l7.2-4.1M12 12v8.3" />,
   ],
+  image: [
+    <rect key="a" x="4" y="5" width="16" height="14" rx="2" />,
+    <circle key="b" cx="8.7" cy="9.2" r="1.2" />,
+    <path key="c" d="m6.5 16 3.2-3.2 2.4 2.4 2.1-2.7L18 16" />,
+  ],
   signal: [
     <path key="a" d="M4.5 18.5h15" />,
     <path key="b" d="M7 16.2v-2.5M11 16.2v-5M15 16.2v-8M19 16.2V5.8" />,

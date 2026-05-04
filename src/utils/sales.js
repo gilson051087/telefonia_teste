@@ -316,7 +316,7 @@ function buildComandaCell(value, { style = "ComandaValue", mergeAcross = 0, type
   const resolvedType = type || (typeof value === "number" ? "Number" : "String");
   const attrs = [`ss:StyleID="${style}"`];
   if (mergeAcross > 0) attrs.push(`ss:MergeAcross="${mergeAcross}"`);
-  const data = resolvedType === "Number" ? value : escapeXml(value ?? "");
+  const data = resolvedType === "Number" ? value : escapeXml(String(value ?? "").toLocaleUpperCase("pt-BR"));
   return `<Cell ${attrs.join(" ")}><Data ss:Type="${resolvedType}">${data}</Data></Cell>`;
 }
 
@@ -346,6 +346,12 @@ function isMobilePlano(plano) {
     planoLower === "plano pos-pago" ||
     planoLower === "internet movel mais"
   );
+}
+
+function isTruthyComandaValue(value) {
+  if (typeof value === "boolean") return value;
+  const normalized = normalizeForMatch(value);
+  return ["sim", "s", "true", "1", "yes"].includes(normalized);
 }
 
 function sameVenda(left = {}, right = {}) {
@@ -431,6 +437,7 @@ export function exportVendaComanda(filename, venda = {}, relatedVendas = []) {
   const hasComandaAparelhoExtra = Boolean(
     venda.comandaAparelhoAtiva ||
     venda.comandaAparelhoModelo ||
+    venda.comandaAparelhoNumero ||
     venda.comandaAparelhoImei ||
     venda.comandaAparelhoValor
   );
@@ -450,15 +457,36 @@ export function exportVendaComanda(filename, venda = {}, relatedVendas = []) {
   const cep = venda.cep || "";
   const dataNascimento = formatDateBr(venda.dataNascimento || "");
 
-  const titularServico = vendaMovel ? vendaMovel.tipoPlano || vendaMovel.plano || "" : hasComandaMovelExtra ? venda.comandaMovelServico || "" : "";
-  const numeroProvisorio = vendaMovel ? vendaMovel.numero || "" : hasComandaMovelExtra ? venda.comandaMovelNumero || "" : "";
+  const aparelhoNumero = vendaAparelho ? vendaAparelho.numero || "" : hasComandaAparelhoExtra ? venda.comandaAparelhoNumero || "" : "";
+  const isAparelhoSemMovel = Boolean(vendaAparelho || hasComandaAparelhoExtra) && !vendaMovel && !hasComandaMovelExtra;
+  const titularServico = vendaMovel
+    ? vendaMovel.tipoPlano || vendaMovel.plano || ""
+    : hasComandaMovelExtra
+      ? venda.comandaMovelServico || ""
+      : isAparelhoSemMovel
+        ? "UP de aparelho"
+        : "";
+  const numeroProvisorio = vendaMovel
+    ? vendaMovel.numero || ""
+    : hasComandaMovelExtra
+      ? venda.comandaMovelNumero || ""
+      : "";
   const numeroPortado =
     vendaMovel
-      ? vendaMovel.portabilidade || vendaMovel.numero || ""
+      ? String(vendaMovel.portabilidade || "").trim() &&
+        String(vendaMovel.portabilidade || "").trim() !== String(vendaMovel.numero || "").trim()
+        ? vendaMovel.portabilidade || ""
+        : ""
       : hasComandaMovelExtra
-        ? venda.comandaMovelPortabilidade || venda.comandaMovelNumero || ""
+        ? String(venda.comandaMovelPortabilidade || "").trim() &&
+          String(venda.comandaMovelPortabilidade || "").trim() !== String(venda.comandaMovelNumero || "").trim()
+          ? venda.comandaMovelPortabilidade || ""
+          : ""
+        : isAparelhoSemMovel
+          ? aparelhoNumero
         : "";
   const titularIccid = vendaMovel ? vendaMovel.iccid || "" : hasComandaMovelExtra ? venda.comandaMovelIccid || "" : "";
+  const doarChipTexto = isTruthyComandaValue(vendaMovel ? vendaMovel.doarChip : venda.doarChip) ? "SIM" : "";
   const mobileVendasExtras = vendasComanda
     .filter((item) => item && isMobilePlano(item.plano) && !sameVenda(item, vendaMovel))
     .map((item) => ({
@@ -611,8 +639,8 @@ export function exportVendaComanda(filename, venda = {}, relatedVendas = []) {
         ${buildComandaRow([buildComandaCell("CEP", { style: "ComandaLabel" }), buildComandaCell(cep, { mergeAcross: 1 }), buildComandaCell("Data de nascimento", { style: "ComandaLabel" }), buildComandaCell(dataNascimento, { style: "ComandaValueCenter", mergeAcross: 1 })])}
         ${buildComandaRow([buildComandaCell("", { mergeAcross: 2 }), buildComandaCell("OBSERVACAO VENDA", { style: "ComandaLabel" }), buildComandaCell(observacao, { mergeAcross: 2 })])}
         ${buildComandaRow([])}
-        ${buildComandaRow([buildComandaCell("Plano", { style: "ComandaSection" }), buildComandaCell("Servico", { style: "ComandaSection" }), buildComandaCell("Numero portado", { style: "ComandaSection" }), buildComandaCell("Numero provisorio", { style: "ComandaSection" }), buildComandaCell("e-sim", { style: "ComandaSection" }), buildComandaCell("ICCID", { style: "ComandaSection" })])}
-        ${buildComandaRow([buildComandaCell("Titular", { style: "ComandaLabel" }), buildComandaCell(titularServico), buildComandaCell(numeroPortado, { style: "ComandaValueCenter" }), buildComandaCell(numeroProvisorio, { style: "ComandaValueCenter" }), buildComandaCell("", { style: "ComandaValueCenter" }), buildComandaCell(titularIccid, { style: "ComandaValueCenter" })])}
+        ${buildComandaRow([buildComandaCell("Plano", { style: "ComandaSection" }), buildComandaCell("Servico", { style: "ComandaSection" }), buildComandaCell("Numero portado", { style: "ComandaSection" }), buildComandaCell("Numero provisorio", { style: "ComandaSection" }), buildComandaCell("DOAR CHIP?", { style: "ComandaSection" }), buildComandaCell("ICCID", { style: "ComandaSection" })])}
+        ${buildComandaRow([buildComandaCell("Titular", { style: "ComandaLabel" }), buildComandaCell(titularServico), buildComandaCell(numeroPortado, { style: "ComandaValueCenter" }), buildComandaCell(numeroProvisorio, { style: "ComandaValueCenter" }), buildComandaCell(doarChipTexto, { style: "ComandaValueCenter" }), buildComandaCell(titularIccid, { style: "ComandaValueCenter" })])}
         ${dependentesRowsXml}
         ${buildComandaRow([])}
         ${buildComandaRow([buildComandaCell("DADOS DOS APARELHOS", { style: "ComandaSection", mergeAcross: 3 }), buildComandaCell("SEGURO", { style: "ComandaSection", mergeAcross: 1 })])}

@@ -34,6 +34,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
     cep: "",
     dataNascimento: "",
     tipoNumeroPortado: "numero-cliente",
+    doarChip: false,
     comandaMovelAtiva: false,
     comandaInternetAtiva: false,
     comandaTvAtiva: false,
@@ -55,6 +56,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
     comandaTvContrato: "",
     comandaTvBoxImediata: "",
     comandaAparelhoModelo: "",
+    comandaAparelhoNumero: "",
     comandaAparelhoImei: "",
     comandaAparelhoValor: "",
     comandaAcessoriosDescricao: "",
@@ -152,13 +154,19 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
   const isCurrentSeguro = currentPlano === "Seguro Movel Celular";
   const isCurrentPosPago = currentPlano === "Plano Pós-Pago";
   const isCurrentControle = currentPlano === "Plano Controle";
-  const highlightedFieldKeys = ["tipoPlano", "numero", "portabilidade", "iccid", "linhas"];
+  const highlightedFieldKeys = ["tipoPlano", "numero", "portabilidade", "iccid", "linhas", "doarChip"];
   const shouldShowPortabilidadeField = !usesPortabilitySelector || form.tipoNumeroPortado === "portabilidade";
   const highlightedExtraFields = extras.filter(
-    (fieldConfig) => highlightedFieldKeys.includes(fieldConfig.key) && (fieldConfig.key !== "portabilidade" || shouldShowPortabilidadeField)
+    (fieldConfig) =>
+      highlightedFieldKeys.includes(fieldConfig.key) &&
+      (fieldConfig.key !== "portabilidade" || shouldShowPortabilidadeField) &&
+      !(isCurrentAparelho && fieldConfig.key === "numero")
   );
   const remainingExtraFields = extras.filter(
-    (fieldConfig) => !highlightedFieldKeys.includes(fieldConfig.key) && (fieldConfig.key !== "portabilidade" || shouldShowPortabilidadeField)
+    (fieldConfig) =>
+      !highlightedFieldKeys.includes(fieldConfig.key) &&
+      (fieldConfig.key !== "portabilidade" || shouldShowPortabilidadeField) &&
+      !(isCurrentAparelho && fieldConfig.key === "numero")
   );
   const dependenteContaValue = getRemunerationValue("Plano Pós-Pago", "Dependente Conta") || 0;
   const dependenteBandaLargaValue = getRemunerationValue("Plano Pós-Pago", "Dependente Banda Larga") || 0;
@@ -249,6 +257,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
         adicionarSeguro: normalizedPlano === "Aparelho Celular" ? current.adicionarSeguro : false,
         tipoSeguro: normalizedPlano === "Aparelho Celular" ? current.tipoSeguro : "",
         tipoNumeroPortado: mobilePlanos.includes(normalizedPlano) ? current.tipoNumeroPortado || "numero-cliente" : current.tipoNumeroPortado,
+        doarChip: ["Plano Controle", "Plano Pós-Pago", "Internet Movel Mais"].includes(normalizedPlano) ? current.doarChip : false,
         posPagoDependentes: normalizedPlano === "Plano Pós-Pago" ? current.posPagoDependentes || [] : [],
         controleAdicionais: normalizedPlano === "Plano Controle" ? current.controleAdicionais || [] : [],
       }));
@@ -549,6 +558,16 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
               </option>
             ))}
           </select>
+        ) : config.type === "checkbox" ? (
+          <label style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 44, color: "#FFFFFF", fontSize: 13, fontWeight: 700 }}>
+            <input
+              type="checkbox"
+              checked={Boolean(form[config.key])}
+              onChange={(e) => setField(config.key, e.target.checked)}
+              style={{ width: 18, height: 18, accentColor: "#DA291C" }}
+            />
+            <span>{config.checkboxText || config.label}</span>
+          </label>
         ) : config.key === "dataNascimento" ? (
           <input
             type="text"
@@ -582,6 +601,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
       comandaMovelNumero: maskPhone,
       comandaMovelPortabilidade: maskPhone,
       comandaMovelIccid: maskICCID,
+      comandaAparelhoNumero: maskPhone,
     };
     const applyMask = valueMaskByField[key];
 
@@ -762,6 +782,18 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
             style={{ ...inputStyle, borderColor: errors.cpf ? "#EF4444" : undefined }}
           />
         </Field>
+
+        {isCurrentAparelho && (
+          <Field label="Telefone do cliente">
+            <input
+              type="text"
+              value={form.numero || ""}
+              placeholder="Ex: (41) 99999-0000"
+              onChange={(e) => setField("numero", maskPhone(e.target.value))}
+              style={{ ...inputStyle, borderColor: "#232327" }}
+            />
+          </Field>
+        )}
 
         {currentUser.role !== "seller" ? (
           <Field label="Vendedor" error={errors.vendedor}>
@@ -1144,6 +1176,7 @@ export default function VendaForm({ initial, onSave, onClose, currentUser, selle
             <div style={{ color: "#FFFFFF", fontSize: 12, fontWeight: 700, marginBottom: 8 }}>Aparelho</div>
             <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
               {renderComandaInput("comandaAparelhoModelo", "Modelo", "text", "Ex: MOTOROLA G35")}
+              {renderComandaInput("comandaAparelhoNumero", "Número do cliente", "text", "Ex: (41) 99999-0000")}
               {renderComandaInput("comandaAparelhoImei", "IMEI", "text", "Ex: 353044842...")}
               {renderComandaInput("comandaAparelhoValor", "Valor no pré", "number", "0,00")}
             </div>

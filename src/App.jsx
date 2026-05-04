@@ -31,6 +31,7 @@ import ReportsTab from "./components/sections/ReportsTab";
 import SellersTab from "./components/sections/SellersTab";
 import VendasTab from "./components/sections/VendasTab";
 import PendenciasTab from "./components/sections/PendenciasTab";
+import PlanosTab from "./components/sections/PlanosTab";
 import GoalsTab from "./components/sections/GoalsTab";
 import { AppIcon } from "./components/icons";
 import { Modal, Panel, StatCard, ToastStack, btnDanger, btnPrimary, btnSecondary } from "./components/ui";
@@ -926,13 +927,14 @@ export default function App() {
 
     return {
       bandaLarga,
-      grossTotal: activeVendas.filter((venda) => ["Plano Controle", "Plano Pós-Pago"].includes(venda.plano)).length,
+      grossTotal: activeVendas.filter((venda) => ["Plano Controle", "Plano Pós-Pago", "Internet Movel Mais"].includes(venda.plano)).length,
       posPagoTitular: activeVendas.filter(
         (venda) =>
-          venda.plano === "Plano Pós-Pago" &&
-          !String(venda.tipoPlano || "")
-            .toLowerCase()
-            .startsWith("dependente")
+          venda.plano === "Internet Movel Mais" ||
+          (venda.plano === "Plano Pós-Pago" &&
+            !String(venda.tipoPlano || "")
+              .toLowerCase()
+              .startsWith("dependente"))
       ).length,
       residencial: activeVendas.filter((venda) => ["Internet Residencial", "TV"].includes(venda.plano)).length,
       receita: receitaTotal,
@@ -1301,6 +1303,7 @@ export default function App() {
         tipoPlano: baseData.comandaAparelhoModelo || "Aparelho adicional",
         valor: aparelhoValor,
         modelo: baseData.comandaAparelhoModelo || "",
+        numero: baseData.comandaAparelhoNumero || "",
         imei: baseData.comandaAparelhoImei || "",
       }, { allowZeroValue: true });
     }
@@ -1720,8 +1723,8 @@ export default function App() {
                 <StatCard icon={<AppIcon name="device" size={18} />} label="Ticket Celular (5%)" value={fmtBRL(ticketCelular)} sub={`${ticketCelularVendas.length} vendas`} color="#DA291C" />
                 <StatCard icon={<AppIcon name="headset" size={18} />} label="Ticket Acessórios (15%)" value={fmtBRL(ticketAcessorios)} sub={`${ticketAcessoriosVendas.length} vendas`} color="#DA291C" />
                 <StatCard icon={<AppIcon name="chart" size={18} />} label="Controle + Pós + TV + Internet" value={fmtBRL(ticketPlanosPrincipaisTotal)} sub={`${ticketPlanosPrincipaisVendas.length} vendas`} color="#DA291C" />
-                <StatCard icon={<AppIcon name="phone" size={18} />} label="Planos Móveis" value={cycleScopedVendas.filter((venda) => ["Plano Controle", "Plano Pós-Pago"].includes(venda.plano)).length} color="#DA291C" />
-                <StatCard icon={<AppIcon name="wifi" size={18} />} label="Internet + TV" value={cycleScopedVendas.filter((venda) => ["Internet Residencial", "Internet Movel Mais", "TV"].includes(venda.plano) && venda.status === "Ativa").length} color="#DA291C" />
+                <StatCard icon={<AppIcon name="phone" size={18} />} label="Planos Móveis" value={cycleScopedVendas.filter((venda) => ["Plano Controle", "Plano Pós-Pago", "Internet Movel Mais"].includes(venda.plano) && venda.status === "Ativa").length} color="#DA291C" />
+                <StatCard icon={<AppIcon name="wifi" size={18} />} label="Internet + TV" value={cycleScopedVendas.filter((venda) => ["Internet Residencial", "TV"].includes(venda.plano) && venda.status === "Ativa").length} color="#DA291C" />
               </div>
             </div>
           )}
@@ -1767,6 +1770,8 @@ export default function App() {
               onMarkNotInstalled={handleNotInstalledDelete}
             />
           )}
+
+          {tab === "planos" && <PlanosTab />}
 
           {tab === "relatorios" && (
             <ReportsTab
