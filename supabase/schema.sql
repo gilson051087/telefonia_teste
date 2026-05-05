@@ -49,10 +49,13 @@ create table if not exists public.vendas (
   id text primary key,
   vendedor_id text,
   vendedor text,
+  store_id text,
   payload jsonb not null,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
+
+alter table public.vendas add column if not exists store_id text;
 
 create table if not exists public.app_sessions (
   token text primary key,
@@ -84,6 +87,7 @@ create table if not exists public.seller_admin_links (
 create index if not exists idx_users_username on public.users (username);
 create index if not exists idx_users_store_id on public.users (store_id);
 create index if not exists idx_vendas_vendedor_id on public.vendas (vendedor_id);
+create index if not exists idx_vendas_store_id on public.vendas (store_id);
 create index if not exists idx_vendas_created_at on public.vendas (created_at desc);
 create index if not exists idx_app_sessions_user_id on public.app_sessions (user_id);
 create index if not exists idx_app_sessions_expires_at on public.app_sessions (expires_at);
@@ -96,6 +100,13 @@ from public.users s
 join public.users a on a.role = 'admin' and a.store_id = s.store_id
 where s.role = 'seller'
 on conflict (seller_id, admin_id) do nothing;
+
+update public.vendas v
+set store_id = u.store_id
+from public.users u
+where v.vendedor_id = u.id
+  and coalesce(v.store_id, '') = ''
+  and coalesce(u.store_id, '') <> '';
 
 create or replace function public.app_hash_password(p_password text)
 returns text
@@ -187,6 +198,157 @@ as $$
   limit 1;
 $$;
 
+create or replace function public.app_resolve_venda_store_id(p_vendedor_id text, p_vendedor text)
+returns text
+language plpgsql
+stable
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_store_id text;
+  v_requester_store_id text;
+begin
+  if coalesce(trim(p_vendedor_id), '') <> '' then
+    select u.store_id
+      into v_store_id
+    from public.users u
+    where u.id = p_vendedor_id
+    limit 1;
+
+    if coalesce(v_store_id, '') <> '' then
+      return v_store_id;
+    end if;
+  end if;
+
+  v_requester_store_id := public.app_current_user_store_id();
+
+  if coalesce(trim(p_vendedor), '') <> '' and coalesce(v_requester_store_id, '') <> '' then
+    select u.store_id
+      into v_store_id
+    from public.users u
+    where upper(trim(u.nome)) = upper(trim(p_vendedor))
+      and u.store_id = v_requester_store_id
+    order by u.created_at asc
+    limit 1;
+
+    if coalesce(v_store_id, '') <> '' then
+      return v_store_id;
+    end if;
+  end if;
+
+  return v_requester_store_id;
+end;
+$$;
+
+create or replace function public.app_apply_venda_store_scope()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_store_id text;
+  v_vendedor_nome text;
+  v_admin_nome text;
+begin
+  v_store_id := coalesce(
+    nullif(new.store_id, ''),
+    public.app_resolve_venda_store_id(new.vendedor_id, new.vendedor)
+  );
+
+  if coalesce(v_store_id, '') <> '' then
+    new.store_id := v_store_id;
+    new.payload := jsonb_set(coalesce(new.payload, '{}'::jsonb), '{storeId}', to_jsonb(v_store_id), true);
+
+    select u.nome
+      into v_admin_nome
+    from public.users u
+    where u.role = 'admin'
+      and coalesce(u.store_id, u.id) = v_store_id
+    order by u.created_at asc
+    limit 1;
+
+    if coalesce(v_admin_nome, '') <> '' then
+      new.payload := jsonb_set(new.payload, '{adminLoja}', to_jsonb(v_admin_nome), true);
+      new.payload := jsonb_set(new.payload, '{lojaNome}', to_jsonb(v_admin_nome), true);
+    end if;
+  end if;
+
+  if coalesce(new.vendedor_id, '') <> '' then
+    select u.nome
+      into v_vendedor_nome
+    from public.users u
+    where u.id = new.vendedor_id
+    limit 1;
+
+    if coalesce(v_vendedor_nome, '') <> '' then
+      new.vendedor := v_vendedor_nome;
+      new.payload := jsonb_set(coalesce(new.payload, '{}'::jsonb), '{vendedor}', to_jsonb(v_vendedor_nome), true);
+    end if;
+  end if;
+
+  if coalesce(new.vendedor_id, '') <> '' then
+    new.payload := jsonb_set(coalesce(new.payload, '{}'::jsonb), '{vendedorId}', to_jsonb(new.vendedor_id), true);
+  end if;
+
+  return new;
+end;
+$$;
+
+create or replace function public.app_get_store_admin_name(p_store_id text)
+returns text
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_user_id text;
+  v_user_role text;
+  v_user_store_id text;
+  v_store_id text;
+  v_admin_nome text;
+begin
+  v_user_id := public.app_current_user_id();
+  v_user_role := public.app_current_user_role();
+  v_user_store_id := public.app_current_user_store_id();
+  v_store_id := trim(coalesce(p_store_id, ''));
+
+  if v_user_id is null then
+    raise exception 'Sessao nao encontrada.';
+  end if;
+
+  if v_store_id = '' then
+    return '';
+  end if;
+
+  if v_user_role <> 'superadmin' and coalesce(v_user_store_id, '') <> v_store_id then
+    raise exception 'Sem permissao para acessar loja de outra empresa.';
+  end if;
+
+  select u.nome
+    into v_admin_nome
+  from public.users u
+  where u.role = 'admin'
+    and coalesce(u.store_id, u.id) = v_store_id
+  order by u.created_at asc
+  limit 1;
+
+  return coalesce(v_admin_nome, '');
+end;
+$$;
+
+drop trigger if exists trg_vendas_store_scope on public.vendas;
+create trigger trg_vendas_store_scope
+before insert or update on public.vendas
+for each row
+execute function public.app_apply_venda_store_scope();
+
+update public.vendas
+set updated_at = updated_at
+where coalesce(store_id, '') = ''
+  and coalesce(public.app_resolve_venda_store_id(vendedor_id, vendedor), '') <> '';
+
 create or replace function public.app_admin_has_seller_access(p_admin_id text, p_seller_id text)
 returns boolean
 language sql
@@ -262,6 +424,7 @@ begin
       'nome', v_user.nome,
       'username', v_user.username,
       'role', public.app_effective_user_role(v_user.role, v_user.username),
+      'store_id', v_user.store_id,
       'created_at', v_user.created_at
     )
   );
@@ -290,13 +453,14 @@ declare
   v_nome text;
   v_username text;
   v_role text;
+  v_store_id text;
   v_created_at timestamptz;
   v_expires timestamptz;
 begin
   delete from public.app_sessions where expires_at <= timezone('utc', now());
 
-  select u.id, u.nome, u.username, u.role, u.created_at, s.expires_at
-    into v_id, v_nome, v_username, v_role, v_created_at, v_expires
+  select u.id, u.nome, u.username, u.role, u.store_id, u.created_at, s.expires_at
+    into v_id, v_nome, v_username, v_role, v_store_id, v_created_at, v_expires
   from public.app_sessions s
   join public.users u on u.id = s.user_id
   where s.token = public.app_session_token()
@@ -315,18 +479,21 @@ begin
       'nome', v_nome,
       'username', v_username,
       'role', public.app_effective_user_role(v_role, v_username),
+      'store_id', v_store_id,
       'created_at', v_created_at
     )
   );
 end;
 $$;
 
+drop function if exists public.app_list_users();
 create or replace function public.app_list_users()
 returns table (
   id text,
   nome text,
   username text,
   role text,
+  store_id text,
   created_at timestamptz
 )
 language plpgsql
@@ -353,6 +520,7 @@ begin
         u.nome,
         u.username,
         public.app_effective_user_role(u.role, u.username),
+        u.store_id,
         u.created_at
       from public.users u
       order by
@@ -369,6 +537,7 @@ begin
         u.nome,
         u.username,
         public.app_effective_user_role(u.role, u.username),
+        u.store_id,
         u.created_at
       from public.users u
       where u.role = 'seller'
@@ -381,9 +550,21 @@ begin
         u.nome,
         u.username,
         public.app_effective_user_role(u.role, u.username),
+        u.store_id,
         u.created_at
       from public.users u
-      where u.id = v_user_id;
+      where u.id = v_user_id
+        or (
+          u.role = 'admin'
+          and coalesce(u.store_id, '') = coalesce(v_user_store_id, '')
+          and coalesce(v_user_store_id, '') <> ''
+        )
+      order by
+        case public.app_effective_user_role(u.role, u.username)
+          when 'admin' then 0
+          else 1
+        end,
+        u.nome asc;
   end if;
 end;
 $$;
@@ -589,6 +770,7 @@ begin
     'nome', v_target.nome,
     'username', v_target.username,
     'role', v_target.role,
+    'store_id', v_target.store_id,
     'created_at', v_target.created_at
   );
 end;
@@ -669,8 +851,9 @@ begin
         from public.users
         where id = v_admin_id
           and role = 'admin'
+          and coalesce(store_id, '') = v_target_store_id
       ) then
-        raise exception 'Administrador informado nao encontrado.';
+        raise exception 'Todos os administradores do vendedor precisam pertencer a mesma empresa.';
       end if;
     end loop;
   end if;
@@ -703,6 +886,7 @@ begin
     'nome', v_new_user.nome,
     'username', v_new_user.username,
     'role', v_new_user.role,
+    'store_id', v_new_user.store_id,
     'created_at', v_new_user.created_at
   );
 end;
@@ -782,17 +966,6 @@ begin
     raise exception 'Informe ao menos um administrador.';
   end if;
 
-  foreach v_admin_id in array v_normalized_admin_ids loop
-    if not exists (
-      select 1
-      from public.users
-      where id = v_admin_id
-        and role = 'admin'
-    ) then
-      raise exception 'Administrador informado nao encontrado.';
-    end if;
-  end loop;
-
   select coalesce(store_id, id)
     into v_primary_admin_store_id
   from public.users
@@ -804,10 +977,29 @@ begin
     raise exception 'Administrador principal nao encontrado.';
   end if;
 
+  foreach v_admin_id in array v_normalized_admin_ids loop
+    if not exists (
+      select 1
+      from public.users
+      where id = v_admin_id
+        and role = 'admin'
+        and coalesce(store_id, '') = v_primary_admin_store_id
+    ) then
+      raise exception 'Todos os administradores do vendedor precisam pertencer a mesma empresa.';
+    end if;
+  end loop;
+
   update public.users
   set store_id = v_primary_admin_store_id
   where id = p_seller_id
     and role = 'seller';
+
+  update public.vendas
+  set
+    store_id = v_primary_admin_store_id,
+    payload = jsonb_set(coalesce(payload, '{}'::jsonb), '{storeId}', to_jsonb(v_primary_admin_store_id), true),
+    updated_at = timezone('utc', now())
+  where vendedor_id = p_seller_id;
 
   delete from public.seller_admin_links where seller_id = p_seller_id;
 
@@ -876,6 +1068,7 @@ begin
     'nome', v_new_user.nome,
     'username', v_new_user.username,
     'role', v_new_user.role,
+    'store_id', v_new_user.store_id,
     'created_at', v_new_user.created_at
   );
 end;
@@ -976,6 +1169,10 @@ using (
   public.app_current_user_role() = 'superadmin'
   or (
     public.app_current_user_role() = 'admin'
+    and (
+      store_id = public.app_current_user_store_id()
+      or public.app_admin_has_seller_access(public.app_current_user_id(), vendedor_id)
+    )
   )
   or (
     public.app_current_user_role() = 'seller'
@@ -995,12 +1192,15 @@ with check (
       where u.id = vendedor_id
         and u.role = 'seller'
         and u.nome = vendedor
+        and u.store_id = public.app_current_user_store_id()
     )
+    and store_id = public.app_current_user_store_id()
   )
   or (
     public.app_current_user_role() = 'seller'
     and vendedor_id = public.app_current_user_id()
     and vendedor = public.app_current_user_nome()
+    and store_id = public.app_current_user_store_id()
   )
 );
 
@@ -1010,6 +1210,7 @@ using (
   public.app_current_user_role() = 'superadmin'
   or (
     public.app_current_user_role() = 'admin'
+    and store_id = public.app_current_user_store_id()
   )
   or (
     public.app_current_user_role() = 'seller'
@@ -1026,12 +1227,15 @@ with check (
       where u.id = vendedor_id
         and u.role = 'seller'
         and u.nome = vendedor
+        and u.store_id = public.app_current_user_store_id()
     )
+    and store_id = public.app_current_user_store_id()
   )
   or (
     public.app_current_user_role() = 'seller'
     and vendedor_id = public.app_current_user_id()
     and vendedor = public.app_current_user_nome()
+    and store_id = public.app_current_user_store_id()
   )
 );
 
@@ -1041,6 +1245,7 @@ using (
   public.app_current_user_role() = 'superadmin'
   or (
     public.app_current_user_role() = 'admin'
+    and store_id = public.app_current_user_store_id()
   )
   or (
     public.app_current_user_role() = 'seller'
@@ -1062,6 +1267,7 @@ grant execute on function public.app_login(text, text) to anon, authenticated;
 grant execute on function public.app_logout() to anon, authenticated;
 grant execute on function public.app_get_session() to anon, authenticated;
 grant execute on function public.app_admin_has_seller_access(text, text) to anon, authenticated;
+grant execute on function public.app_get_store_admin_name(text) to anon, authenticated;
 grant execute on function public.app_list_users() to anon, authenticated;
 grant execute on function public.app_list_goals() to anon, authenticated;
 grant execute on function public.app_create_seller(text, text, text) to anon, authenticated;

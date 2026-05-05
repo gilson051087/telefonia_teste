@@ -7,6 +7,7 @@ import {
   deleteSeller,
   deleteVenda,
   getSession,
+  getStoreAdminName,
   hasApiToken,
   listGoals,
   listUsers,
@@ -808,9 +809,17 @@ export default function App() {
     });
   }, [currentUser?.id, currentUser?.role, users]);
 
+  const userStoreById = new Map(users.map((user) => [user.id, user.storeId || null]));
+  const visibleSellerIds = new Set(users.filter((user) => user.role === "seller").map((user) => user.id));
+  const visibleSellerNames = new Set(users.filter((user) => user.role === "seller").map((user) => String(user.nome || "").toUpperCase()));
   const scopedVendas = vendas.filter((venda) => {
     if (!currentUser) return false;
-    if (currentUser.role !== "seller") return true;
+    if (currentUser.role === "superadmin") return true;
+    if (currentUser.role === "admin") {
+      const vendaStoreId = venda.storeId || userStoreById.get(venda.vendedorId) || null;
+      if (currentUser.storeId && vendaStoreId === currentUser.storeId) return true;
+      return visibleSellerIds.has(venda.vendedorId) || visibleSellerNames.has(String(venda.vendedor || "").toUpperCase());
+    }
     return venda.vendedorId === currentUser.id || venda.vendedor === currentUser.nome;
   });
 
@@ -867,6 +876,14 @@ export default function App() {
     const ticketPercentage = TICKET_PERCENTAGE_BY_PLANO[venda.plano];
     if (ticketPercentage) return valorBase * ticketPercentage;
     return valorBase;
+  };
+  const getPosPagoDependentesCount = (venda = {}) =>
+    venda.plano === "Plano Pós-Pago" && Array.isArray(venda.posPagoDependentes)
+      ? venda.posPagoDependentes.length
+      : 0;
+  const getMobileLineCount = (venda = {}) => {
+    if (!["Plano Controle", "Plano Pós-Pago", "Internet Movel Mais"].includes(venda.plano)) return 0;
+    return 1 + getPosPagoDependentesCount(venda);
   };
   const cycleScopedVendas = scopedVendas.filter((venda) => getVendaCompetenceMonth(venda) === currentCycleMonth);
   const searchTerms = normalizeSearchText(search).split(/\s+/).filter(Boolean);
@@ -1167,12 +1184,38 @@ export default function App() {
     })
     .sort((a, b) => a.nome.localeCompare(b.nome));
 
-  const handleDownloadComanda = useCallback((venda, comandaVendas = []) => {
+  const getVendaStoreName = useCallback(
+    (venda = {}) => {
+      const storedName = String(venda.lojaNome || venda.adminLoja || "").trim();
+      if (storedName) return storedName;
+      if (currentUser?.role === "admin") return currentUser.nome;
+      const seller = users.find((user) => user.role === "seller" && (user.id === venda.vendedorId || user.nome === venda.vendedor));
+      const storeId = venda.storeId || seller?.storeId || currentUser?.storeId || "";
+      const admin = users.find((user) => user.role === "admin" && user.storeId === storeId);
+      if (admin?.nome) return admin.nome;
+      return "";
+    },
+    [currentUser, users]
+  );
+
+  const handleDownloadComanda = useCallback(async (venda, comandaVendas = []) => {
     if (!venda) return;
     const baseDate = venda.data || getTodayDate();
     const safeClient = slugify(venda.cliente || "cliente").slice(0, 50) || "cliente";
-    exportVendaComanda(`comanda-venda-${baseDate}-${safeClient}.xls`, venda, comandaVendas);
-  }, []);
+    const seller = users.find((user) => user.role === "seller" && (user.id === venda.vendedorId || user.nome === venda.vendedor));
+    const storeId = venda.storeId || seller?.storeId || currentUser?.storeId || "";
+    let lojaNome = getVendaStoreName(venda);
+
+    if (!lojaNome && storeId) {
+      try {
+        lojaNome = await getStoreAdminName(storeId);
+      } catch {}
+    }
+
+    exportVendaComanda(`comanda-venda-${baseDate}-${safeClient}.xls`, venda, comandaVendas, {
+      lojaNome,
+    });
+  }, [currentUser?.storeId, getVendaStoreName, users]);
 
   const handleInstallationStatusUpdate = useCallback(
     async (vendaId, nextStatusInstalacao) => {
@@ -1476,7 +1519,7 @@ export default function App() {
         pushToast("Venda registrada com sucesso.", "success");
         const shouldExportComanda = window.confirm("Venda registrada com sucesso. Deseja gerar a planilha de comanda desta venda?");
         if (shouldExportComanda) {
-          handleDownloadComanda(createdVenda, createdItems);
+          await handleDownloadComanda(createdVenda, createdItems);
           pushToast("Comanda gerada para download.", "success");
         }
       }
@@ -1553,8 +1596,11 @@ export default function App() {
   async function handleSellerAdminsUpdate(nextAdminIds) {
     if (!sellerAdminsEditId) return;
     await apiSetSellerAdmins(sellerAdminsEditId, nextAdminIds);
+    const [loadedUsers, loadedVendas] = await Promise.all([listUsers(), listVendas()]);
+    setUsers(loadedUsers);
+    setVendas(loadedVendas.map(normalizeLegacyVenda));
     setSellerAdminsEditId(null);
-    pushToast("Vendedor movido para os administradores selecionados.", "success");
+    pushToast("Vendedor movido de loja com sucesso.", "success");
   }
 
   async function handlePasswordChange(currentSenha, newSenha) {
@@ -1723,7 +1769,7 @@ export default function App() {
                 <StatCard icon={<AppIcon name="device" size={18} />} label="Ticket Celular (5%)" value={fmtBRL(ticketCelular)} sub={`${ticketCelularVendas.length} vendas`} color="#DA291C" />
                 <StatCard icon={<AppIcon name="headset" size={18} />} label="Ticket Acessórios (15%)" value={fmtBRL(ticketAcessorios)} sub={`${ticketAcessoriosVendas.length} vendas`} color="#DA291C" />
                 <StatCard icon={<AppIcon name="chart" size={18} />} label="Controle + Pós + TV + Internet" value={fmtBRL(ticketPlanosPrincipaisTotal)} sub={`${ticketPlanosPrincipaisVendas.length} vendas`} color="#DA291C" />
-                <StatCard icon={<AppIcon name="phone" size={18} />} label="Planos Móveis" value={cycleScopedVendas.filter((venda) => ["Plano Controle", "Plano Pós-Pago", "Internet Movel Mais"].includes(venda.plano) && venda.status === "Ativa").length} color="#DA291C" />
+                <StatCard icon={<AppIcon name="phone" size={18} />} label="Planos Móveis" value={cycleScopedVendas.filter((venda) => venda.status === "Ativa").reduce((sum, venda) => sum + getMobileLineCount(venda), 0)} color="#DA291C" />
                 <StatCard icon={<AppIcon name="wifi" size={18} />} label="Internet + TV" value={cycleScopedVendas.filter((venda) => ["Internet Residencial", "TV"].includes(venda.plano) && venda.status === "Ativa").length} color="#DA291C" />
               </div>
             </div>
@@ -1851,7 +1897,7 @@ export default function App() {
       )}
 
       {modal === "seller" && currentUser.role !== "seller" && (
-        <Modal title={canManageAdmins ? "Cadastrar Usuário" : "Cadastrar Vendedor"} onClose={() => setModal(null)}>
+        <Modal title={canManageAdmins ? "Cadastrar Empresa/Usuário" : "Cadastrar Vendedor"} onClose={() => setModal(null)}>
           <SellerForm users={users} onSave={handleRegister} onClose={() => setModal(null)} canManageAdmins={canManageAdmins} />
         </Modal>
       )}
@@ -1869,7 +1915,7 @@ export default function App() {
       )}
 
       {sellerAdminsEditId && canManageAdmins && sellerToManageAdmins && sellerToManageAdmins.role === "seller" && (
-        <Modal title="Mover Vendedor para Administradores" onClose={() => setSellerAdminsEditId(null)}>
+        <Modal title="Mover Vendedor de Empresa" onClose={() => setSellerAdminsEditId(null)}>
           <SellerAdminsForm
             seller={sellerToManageAdmins}
             users={users}

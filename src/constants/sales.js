@@ -60,11 +60,6 @@ export const REMUNERATION_OPTIONS_BY_PLANO = {
     { label: "Claro Controle 40GB (Multi)", value: 69.9 },
     { label: "Claro Controle 40GB GeForce (Single)", value: 99.9 },
     { label: "Claro Controle 40GB GeForce (Multi)", value: 99.9 },
-    
-    
-    
-    
-    
   ],
   "Plano Pós-Pago": [
     { label: "Claro Pós 50GB (Single)", value: 124.9 },
@@ -139,7 +134,7 @@ export const PLANO_EXTRAS = {
       placeholderSelect: "Selecione o tipo do plano",
       options: REMUNERATION_OPTIONS_BY_PLANO["Plano Controle"].map((item) => item.label),
     },
-    { key: "numero", label: "Número Provisório / Cliente", type: "text", placeholder: "Ex: (41) 99999-0000" },
+    { key: "numero", label: "Número Provisório / Cliente", type: "text", placeholder: "Ex: (41) 98765-1234" },
     { key: "portabilidade", label: "Número da Portabilidade", type: "text", placeholder: "Ex: (41) 98765-1234" },
     { key: "iccid", label: "ICCID", type: "text", placeholder: "Ex: 8955053164000601" },
     { key: "doarChip", label: "Etiquetar", type: "checkbox", checkboxText: "DOAR CHIP?" },

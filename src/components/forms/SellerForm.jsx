@@ -21,17 +21,6 @@ export default function SellerForm({ users, onSave, onClose, canManageAdmins = f
     setForm((current) => ({ ...current, adminIds: adminUsers[0]?.id ? [adminUsers[0].id] : [] }));
   }, [canManageAdmins, form.role, form.adminIds, adminUsers]);
 
-  function toggleAdminSelection(adminId) {
-    setForm((current) => {
-      const currentIds = Array.isArray(current.adminIds) ? current.adminIds : [];
-      const hasAdmin = currentIds.includes(adminId);
-      return {
-        ...current,
-        adminIds: hasAdmin ? currentIds.filter((id) => id !== adminId) : [...currentIds, adminId],
-      };
-    });
-  }
-
   async function handleSave() {
     const nome = form.nome.trim().toUpperCase();
     const username = form.username.trim().toLowerCase() || slugify(nome);
@@ -73,7 +62,7 @@ export default function SellerForm({ users, onSave, onClose, canManageAdmins = f
 
   return (
     <div>
-      <Field label={canManageAdmins ? "Nome do usuário" : "Nome do vendedor"}>
+      <Field label={canManageAdmins ? "Nome do usuário / empresa" : "Nome do vendedor"}>
         <input
           value={form.nome}
           onChange={(e) =>
@@ -120,46 +109,21 @@ export default function SellerForm({ users, onSave, onClose, canManageAdmins = f
         </Field>
       )}
       {canManageAdmins && form.role === "seller" && (
-        <Field label="Administradores responsáveis">
-          <div
-            style={{
-              border: "1px solid #2A2A2E",
-              borderRadius: 10,
-              padding: 10,
-              maxHeight: 190,
-              overflowY: "auto",
-              background: "#141416",
-            }}
+        <Field label="Empresa / administrador responsável">
+          <select
+            value={form.adminIds?.[0] || ""}
+            onChange={(e) => setForm((current) => ({ ...current, adminIds: e.target.value ? [e.target.value] : [] }))}
+            style={{ ...inputStyle, appearance: "none" }}
+            disabled={adminUsers.length === 0}
           >
-            {adminUsers.map((adminUser) => {
-              const checked = (form.adminIds || []).includes(adminUser.id);
-              return (
-                <label
-                  key={adminUser.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "8px 6px",
-                    cursor: "pointer",
-                    color: checked ? "#FFFFFF" : "#D4D4D8",
-                    borderRadius: 8,
-                    background: checked ? "rgba(218,41,28,0.12)" : "transparent",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggleAdminSelection(adminUser.id)}
-                    disabled={adminUsers.length === 0}
-                  />
-                  <span>{String(adminUser.nome || "").toUpperCase()}</span>
-                </label>
-              );
-            })}
-          </div>
+            {adminUsers.map((adminUser) => (
+              <option key={adminUser.id} value={adminUser.id}>
+                {String(adminUser.nome || "").toUpperCase()}
+              </option>
+            ))}
+          </select>
           <div style={{ color: "#A1A1AA", fontSize: 12, marginTop: 6 }}>
-            Selecione um ou mais administradores para este vendedor.
+            O vendedor ficará isolado dentro da empresa desse administrador.
           </div>
           {adminUsers.length === 0 && (
             <div style={{ color: "#A1A1AA", fontSize: 12, marginTop: 6 }}>

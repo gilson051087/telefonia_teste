@@ -141,6 +141,7 @@ function sanitizeUser(user) {
     nome: user.nome,
     username: user.username,
     role: user.role,
+    storeId: user.store_id || null,
     createdAt: user.created_at,
   };
 }
@@ -180,18 +181,54 @@ db.exec(`
     username TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL,
+    store_id TEXT,
     created_at TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS vendas (
     id TEXT PRIMARY KEY,
     vendedor_id TEXT,
     vendedor TEXT,
+    store_id TEXT,
     payload TEXT NOT NULL,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+  CREATE INDEX IF NOT EXISTS idx_users_store_id ON users(store_id);
   CREATE INDEX IF NOT EXISTS idx_vendas_vendedor_id ON vendas(vendedor_id);
+  CREATE INDEX IF NOT EXISTS idx_vendas_store_id ON vendas(store_id);
+`);
+
+try {
+  db.exec("ALTER TABLE users ADD COLUMN store_id TEXT;");
+} catch {}
+
+try {
+  db.exec("ALTER TABLE vendas ADD COLUMN store_id TEXT;");
+} catch {}
+
+db.exec(`
+  UPDATE users SET store_id = NULL WHERE role = 'superadmin';
+  UPDATE users SET store_id = id WHERE role = 'admin' AND coalesce(store_id, '') = '';
+  UPDATE users SET role = 'superadmin', store_id = NULL WHERE lower(username) = 'admin';
+  UPDATE users
+  SET store_id = (
+    SELECT store_id
+    FROM users admin_user
+    WHERE admin_user.role = 'admin'
+      AND coalesce(admin_user.store_id, '') <> ''
+    ORDER BY admin_user.created_at ASC
+    LIMIT 1
+  )
+  WHERE role = 'seller' AND coalesce(store_id, '') = '';
+  UPDATE vendas
+  SET store_id = (
+    SELECT users.store_id
+    FROM users
+    WHERE users.id = vendas.vendedor_id
+    LIMIT 1
+  )
+  WHERE coalesce(store_id, '') = '';
 `);
 
 function getUserByUsername(username) {
@@ -206,42 +243,65 @@ function listAllUsers() {
   return db.prepare("SELECT * FROM users ORDER BY role DESC, nome ASC").all().map(sanitizeUser);
 }
 
+function listScopedUsers(user) {
+  if (user.role === "superadmin") return listAllUsers();
+  if (user.role === "admin") {
+    return db
+      .prepare("SELECT * FROM users WHERE role = 'seller' AND store_id = ? ORDER BY nome ASC")
+      .all(user.store_id)
+      .map(sanitizeUser);
+  }
+  return [sanitizeUser(user)];
+}
+
 function getAllVendas() {
   const rows = db.prepare("SELECT * FROM vendas ORDER BY created_at DESC").all();
-  return rows.map((row) => normalizeVenda(JSON.parse(row.payload)));
+  return rows.map((row) => normalizeVenda({ ...JSON.parse(row.payload), storeId: row.store_id || null }));
 }
 
 function getScopedVendas(user) {
-  if (user.role === "admin") return getAllVendas();
+  if (user.role === "superadmin") return getAllVendas();
+  if (user.role === "admin") {
+    const rows = db.prepare("SELECT * FROM vendas WHERE store_id = ? ORDER BY created_at DESC").all(user.store_id);
+    return rows.map((row) => normalizeVenda({ ...JSON.parse(row.payload), storeId: row.store_id || null }));
+  }
   const rows = db
     .prepare("SELECT * FROM vendas WHERE vendedor_id = ? OR vendedor = ? ORDER BY created_at DESC")
     .all(user.id, user.nome);
-  return rows.map((row) => normalizeVenda(JSON.parse(row.payload)));
+  return rows.map((row) => normalizeVenda({ ...JSON.parse(row.payload), storeId: row.store_id || null }));
 }
 
-function insertUser({ id, nome, username, senha, role }) {
+function insertUser({ id, nome, username, senha, role, storeId }) {
   const createdAt = nowIso();
+  const resolvedStoreId = role === "superadmin" ? null : role === "admin" ? id : storeId || null;
   db.prepare(
-    "INSERT INTO users (id, nome, username, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, ?)"
-  ).run(id, nome, username, hashPassword(senha), role, createdAt);
+    "INSERT INTO users (id, nome, username, password_hash, role, store_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+  ).run(id, nome, username, hashPassword(senha), role, resolvedStoreId, createdAt);
   return getUserById(id);
 }
 
 function insertVenda(venda) {
   const payload = normalizeVenda(venda);
+  const seller = payload.vendedorId ? getUserById(payload.vendedorId) : null;
+  const storeId = payload.storeId || seller?.store_id || null;
+  payload.storeId = storeId;
   const now = nowIso();
   db.prepare(
-    "INSERT INTO vendas (id, vendedor_id, vendedor, payload, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
-  ).run(payload.id, payload.vendedorId || null, payload.vendedor || null, JSON.stringify(payload), now, now);
+    "INSERT INTO vendas (id, vendedor_id, vendedor, store_id, payload, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+  ).run(payload.id, payload.vendedorId || null, payload.vendedor || null, storeId, JSON.stringify(payload), now, now);
   return payload;
 }
 
 function updateVendaRecord(id, venda) {
   const payload = normalizeVenda(venda);
+  const seller = payload.vendedorId ? getUserById(payload.vendedorId) : null;
+  const storeId = payload.storeId || seller?.store_id || null;
+  payload.storeId = storeId;
   const now = nowIso();
-  db.prepare("UPDATE vendas SET vendedor_id = ?, vendedor = ?, payload = ?, updated_at = ? WHERE id = ?").run(
+  db.prepare("UPDATE vendas SET vendedor_id = ?, vendedor = ?, store_id = ?, payload = ?, updated_at = ? WHERE id = ?").run(
     payload.vendedorId || null,
     payload.vendedor || null,
+    storeId,
     JSON.stringify(payload),
     now,
     id
@@ -251,7 +311,7 @@ function updateVendaRecord(id, venda) {
 
 function getVendaById(id) {
   const row = db.prepare("SELECT * FROM vendas WHERE id = ?").get(id);
-  return row ? normalizeVenda(JSON.parse(row.payload)) : null;
+  return row ? normalizeVenda({ ...JSON.parse(row.payload), storeId: row.store_id || null }) : null;
 }
 
 function bootstrapAdmin() {
@@ -262,7 +322,7 @@ function bootstrapAdmin() {
     nome: "Administrador",
     username: "admin",
     senha: "123456",
-    role: "admin",
+    role: "superadmin",
   });
 }
 
@@ -276,13 +336,14 @@ function migrateLegacyJsonIfNeeded() {
     (legacy.users || []).forEach((user) => {
       if (getUserByUsername(user.username)) return;
       db.prepare(
-        "INSERT INTO users (id, nome, username, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+        "INSERT INTO users (id, nome, username, password_hash, role, store_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
       ).run(
         user.id || genId(),
         user.nome || user.username,
         String(user.username || "").toLowerCase(),
         user.passwordHash || hashPassword(user.senha || "123456"),
         user.role || "seller",
+        user.storeId || user.store_id || null,
         user.createdAt || nowIso()
       );
     });
@@ -314,7 +375,7 @@ function requireAuth(req, res) {
 function requireAdmin(req, res) {
   const user = requireAuth(req, res);
   if (!user) return null;
-  if (user.role !== "admin") {
+  if (!["admin", "superadmin"].includes(user.role)) {
     sendJson(res, 403, { error: "Acesso restrito ao administrador." });
     return null;
   }
@@ -393,8 +454,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/api/users") {
       const user = requireAuth(req, res);
       if (!user) return;
-      const users = user.role === "admin" ? listAllUsers() : [sanitizeUser(user)];
-      sendJson(res, 200, { users });
+      sendJson(res, 200, { users: listScopedUsers(user) });
       return;
     }
 
@@ -406,6 +466,7 @@ const server = http.createServer(async (req, res) => {
       const nome = String(body.nome || "").trim().toUpperCase();
       const username = String(body.username || "").trim().toLowerCase();
       const senha = String(body.senha || "");
+      const role = admin.role === "superadmin" && body.role === "admin" ? "admin" : "seller";
 
       if (!nome || !username || !senha) {
         sendJson(res, 400, { error: "Preencha nome, usuario e senha." });
@@ -422,12 +483,20 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
+      if (role === "admin" && admin.role !== "superadmin") {
+        sendJson(res, 403, { error: "Apenas superadmin pode criar administradores." });
+        return;
+      }
+
+      const storeId = role === "seller" ? admin.store_id : null;
+
       const newUser = insertUser({
         id: genId(),
         nome,
         username,
         senha,
-        role: "seller",
+        role,
+        storeId,
       });
 
       sendJson(res, 201, { user: sanitizeUser(newUser) });
@@ -445,8 +514,18 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      if (user.role === "admin") {
+      if (user.role === "superadmin") {
+        sendJson(res, 400, { error: "Nao e permitido excluir o superadmin." });
+        return;
+      }
+
+      if (user.role === "admin" && admin.role !== "superadmin") {
         sendJson(res, 400, { error: "Nao e permitido excluir o administrador." });
+        return;
+      }
+
+      if (admin.role === "admin" && user.store_id !== admin.store_id) {
+        sendJson(res, 403, { error: "Sem permissao para excluir usuario de outra empresa." });
         return;
       }
 
@@ -472,7 +551,14 @@ const server = http.createServer(async (req, res) => {
         id: genId(),
         vendedorId: user.role === "seller" ? user.id : body.vendedorId,
         vendedor: user.role === "seller" ? user.nome : body.vendedor,
+        storeId: user.role === "seller" ? user.store_id : body.storeId,
       };
+
+      const seller = venda.vendedorId ? getUserById(venda.vendedorId) : null;
+      if (user.role === "admin" && seller?.store_id !== user.store_id) {
+        sendJson(res, 403, { error: "Sem permissao para lancar venda em outra empresa." });
+        return;
+      }
 
       insertVenda(venda);
       sendJson(res, 201, { venda });
@@ -490,7 +576,12 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      if (user.role !== "admin" && current.vendedorId !== user.id) {
+      if (user.role === "admin" && current.storeId !== user.store_id) {
+        sendJson(res, 403, { error: "Sem permissao para editar venda de outra empresa." });
+        return;
+      }
+
+      if (!["admin", "superadmin"].includes(user.role) && current.vendedorId !== user.id) {
         sendJson(res, 403, { error: "Sem permissao para editar esta venda." });
         return;
       }
@@ -502,7 +593,14 @@ const server = http.createServer(async (req, res) => {
         id,
         vendedorId: user.role === "seller" ? user.id : body.vendedorId,
         vendedor: user.role === "seller" ? user.nome : body.vendedor,
+        storeId: user.role === "seller" ? user.store_id : body.storeId || current.storeId,
       };
+
+      const updatedSeller = updated.vendedorId ? getUserById(updated.vendedorId) : null;
+      if (user.role === "admin" && updatedSeller?.store_id !== user.store_id) {
+        sendJson(res, 403, { error: "Sem permissao para mover venda para outra empresa." });
+        return;
+      }
 
       updateVendaRecord(id, updated);
       sendJson(res, 200, { venda: updated });
@@ -520,7 +618,12 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      if (user.role !== "admin" && venda.vendedorId !== user.id) {
+      if (user.role === "admin" && venda.storeId !== user.store_id) {
+        sendJson(res, 403, { error: "Sem permissao para excluir venda de outra empresa." });
+        return;
+      }
+
+      if (!["admin", "superadmin"].includes(user.role) && venda.vendedorId !== user.id) {
         sendJson(res, 403, { error: "Sem permissao para excluir esta venda." });
         return;
       }
@@ -538,11 +641,11 @@ const server = http.createServer(async (req, res) => {
       const legacyVendas = Array.isArray(body.vendas) ? body.vendas : [];
 
       const insertLegacyUser = db.prepare(
-        "INSERT INTO users (id, nome, username, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+        "INSERT INTO users (id, nome, username, password_hash, role, store_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
       );
 
       const insertLegacyVenda = db.prepare(
-        "INSERT INTO vendas (id, vendedor_id, vendedor, payload, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
+        "INSERT INTO vendas (id, vendedor_id, vendedor, store_id, payload, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
       );
 
       legacyUsers.forEach((user) => {
@@ -554,6 +657,7 @@ const server = http.createServer(async (req, res) => {
           username,
           hashPassword(String(user.senha || "123456")),
           "seller",
+          admin.store_id || null,
           nowIso()
         );
       });
@@ -561,11 +665,15 @@ const server = http.createServer(async (req, res) => {
       legacyVendas.forEach((venda) => {
         const normalized = normalizeVenda(venda);
         if (!normalized.id || getVendaById(normalized.id)) return;
+        const seller = normalized.vendedorId ? getUserById(normalized.vendedorId) : null;
+        const storeId = normalized.storeId || seller?.store_id || admin.store_id || null;
+        normalized.storeId = storeId;
         const now = nowIso();
         insertLegacyVenda.run(
           normalized.id,
           normalized.vendedorId || null,
           normalized.vendedor || null,
+          storeId,
           JSON.stringify(normalized),
           now,
           now

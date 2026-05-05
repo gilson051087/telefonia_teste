@@ -14,13 +14,6 @@ export default function SellerAdminsForm({ seller, users, onSave, onClose }) {
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  function toggleAdmin(adminId) {
-    setSelectedAdminIds((current) => {
-      if (current.includes(adminId)) return current.filter((id) => id !== adminId);
-      return [...current, adminId];
-    });
-  }
-
   async function handleSave() {
     const normalized = Array.from(new Set(selectedAdminIds.filter(Boolean)));
     if (normalized.length === 0) {
@@ -45,39 +38,28 @@ export default function SellerAdminsForm({ seller, users, onSave, onClose }) {
         Vendedor: <strong style={{ color: "#FFFFFF" }}>{String(seller?.nome || "").toUpperCase()}</strong>
       </div>
 
-      <Field label="Administradores responsáveis">
-        <div
+      <Field label="Empresa / administrador responsável">
+        <select
+          value={selectedAdminIds[0] || ""}
+          onChange={(e) => setSelectedAdminIds(e.target.value ? [e.target.value] : [])}
+          disabled={adminUsers.length === 0}
           style={{
+            width: "100%",
+            padding: "12px 14px",
             border: "1px solid #2A2A2E",
             borderRadius: 10,
-            padding: 10,
-            maxHeight: 220,
-            overflowY: "auto",
             background: "#141416",
+            color: "#FFFFFF",
+            outline: "none",
+            appearance: "none",
           }}
         >
-          {adminUsers.map((adminUser) => {
-            const checked = selectedAdminIds.includes(adminUser.id);
-            return (
-              <label
-                key={adminUser.id}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  padding: "8px 6px",
-                  cursor: "pointer",
-                  color: checked ? "#FFFFFF" : "#D4D4D8",
-                  borderRadius: 8,
-                  background: checked ? "rgba(218,41,28,0.12)" : "transparent",
-                }}
-              >
-                <input type="checkbox" checked={checked} onChange={() => toggleAdmin(adminUser.id)} />
-                <span>{String(adminUser.nome || "").toUpperCase()}</span>
-              </label>
-            );
-          })}
-        </div>
+          {adminUsers.map((adminUser) => (
+            <option key={adminUser.id} value={adminUser.id}>
+              {String(adminUser.nome || "").toUpperCase()}
+            </option>
+          ))}
+        </select>
         {adminUsers.length === 0 && (
           <div style={{ color: "#A1A1AA", fontSize: 12, marginTop: 6 }}>
             Nenhum administrador disponível para vínculo.
@@ -98,4 +80,3 @@ export default function SellerAdminsForm({ seller, users, onSave, onClose }) {
     </div>
   );
 }
-

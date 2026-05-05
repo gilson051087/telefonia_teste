@@ -390,11 +390,12 @@ function uniqueComandaDependentes(dependentes = []) {
   return unique;
 }
 
-export function exportVendaComanda(filename, venda = {}, relatedVendas = []) {
+export function exportVendaComanda(filename, venda = {}, relatedVendas = [], options = {}) {
   const vendasComanda = uniqueVendas([venda, ...(Array.isArray(relatedVendas) ? relatedVendas : [])]);
   const findVendaByPlano = (matcher) => vendasComanda.find((item) => matcher(normalizeForMatch(item?.plano), item));
   const plano = venda.plano || "";
   const planoLower = normalizeForMatch(plano);
+  const lojaNome = String(options.lojaNome || venda.lojaNome || venda.adminLoja || "").trim();
 
   const isPlanoMovel = isMobilePlano(plano);
   const isPlanoInternet = planoLower === "internet residencial";
@@ -471,7 +472,7 @@ export function exportVendaComanda(filename, venda = {}, relatedVendas = []) {
     : hasComandaMovelExtra
       ? venda.comandaMovelNumero || ""
       : "";
-  const numeroPortado =
+  let numeroPortado =
     vendaMovel
       ? String(vendaMovel.portabilidade || "").trim() &&
         String(vendaMovel.portabilidade || "").trim() !== String(vendaMovel.numero || "").trim()
@@ -484,7 +485,16 @@ export function exportVendaComanda(filename, venda = {}, relatedVendas = []) {
           : ""
         : isAparelhoSemMovel
           ? aparelhoNumero
-        : "";
+          : "";
+  if (!numeroProvisorio && !numeroPortado) {
+    numeroPortado = vendaMovel
+      ? vendaMovel.portabilidade || vendaMovel.numero || ""
+      : hasComandaMovelExtra
+        ? venda.comandaMovelPortabilidade || venda.comandaMovelNumero || ""
+        : isAparelhoSemMovel
+          ? aparelhoNumero
+          : "";
+  }
   const titularIccid = vendaMovel ? vendaMovel.iccid || "" : hasComandaMovelExtra ? venda.comandaMovelIccid || "" : "";
   const doarChipTexto = isTruthyComandaValue(vendaMovel ? vendaMovel.doarChip : venda.doarChip) ? "SIM" : "";
   const mobileVendasExtras = vendasComanda
@@ -632,7 +642,7 @@ export function exportVendaComanda(filename, venda = {}, relatedVendas = []) {
         <Column ss:AutoFitWidth="0" ss:Width="140"/>
         <Column ss:AutoFitWidth="0" ss:Width="120"/>
         <Column ss:AutoFitWidth="0" ss:Width="120"/>
-        ${buildComandaRow([buildComandaCell("COMANDA DE VENDAS - MUELLER PR", { style: "ComandaTitle", mergeAcross: 5 })])}
+        ${buildComandaRow([buildComandaCell(lojaNome ? `COMANDA DE VENDAS - ${lojaNome}` : "COMANDA DE VENDAS", { style: "ComandaTitle", mergeAcross: 5 })])}
         ${buildComandaRow([buildComandaCell("Vendedor", { style: "ComandaLabel" }), buildComandaCell(vendedor, { mergeAcross: 1 }), buildComandaCell("Data da venda", { style: "ComandaLabel" }), buildComandaCell(dataVenda, { style: "ComandaValueCenter", mergeAcross: 1 })])}
         ${buildComandaRow([buildComandaCell("Ordem de venda", { style: "ComandaLabel" }), buildComandaCell(ordemVenda, { mergeAcross: 1 }), buildComandaCell("Nome do cliente", { style: "ComandaLabel" }), buildComandaCell(cliente, { mergeAcross: 1 })])}
         ${buildComandaRow([buildComandaCell("", { mergeAcross: 2 }), buildComandaCell("CPF/CNPJ do cliente", { style: "ComandaLabel" }), buildComandaCell(cpf, { mergeAcross: 1 })])}

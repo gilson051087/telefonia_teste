@@ -39,14 +39,14 @@ export default function SellersTab({ userSummaries, currentCycleMonth, onOpenSel
         >
         <div>
           <div style={{ fontFamily: "'Crimson Pro',serif", fontSize: 26, color: "#FFFFFF", marginBottom: 4 }}>
-            {canManageAdmins ? "Usuários cadastrados" : "Vendedores cadastrados"}
+            {canManageAdmins ? "Empresas e usuários cadastrados" : "Vendedores cadastrados"}
           </div>
           <div style={{ color: "#A1A1AA", fontSize: 14 }}>
             Visão mensal {fmtMonthLabel(currentCycleMonth)} da equipe e vendas vinculadas.
           </div>
         </div>
         <button onClick={onOpenSellerModal} style={btnPrimary}>
-          {canManageAdmins ? "+ Novo usuário" : "+ Novo vendedor"}
+          {canManageAdmins ? "+ Nova empresa/usuário" : "+ Novo vendedor"}
         </button>
       </div>
 
@@ -67,7 +67,7 @@ export default function SellersTab({ userSummaries, currentCycleMonth, onOpenSel
             {canManageAdmins ? "Nenhum usuário cadastrado" : "Nenhum vendedor cadastrado"}
           </p>
           <button onClick={onOpenSellerModal} style={{ ...btnPrimary, marginTop: 12 }}>
-            {canManageAdmins ? "+ Cadastrar usuário" : "+ Cadastrar vendedor"}
+            {canManageAdmins ? "+ Cadastrar empresa/usuário" : "+ Cadastrar vendedor"}
           </button>
         </div>
       ) : (
@@ -99,7 +99,7 @@ export default function SellersTab({ userSummaries, currentCycleMonth, onOpenSel
                   </button>
                   {canManageAdmins && seller.role === "seller" && (
                     <button onClick={() => onManageSellerAdmins?.(seller.id)} style={{ ...btnSecondary, padding: "8px 14px", fontSize: 12 }}>
-                      Mover para admins
+                      Mover de empresa
                     </button>
                   )}
                   {seller.role !== "superadmin" && (

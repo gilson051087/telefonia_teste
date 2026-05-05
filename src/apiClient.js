@@ -46,6 +46,7 @@ function mapUser(row) {
     nome: row.nome,
     username: row.username,
     role: normalizedRole,
+    storeId: row.store_id || row.storeId || null,
     createdAt: row.created_at || row.createdAt || nowIso(),
   };
 }
@@ -242,6 +243,29 @@ export async function listUsers() {
 
   if (error) throw new Error(error.message || "Erro ao carregar usuarios.");
   return sortUsersByRole((data || []).map(mapUser).filter(Boolean));
+}
+
+export async function getStoreAdminName(storeId) {
+  await requireCurrentUser();
+  const normalizedStoreId = String(storeId || "").trim();
+  if (!normalizedStoreId) return "";
+
+  const client = ensureSupabase(true);
+  const attempts = [
+    { p_store_id: normalizedStoreId },
+    { store_id: normalizedStoreId },
+  ];
+
+  let lastError = null;
+  for (const params of attempts) {
+    const result = await client.rpc("app_get_store_admin_name", params);
+    if (!result.error) return String(result.data || "").trim();
+    lastError = result.error;
+    if (!isMissingRpcFunction(result.error, "app_get_store_admin_name")) break;
+  }
+
+  if (lastError && isMissingRpcFunction(lastError, "app_get_store_admin_name")) return "";
+  throw new Error(lastError?.message || "Erro ao carregar nome da loja.");
 }
 
 export async function listGoals() {
@@ -519,10 +543,16 @@ export async function upsertGoalTarget(payload) {
 export async function listVendas() {
   await requireCurrentUser();
   const client = ensureSupabase(true);
-  const { data, error } = await client.from("vendas").select("payload, created_at").order("created_at", { ascending: false });
+  let { data, error } = await client.from("vendas").select("payload, store_id, created_at").order("created_at", { ascending: false });
+
+  if (error && String(error.message || "").includes("vendas.store_id")) {
+    const fallback = await client.from("vendas").select("payload, created_at").order("created_at", { ascending: false });
+    data = fallback.data;
+    error = fallback.error;
+  }
 
   if (error) throw new Error(error.message || "Erro ao carregar vendas.");
-  return (data || []).map((row) => normalizeLegacyVenda(row.payload));
+  return (data || []).map((row) => normalizeLegacyVenda({ ...(row.payload || {}), storeId: row.store_id || row.payload?.storeId || null }));
 }
 
 export async function createVenda(payload) {
@@ -545,6 +575,7 @@ async function insertVendas(payloads, user) {
       id: genId(),
       vendedorId: user.role === "seller" ? user.id : payload.vendedorId,
       vendedor: user.role === "seller" ? user.nome : payload.vendedor,
+      storeId: user.role === "seller" ? user.storeId || null : payload.storeId || null,
     })
   );
 
@@ -554,6 +585,7 @@ async function insertVendas(payloads, user) {
     id: venda.id,
     vendedor_id: venda.vendedorId || null,
     vendedor: venda.vendedor || null,
+    store_id: venda.storeId || null,
     payload: venda,
     created_at: createdAt,
     updated_at: createdAt,
@@ -582,6 +614,7 @@ export async function updateVenda(id, payload) {
     id,
     vendedorId: user.role === "seller" ? user.id : payload.vendedorId,
     vendedor: user.role === "seller" ? user.nome : payload.vendedor,
+    storeId: user.role === "seller" ? user.storeId || current.storeId || null : payload.storeId || current.storeId || null,
   });
 
   const { error } = await client
@@ -589,6 +622,7 @@ export async function updateVenda(id, payload) {
     .update({
       vendedor_id: updated.vendedorId || null,
       vendedor: updated.vendedor || null,
+      store_id: updated.storeId || null,
       payload: updated,
       updated_at: nowIso(),
     })
@@ -700,6 +734,7 @@ export async function migrateLegacyData(payload) {
         id: venda.id,
         vendedor_id: venda.vendedorId || null,
         vendedor: venda.vendedor || null,
+        store_id: venda.storeId || requester.storeId || null,
         payload: venda,
         created_at: nowIso(),
         updated_at: nowIso(),
